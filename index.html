@@ -1,0 +1,1570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="UNICON is a private, school‑branded social platform with announcements, events, marketplace, forums, and profiles—built for students and admins." />
+    <title>UNICON SaaS – School Social Platform</title>
+    <link rel="icon" href="UNICON.png?v=1758434378" type="image/png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: { sans: ["Inter","ui-sans-serif","system-ui","sans-serif"] },
+            colors: {
+              sand: { 50:'#fbf7f3',100:'#f6efe7',200:'#efe2d1' },
+              brand: { 600:'#1f6f4b',700:'#15583c',800:'#0f3e2a' }
+            },
+            boxShadow: { soft:'0 10px 30px -15px rgba(0,0,0,.15)' }
+          }
+        }
+      }
+    </script>
+    <style>
+      html, body, #root { height: 100%; }
+      body { 
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+        scroll-behavior: smooth;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        background: #fbf7f3;
+        /* Default brand color for UNICON (emerald-600 fallback) */
+        --brand-color: #059669;
+        --brand-color-700: #047857;
+      }
+      
+      /* Unique Visual Touches */
+      .glass-effect {
+        background: rgba(255, 255, 255, 0.25);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+      }
+      
+      .floating-animation {
+        animation: float 6s ease-in-out infinite;
+      }
+      
+      @keyframes float {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(-10px); }
+      }
+      
+      .pulse-glow {
+        animation: pulse-glow 2s ease-in-out infinite alternate;
+      }
+      
+      @keyframes pulse-glow {
+        from { box-shadow: 0 0 20px color-mix(in srgb, var(--brand-color) 40%, transparent); }
+        to { box-shadow: 0 0 30px color-mix(in srgb, var(--brand-color) 65%, transparent); }
+      }
+      
+      .gradient-text {
+        background: linear-gradient(135deg, color-mix(in srgb, var(--brand-color) 80%, white), var(--brand-color));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+      
+      .hover-lift {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+      }
+      
+      .hover-lift:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+      }
+      
+      .sparkle {
+        position: relative;
+        overflow: hidden;
+      }
+      
+      .sparkle::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+        transform: rotate(45deg);
+        transition: all 0.5s;
+        opacity: 0;
+      }
+      
+      .sparkle:hover::before {
+        animation: sparkle 0.6s ease-in-out;
+      }
+      
+      @keyframes sparkle {
+        0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); opacity: 0; }
+        50% { opacity: 1; }
+        100% { transform: translateX(100%) translateY(100%) rotate(45deg); opacity: 0; }
+      }
+      /* Watermark background that doesn't fade content */
+      .wm {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background-repeat: no-repeat;
+        background-position: center;
+        background-size: 250px;
+        opacity: 0.07;
+      }
+
+      /* Brand utility classes used across the app */
+      .btn-brand {
+        background: var(--brand-color);
+        color: #fff;
+      }
+      .btn-brand:hover { background: var(--brand-color-700); }
+      .chip-brand {
+        background: color-mix(in srgb, var(--brand-color) 10%, white);
+        color: var(--brand-color-700);
+        border: 1px solid color-mix(in srgb, var(--brand-color) 25%, white);
+      }
+      .premium-highlight {
+        position: relative;
+        border: 2px solid transparent;
+        background:
+          linear-gradient(#fff,#fff) padding-box,
+          linear-gradient(135deg, color-mix(in srgb, var(--brand-color) 60%, white), var(--brand-color)) border-box;
+        box-shadow: 0 8px 24px color-mix(in srgb, var(--brand-color) 20%, transparent);
+      }
+      /* Brand utilities to replace emerald-* classes */
+      .brand-bg { background-color: var(--brand-color) !important; color:#fff; }
+      .brand-bg:hover { background-color: var(--brand-color-700) !important; }
+      .brand-text { color: var(--brand-color) !important; }
+      .brand-border { border-color: var(--brand-color) !important; }
+      .brand-ring { --tw-ring-color: color-mix(in srgb, var(--brand-color) 35%, white) !important; }
+      .focus-brand:focus { outline: none; border-color: var(--brand-color-700) !important; box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand-color) 30%, transparent) !important; }
+      .brand-soft-bg { background: color-mix(in srgb, var(--brand-color) 8%, white) !important; }
+      .brand-soft-border { border-color: color-mix(in srgb, var(--brand-color) 25%, white) !important; }
+      .brand-soft-text { color: var(--brand-color-700) !important; }
+      .hover-brand-text:hover { color: var(--brand-color) !important; }
+      .hover-brand-border:hover { border-color: var(--brand-color) !important; }
+      .brand-gradient { background: linear-gradient(135deg, color-mix(in srgb, var(--brand-color) 70%, white), var(--brand-color)); }
+    </style>
+    <!-- React + ReactDOM + Babel -->
+    <script defer crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script defer crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script defer crossorigin src="https://unpkg.com/framer-motion/dist/framer-motion.umd.js"></script>
+    <script defer crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body class="antialiased bg-sand-50 text-slate-900">
+    <div id="root">
+      <div style="max-width:960px;margin:24px auto;padding:16px;color:#52525b;font-family:Inter,ui-sans-serif,system-ui,sans-serif;">
+        Loading UNICON…
+      </div>
+    </div>
+
+    <script type="text/babel" data-presets="env,react">
+      const { useState } = React;
+      const fm = window.framerMotion || {};
+      const AnimatePresence = fm.AnimatePresence || (({ children }) => <>{children}</>);
+      const MotionDiv = fm.motion ? (props) => React.createElement(fm.motion.div, props) : (props) => <div {...props} />;
+      
+      // Simple icon components
+      const Home = ({ size = 24, className = "" }) => (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+          <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+          <polyline points="9,22 9,12 15,12 15,22"/>
+        </svg>
+      );
+      
+      const Users = ({ size = 24, className = "" }) => (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="m22 21-2-2"/>
+          <path d="M16 16l2 2"/>
+        </svg>
+      );
+      
+      const MessageSquare = ({ size = 24, className = "" }) => (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+      );
+      
+      const Store = ({ size = 24, className = "" }) => (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+          <path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7"/>
+          <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+          <path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4"/>
+        </svg>
+      );
+      
+      const CalendarDays = ({ size = 24, className = "" }) => (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+          <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/>
+          <line x1="16" x2="16" y1="2" y2="6"/>
+          <line x1="8" x2="8" y1="2" y2="6"/>
+          <line x1="3" x2="21" y1="10" y2="10"/>
+        </svg>
+      );
+      
+      const LogOut = ({ size = 24, className = "" }) => (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+          <polyline points="16,17 21,12 16,7"/>
+          <line x1="21" x2="9" y1="12" y2="12"/>
+        </svg>
+      );
+
+      // Simple API helper (same-origin)
+      // Use relative base so it works under /UNICON/* paths
+      const API_BASE = 'api';
+      function emitApiError(message) {
+        try { window.dispatchEvent(new CustomEvent('api-error', { detail: String(message || 'API error') })); } catch {}
+      }
+
+      async function api(path, options = {}) {
+        const opts = {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          ...options,
+        };
+        let res;
+        try {
+          res = await fetch(`${API_BASE}/${path.replace(/^\//,'')}`, opts);
+        } catch (e) {
+          emitApiError('Network error');
+          throw new Error('Network error');
+        }
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          const message = data?.error || `Request failed (${res.status})`;
+          emitApiError(message);
+          throw new Error(message);
+        }
+        return data;
+      }
+
+      // Branding helpers
+      function getBranding() {
+        try {
+          const raw = localStorage.getItem('uniconBrand');
+          if (!raw) return null;
+          return JSON.parse(raw);
+        } catch { return null; }
+      }
+
+      function applyBranding(branding) {
+        const b = branding || getBranding();
+        const root = document.body || document.documentElement;
+        if (b?.color) {
+          root.style.setProperty('--brand-color', b.color);
+          // simple darker variant
+          try {
+            const c = b.color.replace('#','');
+            const r = parseInt(c.substring(0,2),16), g = parseInt(c.substring(2,4),16), bl = parseInt(c.substring(4,6),16);
+            const dark = `#${Math.max(0, Math.floor(r*0.8)).toString(16).padStart(2,'0')}${Math.max(0, Math.floor(g*0.8)).toString(16).padStart(2,'0')}${Math.max(0, Math.floor(bl*0.8)).toString(16).padStart(2,'0')}`;
+            root.style.setProperty('--brand-color-700', dark);
+          } catch {
+            root.style.setProperty('--brand-color-700', '#047857');
+          }
+        }
+      }
+
+      function LogoMark({ size = 56 }) {
+        const branding = getBranding();
+        const src = branding?.logoData || 'UNICON.png?v=1758434378';
+        const alt = branding?.name ? `${branding.name} Logo` : 'UNICON Logo';
+        return (
+          <img
+            src={src}
+            alt={alt}
+            style={{ width: size, height: size }}
+            className="rounded-xl object-contain"
+          />
+        );
+      }
+
+      function TextField({ label, type = "text", placeholder, value, onChange }) {
+        return (
+          <label className="block w-full">
+            <span className="block text-sm font-medium text-slate-700 mb-1">{label}</span>
+            <input
+              type={type}
+              placeholder={placeholder}
+              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus-brand"
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+            />
+          </label>
+        );
+      }
+
+      function BottomNav({ active, onChange }) {
+        const items = [
+          { key: "forYou", label: "For you", icon: Home },
+          { key: "moments", label: "Moments", icon: MessageSquare },
+          { key: "marketplace", label: "Marketplace", icon: Store },
+          { key: "calendar", label: "Calendar", icon: CalendarDays },
+          { key: "profile", label: "Profile", icon: Users },
+        ];
+        return (
+          <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40">
+            <ul className="flex gap-1 bg-white/90 backdrop-blur border border-slate-200 rounded-2xl p-1 shadow-xl">
+              {items.map(({ key, label, icon: Icon }) => (
+                <li key={key}>
+                  <button
+                    onClick={() => onChange(key)}
+                    className={`flex items-center gap-2 rounded-[1rem] px-4 py-2 text-sm transition-all ${
+                      active === key
+                        ? `btn-brand shadow`
+                        : `text-slate-700 hover:bg-slate-100`
+                    }`}
+                  >
+                    <Icon size={18} />
+                    <span className="hidden sm:inline">{label}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        );
+      }
+
+      function PlanCard({ plan, selected, onSelect, price, features, color }) {
+        return (
+          <button
+            type="button"
+            onClick={() => onSelect(plan)}
+            className={`w-full text-left rounded-xl border p-4 hover-lift ${
+              selected===plan? 'brand-border ring-2 brand-ring' : 'border-slate-200 bg-white'
+            } ${plan==='premium' ? 'premium-highlight' : ''}`}
+          >
+            {plan === 'premium' && (
+              <span className="absolute -mt-6 ml-2 inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full chip-brand">
+                ⭐ Recommended
+              </span>
+            )}
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="font-semibold">{plan.toUpperCase()}</h4>
+              <span className="text-sm px-2 py-1 rounded-full chip-brand">{price}</span>
+            </div>
+            <ul className="text-sm text-slate-600 list-disc ml-5 space-y-1">
+              {features.map((f, i) => <li key={i}>{f}</li>)}
+            </ul>
+          </button>
+        );
+      }
+
+      function SchoolSignup({ onDone, onBack }) {
+        const [plan, setPlan] = useState('pro');
+        const [name, setName] = useState('');
+        const [color, setColor] = useState('#059669');
+        const [logoData, setLogoData] = useState(null);
+        const [saving, setSaving] = useState(false);
+        const prices = { pro: 2000, premium: 3500 };
+
+        const proFeatures = [
+          'Custom school colors + logo',
+          'Unlimited announcements & posts',
+          'Events RSVP',
+          'Basic marketplace',
+          'Up to 10 forums',
+          'Basic moderation tools',
+          '100% ad-free',
+          'Email support (3-day)'
+        ];
+        const premiumFeatures = [
+          'Full white‑label experience',
+          'Pinned announcements + targeting',
+          'RSVP + Featured slots',
+          'Verified listings + categories + store',
+          'Unlimited forums + polls',
+          'Advanced mod dashboard & reports',
+          'Priority placement for promos',
+          'Dedicated success team + chat'
+        ];
+
+        function onLogo(e) {
+          const file = e.target.files?.[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = () => setLogoData(reader.result);
+          reader.readAsDataURL(file);
+        }
+
+        function save() {
+          if (!name) return alert('Enter your school name');
+          setSaving(true);
+          const payload = { name, color, logoData, plan, price: prices[plan] };
+          localStorage.setItem('uniconBrand', JSON.stringify(payload));
+          applyBranding(payload);
+          setTimeout(() => {
+            setSaving(false);
+            onDone && onDone(payload);
+          }, 300);
+        }
+
+        return (
+          <div className="w-full max-w-3xl mx-auto bg-white rounded-2xl p-6 border shadow-soft">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <LogoMark />
+                <div>
+                  <h2 className="text-xl font-semibold">Set up your school on UNICON</h2>
+                  <p className="text-sm text-slate-600">Choose a plan, upload your logo, and pick your color.</p>
+                </div>
+              </div>
+              <button className="text-sm text-slate-600 hover:underline" onClick={onBack}>Back to login</button>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4 mb-4">
+              <PlanCard plan="pro" selected={plan} onSelect={setPlan} price={`₱${prices.pro.toLocaleString()}`} features={proFeatures} />
+              <PlanCard plan="premium" selected={plan} onSelect={setPlan} price={`₱${prices.premium.toLocaleString()}`} features={premiumFeatures} />
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-4">
+              <label className="block md:col-span-2">
+                <span className="block text-sm font-medium text-slate-700 mb-1">School name</span>
+                <input className="w-full rounded-xl border border-slate-200 px-4 py-3 focus-brand" placeholder="e.g. USP Foundation" value={name} onChange={e=>setName(e.target.value)} />
+              </label>
+              <label className="block">
+                <span className="block text-sm font-medium text-slate-700 mb-1">Primary color</span>
+                <input type="color" className="w-full h-12 rounded-xl border border-slate-200 p-1" value={color} onChange={e=>setColor(e.target.value)} />
+              </label>
+              <label className="block md:col-span-2">
+                <span className="block text-sm font-medium text-slate-700 mb-1">School logo</span>
+                <input type="file" accept="image/*" onChange={onLogo} className="w-full rounded-xl border border-slate-200 px-4 py-3 bg-white" />
+              </label>
+              <div className="md:col-span-1 flex items-end">
+                <div className="w-full border border-dashed border-slate-300 rounded-xl p-3 text-center">
+                  <div className="text-xs text-slate-600 mb-1">Preview</div>
+                  <img alt="Logo preview" src={logoData || 'UNICON.png?v=1758434378'} className="mx-auto h-16 object-contain rounded"/>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 flex items-center justify-between">
+              <p className="text-sm text-slate-600">Your UNICON will automatically use your logo and color.</p>
+              <button onClick={save} className="rounded-xl px-5 py-3 btn-brand transition-colors" disabled={saving}>
+                {saving 
+                  ? 'Saving…' 
+                  : `Activate ${plan.charAt(0).toUpperCase()+plan.slice(1)} — ₱${prices[plan].toLocaleString()}`}
+              </button>
+            </div>
+
+          </div>
+        );
+      }
+
+      function LoginView({ onLogin }) {
+        const [email, setEmail] = useState("");
+        const [password, setPassword] = useState("");
+        const [error, setError] = useState("");
+        const [loading, setLoading] = useState(false);
+        const [showSignup, setShowSignup] = useState(false);
+
+        React.useEffect(() => { applyBranding(); }, []);
+
+        async function submit(e) {
+          e.preventDefault();
+          setError("");
+
+          // Super-basic fake validation for demo
+          // Accept domains like school.edu or university.edu.ph
+          const schoolEmail = /@([\w-]+\.)+(edu|school|k12|uni)(\.[a-z]{2,})?$/i;
+          if (!email) return setError("Please enter your school email.");
+          if (!schoolEmail.test(email)) return setError("Use your school-issued email.");
+          if (!password) return setError("Please enter your password.");
+
+          try {
+            setLoading(true);
+            const data = await api('/auth/login', {
+              method: 'POST',
+              body: JSON.stringify({ email, password })
+            });
+            const userEmail = data?.user?.email || email;
+            onLogin(userEmail);
+          } catch (err) {
+            setError(err.message || 'Login failed');
+          } finally {
+            setLoading(false);
+          }
+        }
+
+        if (showSignup) {
+          return (
+            <div className="min-h-[92vh] grid place-items-center bg-sand-50 text-slate-900 relative">
+              <div className="wm" style={{ backgroundImage: "url('UNICON.png?v=1758434378')", backgroundSize: '200px' }} aria-hidden="true"></div>
+              <SchoolSignup onDone={() => setShowSignup(false)} onBack={() => setShowSignup(false)} />
+            </div>
+          );
+        }
+
+        return (
+          <div className="min-h-[92vh] grid place-items-center bg-sand-50 text-slate-900 relative">
+            <div className="wm" style={{ backgroundImage: "url('UNICON.png?v=1758434378')", backgroundSize: '200px' }} aria-hidden="true"></div>
+            <MotionDiv
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="w-full max-w-md mx-auto bg-white rounded-2xl p-6 border shadow-soft"
+            >
+              <div className="flex items-center gap-3 mb-2">
+                <LogoMark />
+                <div>
+                  <h1 className="text-xl font-semibold">Log in</h1>
+                  <p className="text-xs text-slate-600">Welcome to UNICON</p>
+                </div>
+              </div>
+
+              <form onSubmit={submit} className="space-y-4">
+                <TextField
+                  label="School email"
+                  type="email"
+                  placeholder="you@school.edu"
+                  value={email}
+                  onChange={setEmail}
+                />
+                <TextField
+                  label="Password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={setPassword}
+                />
+
+                {error && (
+                  <p className="text-sm text-red-600" role="alert">
+                    {error}
+                  </p>
+                )}
+
+                <button
+                  type="submit"
+                  className="w-full h-12 rounded-xl btn-brand transition-colors disabled:opacity-60"
+                  disabled={loading}
+                >
+                  {loading ? 'Signing in…' : 'Continue'}
+                </button>
+              </form>
+
+              <div className="mt-4 text-center text-sm text-slate-600">
+                Are you a school admin?{' '}
+                <button onClick={() => setShowSignup(true)} className="brand-text hover:underline">Create your UNICON</button>
+              </div>
+            </MotionDiv>
+          </div>
+        );
+      }
+
+      function ForYouFeed() {
+        const [posts, setPosts] = useState(null);
+        const [error, setError] = useState('');
+
+        React.useEffect(() => {
+          let cancelled = false;
+          (async () => {
+            try {
+              const data = await api('/feed');
+              if (!cancelled) setPosts(data?.posts || []);
+            } catch (err) {
+              // Fallback to demo content on error
+              if (!cancelled) {
+                setError(err.message || 'Failed to load feed');
+                setPosts([
+                  { id: 'f1', title: 'Welcome back!', body: 'Check the School Calendar for midterm schedules.' },
+                  { id: 'f2', title: 'Forum highlight: CS101', body: 'Tips for debugging PHP on XAMPP.' },
+                  { id: 'f3', title: 'Marketplace picks', body: 'Preloved textbooks listed today.' },
+                ]);
+              }
+            }
+          })();
+          return () => { cancelled = true; };
+        }, []);
+
+        if (!posts) {
+          return (
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm text-slate-600">
+              Loading feed…
+            </div>
+          );
+        }
+
+        return (
+          <div className="space-y-4">
+            {error && (
+              <div className="rounded-xl border border-amber-300 bg-amber-50 text-amber-800 p-3 text-sm">{error}</div>
+            )}
+            {posts.map((p) => (
+              <div key={p.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <h3 className="font-semibold mb-1">{p.title}</h3>
+                <p className="text-slate-600">{p.body}</p>
+              </div>
+            ))}
+          </div>
+        );
+      }
+
+      function Placeholder({ icon: Icon, title, note }) {
+        return (
+          <div className="grid place-items-center py-16 text-center text-slate-600">
+            <Icon className="mb-3" size={48} />
+            <h3 className="font-semibold mb-1">{title}</h3>
+            <p>{note}</p>
+          </div>
+        );
+      }
+
+      // Student Profile System
+      const studentProfiles = {
+        "student@school.edu": {
+          id: "student@school.edu",
+          name: "Alex Johnson",
+          year: "Senior",
+          major: "Computer Science",
+          avatar: "👨‍💻",
+          bio: "CS student passionate about web development and AI",
+          interests: ["Programming", "Gaming", "Photography"],
+          joinDate: "2022-08-15",
+          posts: 23,
+          followers: 156,
+          following: 89,
+          verified: true
+        },
+        "sarah@university.edu": {
+          id: "sarah@university.edu", 
+          name: "Sarah Chen",
+          year: "Junior",
+          major: "Business Administration",
+          avatar: "👩‍💼",
+          bio: "Future entrepreneur and coffee enthusiast ☕",
+          interests: ["Business", "Coffee", "Travel"],
+          joinDate: "2023-01-10",
+          posts: 45,
+          followers: 234,
+          following: 167,
+          verified: false
+        },
+        "mike@k12.school": {
+          id: "mike@k12.school",
+          name: "Mike Rodriguez", 
+          year: "Sophomore",
+          major: "Engineering",
+          avatar: "👨‍🔬",
+          bio: "Building the future, one circuit at a time",
+          interests: ["Engineering", "Robotics", "Music"],
+          joinDate: "2023-09-01",
+          posts: 12,
+          followers: 78,
+          following: 45,
+          verified: false
+        }
+      };
+
+      // Enhanced Marketplace Data
+      const marketplaceData = {
+        schoolStore: [
+          {
+            id: 1,
+            title: "USP Foundation Official Hoodie",
+            price: 45,
+            image: "👕",
+            category: "Apparel",
+            seller: "USP Store",
+            description: "Official university hoodie with embroidered logo",
+            condition: "New",
+            verified: true,
+            stock: 25
+          },
+          {
+            id: 2,
+            title: "USP Foundation Laptop Sticker Pack",
+            price: 8,
+            image: "🏷️",
+            category: "Accessories", 
+            seller: "USP Store",
+            description: "Set of 10 vinyl stickers for laptops and notebooks",
+            condition: "New",
+            verified: true,
+            stock: 50
+          },
+          {
+            id: 3,
+            title: "USP Foundation Water Bottle",
+            price: 15,
+            image: "🍶",
+            category: "Accessories",
+            seller: "USP Store", 
+            description: "Insulated stainless steel water bottle with USP logo",
+            condition: "New",
+            verified: true,
+            stock: 30
+          }
+        ],
+        studentListings: [
+          {
+            id: 4,
+            title: "Calculus Textbook - Stewart 8th Edition",
+            price: 35,
+            image: "📚",
+            category: "Textbooks",
+            seller: "Alex Johnson",
+            sellerEmail: "student@school.edu",
+            description: "Used but in excellent condition. No highlights or markings.",
+            condition: "Good",
+            verified: false,
+            datePosted: "2025-09-20"
+          },
+          {
+            id: 5,
+            title: "MacBook Air M1 - 2020 Model",
+            price: 750,
+            image: "💻",
+            category: "Electronics",
+            seller: "Sarah Chen",
+            sellerEmail: "sarah@university.edu", 
+            description: "Perfect for students. Battery health 95%. Includes charger.",
+            condition: "Excellent",
+            verified: false,
+            datePosted: "2025-09-18"
+          },
+          {
+            id: 6,
+            title: "Gaming Chair - Ergonomic",
+            price: 120,
+            image: "🪑",
+            category: "Furniture",
+            seller: "Mike Rodriguez",
+            sellerEmail: "mike@k12.school",
+            description: "Comfortable gaming chair, great for long study sessions",
+            condition: "Good", 
+            verified: false,
+            datePosted: "2025-09-15"
+          }
+        ]
+      };
+
+      // Student Moments/Posts Data
+      const studentMoments = [
+        {
+          id: 1,
+          author: "student@school.edu",
+          content: "Just finished my final project! 🎉 The coding marathon was worth it. #CSstudent #coding",
+          timestamp: "2 hours ago",
+          likes: 23,
+          comments: 5,
+          image: null,
+          tags: ["#CSstudent", "#coding"]
+        },
+        {
+          id: 2,
+          author: "sarah@university.edu",
+          content: "Coffee break between classes ☕ Found this amazing new study spot in the library!",
+          timestamp: "4 hours ago", 
+          likes: 18,
+          comments: 3,
+          image: "📚",
+          tags: ["#study", "#coffee"]
+        },
+        {
+          id: 3,
+          author: "mike@k12.school",
+          content: "Built my first robot today! 🤖 Engineering lab was incredible. Can't wait for robotics club!",
+          timestamp: "6 hours ago",
+          likes: 31,
+          comments: 8,
+          image: "🤖",
+          tags: ["#engineering", "#robotics"]
+        }
+      ];
+
+      // School Calendar Data - USP Foundation Academic Year 2025/2026
+      const schoolCalendar = {
+        academicYear: "2025/2026",
+        institution: "University of Southern Philippines Foundation",
+        location: "Salinas Drive, Lahug, Cebu City",
+        level: "Tertiary Level / Graduate School",
+        semesters: {
+          first: {
+            name: "First Semester",
+            period: "July 2025 - December 2025",
+            weeks: 18,
+            days: 103,
+            events: [
+              { date: "2025-07-17", title: "Enrollment", type: "enrollment" },
+              { date: "2025-07-20", title: "Enrollment Ends", type: "enrollment" },
+              { date: "2025-07-21", title: "Start of Classes", type: "academic" },
+              { date: "2025-07-22", title: "Late Enrollment Ends", type: "enrollment" },
+              { date: "2025-07-28", title: "Holiday", type: "holiday" },
+              { date: "2025-09-15", title: "Midterm Examinations", type: "exam" },
+              { date: "2025-09-22", title: "Midterm Examinations", type: "exam" },
+              { date: "2025-09-29", title: "Midterm Examinations", type: "exam" },
+              { date: "2025-10-06", title: "Midterm Examinations", type: "exam" },
+              { date: "2025-10-13", title: "Midterm Examinations", type: "exam" },
+              { date: "2025-10-20", title: "Midterm Examinations", type: "exam" },
+              { date: "2025-10-27", title: "Midterm Examinations", type: "exam" },
+              { date: "2025-11-01", title: "All Saints Day", type: "holiday" },
+              { date: "2025-11-02", title: "All Souls Day", type: "holiday" },
+              { date: "2025-11-10", title: "Final Examinations", type: "exam" },
+              { date: "2025-11-17", title: "Final Examinations", type: "exam" },
+              { date: "2025-11-24", title: "Final Examinations", type: "exam" },
+              { date: "2025-11-30", title: "Bonifacio Day", type: "holiday" },
+              { date: "2025-12-01", title: "Final Examination", type: "exam" },
+              { date: "2025-12-08", title: "Submission of Final Grades", type: "academic" },
+              { date: "2025-12-15", title: "Christmas Break Starts", type: "holiday" },
+              { date: "2025-12-25", title: "Christmas Day", type: "holiday" },
+              { date: "2025-12-30", title: "Rizal Day", type: "holiday" },
+              { date: "2025-12-31", title: "New Year's Eve", type: "holiday" }
+            ]
+          },
+          second: {
+            name: "Second Semester",
+            period: "January 2026 - May 2026",
+            weeks: 19,
+            days: 104,
+            events: [
+              { date: "2026-01-01", title: "New Year's Day", type: "holiday" },
+              { date: "2026-01-05", title: "Start of Classes", type: "academic" },
+              { date: "2026-01-06", title: "Late Enrollment Ends", type: "enrollment" },
+              { date: "2026-02-10", title: "Chinese New Year", type: "holiday" },
+              { date: "2026-02-24", title: "Cebu City Charter Day", type: "holiday" },
+              { date: "2026-02-25", title: "EDSA Revolution Anniversary", type: "holiday" },
+              { date: "2026-03-02", title: "Midterm Examinations", type: "exam" },
+              { date: "2026-03-09", title: "Midterm Examinations", type: "exam" },
+              { date: "2026-03-16", title: "Midterm Examinations", type: "exam" },
+              { date: "2026-03-23", title: "Midterm Examinations", type: "exam" },
+              { date: "2026-03-30", title: "Midterm Examinations", type: "exam" },
+              { date: "2026-04-09", title: "Araw ng Kagitingan", type: "holiday" },
+              { date: "2026-04-10", title: "Good Friday", type: "holiday" },
+              { date: "2026-04-11", title: "Black Saturday", type: "holiday" },
+              { date: "2026-04-12", title: "Easter Sunday", type: "holiday" },
+              { date: "2026-05-01", title: "Labor Day", type: "holiday" },
+              { date: "2026-05-04", title: "Final Examinations", type: "exam" },
+              { date: "2026-05-11", title: "Final Examinations", type: "exam" },
+              { date: "2026-05-18", title: "Final Examinations", type: "exam" },
+              { date: "2026-05-25", title: "Final Examinations", type: "exam" },
+              { date: "2026-05-30", title: "Submission of Final Grades", type: "academic" }
+            ]
+          },
+          summer: {
+            name: "Summer Session",
+            period: "June 2026 - July 2026",
+            weeks: 6,
+            days: 35,
+            events: [
+              { date: "2026-06-01", title: "Start of Classes", type: "academic" },
+              { date: "2026-06-02", title: "Late Enrollment Ends", type: "enrollment" },
+              { date: "2026-06-12", title: "Independence Day", type: "holiday" },
+              { date: "2026-06-15", title: "Midterm Examinations", type: "exam" },
+              { date: "2026-06-22", title: "Midterm Examinations", type: "exam" },
+              { date: "2026-06-29", title: "Midterm Examinations", type: "exam" },
+              { date: "2026-07-06", title: "Final Examinations", type: "exam" },
+              { date: "2026-07-13", title: "Final Examinations", type: "exam" },
+              { date: "2026-07-20", title: "Final Examinations", type: "exam" },
+              { date: "2026-07-27", title: "Final Examinations", type: "exam" },
+              { date: "2026-07-31", title: "Submission of Final Grades", type: "academic" }
+            ]
+          }
+        }
+      };
+
+      // Student Profile Component
+      function StudentProfile({ userEmail }) {
+        const profile = studentProfiles[userEmail] || {
+          id: userEmail,
+          name: userEmail.split('@')[0],
+          year: "Student",
+          major: "General Studies",
+          avatar: "👤",
+          bio: "New to UNICON!",
+          interests: [],
+          joinDate: new Date().toISOString().split('T')[0],
+          posts: 0,
+          followers: 0,
+          following: 0,
+          verified: false
+        };
+
+        return (
+          <div className="bg-white rounded-xl border border-slate-200 p-6">
+            {/* Profile Header */}
+            <div className="flex items-start gap-4 mb-6">
+              <div className="text-6xl">{profile.avatar}</div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <h2 className="text-2xl font-bold text-slate-900">{profile.name}</h2>
+                  {profile.verified && <span className="text-blue-500">✓</span>}
+                </div>
+                <p className="text-slate-600 mb-1">{profile.year} • {profile.major}</p>
+                <p className="text-sm text-slate-500">Joined {new Date(profile.joinDate).toLocaleDateString()}</p>
+              </div>
+            </div>
+
+            {/* Bio */}
+            <div className="mb-6">
+              <p className="text-slate-700">{profile.bio}</p>
+            </div>
+
+            {/* Stats */}
+            <div className="grid grid-cols-3 gap-4 mb-6">
+              <div className="text-center p-3 bg-slate-50 rounded-lg">
+                <div className="text-xl font-bold text-slate-900">{profile.posts}</div>
+                <div className="text-sm text-slate-600">Posts</div>
+              </div>
+              <div className="text-center p-3 bg-slate-50 rounded-lg">
+                <div className="text-xl font-bold text-slate-900">{profile.followers}</div>
+                <div className="text-sm text-slate-600">Followers</div>
+              </div>
+              <div className="text-center p-3 bg-slate-50 rounded-lg">
+                <div className="text-xl font-bold text-slate-900">{profile.following}</div>
+                <div className="text-sm text-slate-600">Following</div>
+              </div>
+            </div>
+
+            {/* Interests */}
+            {profile.interests.length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-sm font-medium text-slate-700 mb-2">Interests</h3>
+                <div className="flex flex-wrap gap-2">
+                  {profile.interests.map((interest, idx) => (
+                    <span key={idx} className="px-3 py-1 chip-brand rounded-full text-sm">
+                      {interest}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex gap-3">
+              <button className="flex-1 btn-brand px-4 py-2 rounded-lg font-medium transition-colors">
+                Follow
+              </button>
+              <button className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors">
+                Message
+              </button>
+            </div>
+
+          </div>
+        );
+      }
+
+      // Enhanced Marketplace Component
+      function EnhancedMarketplace() {
+        const [activeTab, setActiveTab] = useState("schoolStore");
+        const [selectedCategory, setSelectedCategory] = useState("all");
+
+        const categories = ["all", "Textbooks", "Electronics", "Apparel", "Accessories", "Furniture"];
+
+        const getFilteredItems = () => {
+          const items = activeTab === "schoolStore" ? marketplaceData.schoolStore : marketplaceData.studentListings;
+          if (selectedCategory === "all") return items;
+          return items.filter(item => item.category === selectedCategory);
+        };
+
+        const filteredItems = getFilteredItems();
+
+        return (
+          <div className="space-y-6">
+            {/* Header */}
+            <div className="bg-white rounded-xl border border-slate-200 p-6">
+              <h2 className="text-2xl font-bold text-slate-900 mb-2">Marketplace</h2>
+              <p className="text-slate-600">Buy and sell items within the USP Foundation community</p>
+            </div>
+
+            {/* Tabs */}
+            <div className="bg-white rounded-xl border border-slate-200 p-4">
+              <div className="flex gap-2 mb-4">
+                <button
+                  onClick={() => setActiveTab("schoolStore")}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    activeTab === "schoolStore"
+                      ? "btn-brand"
+                      : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                  }`}
+                >
+                  🏪 School Store
+                </button>
+                <button
+                  onClick={() => setActiveTab("studentListings")}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    activeTab === "studentListings"
+                      ? "btn-brand"
+                      : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                  }`}
+                >
+                  👥 Student Listings
+                </button>
+              </div>
+
+              {/* Category Filter */}
+              <div className="flex flex-wrap gap-2">
+                {categories.map(category => (
+                  <button
+                    key={category}
+                    onClick={() => setSelectedCategory(category)}
+                    className={`px-3 py-1 rounded-full text-sm transition-colors ${
+                      selectedCategory === category
+                        ? "chip-brand border"
+                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  }`}
+                >
+                  {category === "all" ? "All Categories" : category}
+                </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Items Grid */}
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredItems.map(item => (
+                <div key={item.id} className="bg-white rounded-xl border border-slate-200 p-4 hover-lift sparkle">
+                  <div className="text-4xl mb-3 text-center">{item.image}</div>
+                  <div className="flex items-start justify-between mb-2">
+                    <h3 className="font-semibold text-slate-900 text-sm">{item.title}</h3>
+                    {item.verified && <span className="text-blue-500 text-xs">✓</span>}
+                  </div>
+                  <p className="text-lg font-bold brand-text mb-2">${item.price}</p>
+                  <p className="text-sm text-slate-600 mb-3">{item.description}</p>
+                  <div className="flex items-center justify-between text-xs text-slate-500 mb-3">
+                    <span>{item.condition}</span>
+                    <span>{item.category}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-slate-600">by {item.seller}</span>
+                    <button className="btn-brand px-3 py-1 rounded-lg text-sm transition-colors">
+                      Contact
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Post New Listing Button */}
+            <div className="brand-gradient rounded-xl p-6 text-white text-center pulse-glow">
+              <h3 className="text-lg font-semibold mb-2">Have something to sell?</h3>
+              <p className="mb-4" style={{ color: 'color-mix(in srgb, var(--brand-color) 20%, white)' }}>List your items and connect with fellow students</p>
+              <button className="px-6 py-2 rounded-lg font-medium transition-colors" style={{ background:'#fff', color:'var(--brand-color)' }}>
+                Post New Listing
+              </button>
+            </div>
+          </div>
+        );
+      }
+
+      // Student Moments Component
+      function StudentMoments() {
+        const [newPost, setNewPost] = useState("");
+        const [showPostForm, setShowPostForm] = useState(false);
+
+        React.useEffect(() => {
+          const open = () => { setShowPostForm(true); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+          window.addEventListener('open-post-form', open);
+          return () => window.removeEventListener('open-post-form', open);
+        }, []);
+
+        const handlePost = () => {
+          if (newPost.trim()) {
+            // In a real app, this would save to backend
+            console.log("New post:", newPost);
+            setNewPost("");
+            setShowPostForm(false);
+          }
+        };
+
+        return (
+          <div className="space-y-6">
+            {/* Post Creation */}
+            <div className="bg-white rounded-xl border border-slate-200 p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="text-2xl">👨‍💻</div>
+                <div>
+                  <h3 className="font-semibold text-slate-900">Share a moment</h3>
+                  <p className="text-sm text-slate-600">What's happening in your student life?</p>
+                </div>
+              </div>
+              
+              {!showPostForm ? (
+                <button
+                  onClick={() => setShowPostForm(true)}
+                  className="w-full p-4 border-2 border-dashed border-slate-300 rounded-lg text-slate-600 hover-brand-border hover-brand-text transition-colors"
+                >
+                  Share your thoughts, achievements, or experiences...
+                </button>
+              ) : (
+                <div className="space-y-4">
+                  <textarea
+                    value={newPost}
+                    onChange={(e) => setNewPost(e.target.value)}
+                    placeholder="What's on your mind?"
+                    className="w-full p-3 border border-slate-300 rounded-lg resize-none focus-brand"
+                    rows="3"
+                  />
+                  <div className="flex gap-3">
+                    <button
+                      onClick={handlePost}
+                      className="btn-brand px-4 py-2 rounded-lg font-medium transition-colors"
+                    >
+                      Post Moment
+                    </button>
+                    <button
+                      onClick={() => setShowPostForm(false)}
+                      className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Moments Feed */}
+            <div className="space-y-4">
+              {studentMoments.map(moment => {
+                const author = studentProfiles[moment.author];
+                return (
+                  <div key={moment.id} className="bg-white rounded-xl border border-slate-200 p-6">
+                    <div className="flex items-start gap-3 mb-4">
+                      <div className="text-2xl">{author?.avatar || "👤"}</div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-semibold text-slate-900">{author?.name || moment.author}</h4>
+                          {author?.verified && <span className="text-blue-500 text-sm">✓</span>}
+                        </div>
+                        <p className="text-sm text-slate-600">{moment.timestamp}</p>
+                      </div>
+                    </div>
+                    
+                    <p className="text-slate-800 mb-4">{moment.content}</p>
+                    
+                    {moment.image && (
+                      <div className="text-4xl mb-4 text-center">{moment.image}</div>
+                    )}
+                    
+                    <div className="flex items-center gap-4 text-sm text-slate-600">
+                      <button className="flex items-center gap-1 hover:text-red-500 transition-colors">
+                        ❤️ {moment.likes}
+                      </button>
+                      <button className="flex items-center gap-1 hover:text-blue-500 transition-colors">
+                        💬 {moment.comments}
+                      </button>
+                      <button className="hover-brand-text transition-colors">
+                        🔗 Share
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Floating Post Button */}
+            {!showPostForm && (
+              <button
+                className="fixed right-6 bottom-24 btn-brand rounded-full px-5 py-3 shadow-xl hover-lift"
+                onClick={() => { setShowPostForm(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                aria-label="Create Post"
+              >
+                Post
+              </button>
+            )}
+          </div>
+        );
+      }
+
+      function SchoolCalendar() {
+        const [selectedSemester, setSelectedSemester] = useState("first");
+        const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+        const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+
+        const getEventTypeColor = (type) => {
+          switch(type) {
+            case "holiday": return "bg-red-100 text-red-800 border-red-200";
+            case "exam": return "bg-orange-100 text-orange-800 border-orange-200";
+            case "enrollment": return "bg-blue-100 text-blue-800 border-blue-200";
+            case "academic": return "bg-green-100 text-green-800 border-green-200";
+            default: return "bg-gray-100 text-gray-800 border-gray-200";
+          }
+        };
+
+        const getEventIcon = (type) => {
+          switch(type) {
+            case "holiday": return "🎉";
+            case "exam": return "📝";
+            case "enrollment": return "📋";
+            case "academic": return "🎓";
+            default: return "📅";
+          }
+        };
+
+        const getEventsForMonth = (month, year) => {
+          const semester = schoolCalendar.semesters[selectedSemester];
+          return semester.events.filter(event => {
+            const eventDate = new Date(event.date);
+            return eventDate.getMonth() === month && eventDate.getFullYear() === year;
+          });
+        };
+
+        const getDaysInMonth = (month, year) => {
+          return new Date(year, month + 1, 0).getDate();
+        };
+
+        const getFirstDayOfMonth = (month, year) => {
+          return new Date(year, month, 1).getDay();
+        };
+
+        const formatMonthYear = (month, year) => {
+          const months = ["January", "February", "March", "April", "May", "June", 
+                        "July", "August", "September", "October", "November", "December"];
+          return `${months[month]} ${year}`;
+        };
+
+        const currentEvents = getEventsForMonth(selectedMonth, selectedYear);
+        const daysInMonth = getDaysInMonth(selectedMonth, selectedYear);
+        const firstDay = getFirstDayOfMonth(selectedMonth, selectedYear);
+
+        return (
+          <div className="bg-white rounded-xl border border-slate-200 p-6">
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold text-slate-900 mb-2">School Calendar</h2>
+              <p className="text-slate-600">{schoolCalendar.institution}</p>
+              <p className="text-sm text-slate-500">Academic Year {schoolCalendar.academicYear}</p>
+            </div>
+
+            {/* Semester Selector */}
+            <div className="mb-6">
+              <div className="flex gap-2 mb-4">
+                {Object.entries(schoolCalendar.semesters).map(([key, semester]) => (
+                  <button
+                    key={key}
+                    onClick={() => setSelectedSemester(key)}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      selectedSemester === key
+                        ? "btn-brand"
+                        : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                    }`}
+                  >
+                    {semester.name}
+                  </button>
+                ))}
+              </div>
+              <div className="text-sm text-slate-600">
+                <strong>{schoolCalendar.semesters[selectedSemester].name}:</strong> {schoolCalendar.semesters[selectedSemester].period} 
+                ({schoolCalendar.semesters[selectedSemester].weeks} weeks, {schoolCalendar.semesters[selectedSemester].days} days)
+              </div>
+            </div>
+
+            {/* Month Navigation */}
+            <div className="flex items-center justify-between mb-4">
+              <button
+                onClick={() => {
+                  if (selectedMonth === 0) {
+                    setSelectedMonth(11);
+                    setSelectedYear(selectedYear - 1);
+                  } else {
+                    setSelectedMonth(selectedMonth - 1);
+                  }
+                }}
+                className="p-2 rounded-lg hover:bg-slate-100 transition-colors"
+              >
+                ←
+              </button>
+              <h3 className="text-lg font-semibold">{formatMonthYear(selectedMonth, selectedYear)}</h3>
+              <button
+                onClick={() => {
+                  if (selectedMonth === 11) {
+                    setSelectedMonth(0);
+                    setSelectedYear(selectedYear + 1);
+                  } else {
+                    setSelectedMonth(selectedMonth + 1);
+                  }
+                }}
+                className="p-2 rounded-lg hover:bg-slate-100 transition-colors"
+              >
+                →
+              </button>
+            </div>
+
+            {/* Calendar Grid */}
+            <div className="grid grid-cols-7 gap-1 mb-4">
+              {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(day => (
+                <div key={day} className="p-2 text-center text-sm font-medium text-slate-500">
+                  {day}
+                </div>
+              ))}
+              {Array.from({ length: firstDay }).map((_, i) => (
+                <div key={`empty-${i}`} className="p-2"></div>
+              ))}
+              {Array.from({ length: daysInMonth }).map((_, i) => {
+                const day = i + 1;
+                const dateStr = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const dayEvents = currentEvents.filter(event => event.date === dateStr);
+                const isToday = new Date().toDateString() === new Date(selectedYear, selectedMonth, day).toDateString();
+                
+                return (
+                  <div
+                    key={day}
+                    className={`p-2 min-h-[60px] border border-slate-100 ${
+                      isToday ? "brand-soft-bg brand-soft-border" : "hover:bg-slate-50"
+                    }`}
+                  >
+                    <div className={`text-sm font-medium ${isToday ? "brand-soft-text" : "text-slate-700"}`}>
+                      {day}
+                    </div>
+                    {dayEvents.map((event, idx) => (
+                      <div
+                        key={idx}
+                        className={`text-xs px-1 py-0.5 rounded mt-1 truncate ${getEventTypeColor(event.type)}`}
+                        title={event.title}
+                      >
+                        {getEventIcon(event.type)} {event.title}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Legend */}
+            <div className="border-t border-slate-200 pt-4">
+              <h4 className="text-sm font-medium text-slate-700 mb-2">Legend:</h4>
+              <div className="flex flex-wrap gap-4 text-xs">
+                <div className="flex items-center gap-1">
+                  <span className="w-3 h-3 rounded bg-green-100 border border-green-200"></span>
+                  <span>Academic Events</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="w-3 h-3 rounded bg-orange-100 border border-orange-200"></span>
+                  <span>Examinations</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="w-3 h-3 rounded bg-blue-100 border border-blue-200"></span>
+                  <span>Enrollment</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="w-3 h-3 rounded bg-red-100 border border-red-200"></span>
+                  <span>Holidays</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      function App() {
+        const [session, setSession] = useState(null);
+        const [tab, setTab] = useState("forYou");
+        const [apiHealthy, setApiHealthy] = useState(null); // null = unknown, true/false
+        const [banner, setBanner] = useState('');
+        const branding = getBranding();
+        React.useEffect(() => { applyBranding(branding); }, [branding?.color]);
+
+        // Global API error listener -> show transient banner
+        React.useEffect(() => {
+          function onApiError(e) {
+            const msg = (e && e.detail) ? String(e.detail) : 'API error';
+            setBanner(msg);
+            const t = setTimeout(() => setBanner(''), 4000);
+            return () => clearTimeout(t);
+          }
+          window.addEventListener('api-error', onApiError);
+          return () => window.removeEventListener('api-error', onApiError);
+        }, []);
+
+        // Health check loop
+        React.useEffect(() => {
+          let cancelled = false;
+          let timer;
+          const check = async () => {
+            try {
+              await api('/health');
+              if (!cancelled) setApiHealthy(true);
+            } catch {
+              if (!cancelled) setApiHealthy(false);
+            } finally {
+              if (!cancelled) timer = setTimeout(check, 15000);
+            }
+          };
+          check();
+          return () => { cancelled = true; if (timer) clearTimeout(timer); };
+        }, []);
+
+        // Restore session if server already has it
+        React.useEffect(() => {
+          (async () => {
+            try {
+              const data = await api('/me');
+              if (data?.user?.email) setSession((s) => s || data.user.email);
+            } catch {}
+          })();
+        }, []);
+
+        if (!session) return <LoginView onLogin={setSession} />;
+
+        return (
+          <div className="min-h-screen text-slate-900 relative">
+            <div className="wm" style={{ backgroundImage: "url('UNICON.png?v=1758434378')" }} aria-hidden="true"></div>
+            {/* Top Bar */}
+            <header className="sticky top-0 z-30 bg-sand-50/90 backdrop-blur border-b border-slate-200">
+              <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="floating-animation">
+                    <LogoMark size={64} />
+                  </div>
+                  <div>
+                    <h1 className="text-xl font-bold gradient-text">UNICON</h1>
+                    <p className="text-xs text-slate-600">{branding?.name || 'Your School'}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs px-2 py-1 rounded-full border flex items-center gap-2"
+                        title={apiHealthy === null ? 'Checking API…' : apiHealthy ? 'API reachable' : 'API offline'}
+                        style={{ borderColor: apiHealthy === false ? '#fecaca' : '#d1fae5', background: 'rgba(255,255,255,0.6)' }}>
+                    <span className={`inline-block w-2 h-2 rounded-full ${apiHealthy === null ? 'bg-slate-300' : apiHealthy ? 'brand-bg' : 'bg-red-500'}`}></span>
+                    <span className="text-slate-700">API {apiHealthy === null ? '…' : apiHealthy ? 'OK' : 'Offline'}</span>
+                  </span>
+
+                  <button
+                    onClick={() => {
+                      setTab("moments");
+                      try { window.dispatchEvent(new CustomEvent('open-post-form')); } catch {}
+                    }}
+                    className="rounded-full px-4 py-2 btn-brand hover-lift"
+                  >
+                    POST
+                  </button>
+
+                  <button
+                  onClick={async () => {
+                    try { await api('/auth/logout', { method: 'POST' }); } catch {}
+                    setSession(null);
+                    setTab("forYou");
+                  }}
+                  className="rounded-full text-white px-5 py-2 flex items-center gap-2 transition-colors"
+                  style={{ background: 'var(--brand-color)' }}
+                >
+                  <LogOut className="h-4 w-4" /> SIGN OUT
+                  </button>
+                </div>
+              </div>
+            </header>
+
+            {banner && (
+              <div className="max-w-5xl mx-auto px-4 mt-3">
+                <div className="rounded-xl border border-red-300 bg-red-50 text-red-800 p-3 text-sm shadow-sm">
+                  {banner}
+                </div>
+              </div>
+            )}
+
+            {/* Content */}
+            <main className="max-w-5xl mx-auto px-4 pt-6 pb-28">
+              <AnimatePresence mode="wait">
+                {tab === "forYou" && (
+                  <MotionDiv
+                    key="forYou"
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    className="space-y-6 bg-white/80 backdrop-blur rounded-2xl p-4"
+                  >
+                    <h2 className="text-xl font-semibold">For you</h2>
+                    <ForYouFeed />
+                  </MotionDiv>
+                )}
+
+                {tab === "following" && (
+                  <MotionDiv
+                    key="following"
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    className="bg-white/80 backdrop-blur rounded-2xl p-4"
+                  >
+                    <Placeholder
+                      icon={Users}
+                      title="Following"
+                      note="Updates from people and clubs you follow will appear here."
+                    />
+                  </MotionDiv>
+                )}
+
+                
+
+                {tab === "forums" && (
+                  <MotionDiv
+                    key="forums"
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    className="bg-white/80 backdrop-blur rounded-2xl p-4"
+                  >
+                    <Placeholder
+                      icon={MessageSquare}
+                      title="Forums"
+                      note="Ask questions, share notes, and join study threads."
+                    />
+                  </MotionDiv>
+                )}
+
+                {tab === "marketplace" && (
+                  <MotionDiv
+                    key="marketplace"
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    className="space-y-6"
+                  >
+                    <EnhancedMarketplace />
+                  </MotionDiv>
+                )}
+
+                {tab === "moments" && (
+                  <MotionDiv
+                    key="moments"
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    className="space-y-6"
+                  >
+                    <StudentMoments />
+                  </MotionDiv>
+                )}
+
+                {tab === "profile" && (
+                  <MotionDiv
+                    key="profile"
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    className="space-y-6"
+                  >
+                    <StudentProfile userEmail={session} />
+                  </MotionDiv>
+                )}
+
+                {tab === "calendar" && (
+                  <MotionDiv
+                    key="calendar"
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    className="space-y-6"
+                  >
+                    <SchoolCalendar />
+                  </MotionDiv>
+                )}
+              </AnimatePresence>
+            </main>
+
+            {/* Bottom Tabs */}
+            <BottomNav active={tab} onChange={setTab} />
+          </div>
+        );
+      }
+
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(<App />);
+    </script>
+</body>
+</html>
