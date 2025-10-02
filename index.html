@@ -1389,14 +1389,27 @@
           return () => { cancelled = true; if (timer) clearTimeout(timer); };
         }, []);
 
-        // Restore session if server already has it
+        // Restore session if server already has it or landing provided one
         React.useEffect(() => {
           (async () => {
             try {
               const data = await api('/me');
               if (data?.user?.email) setSession((s) => s || data.user.email);
             } catch {}
+            try {
+              const fromLocal = localStorage.getItem('uniconSessionEmail');
+              if (fromLocal && !session) setSession(fromLocal);
+            } catch {}
           })();
+        }, []);
+
+        React.useEffect(() => {
+          function onLandingLogin(e) {
+            const email = e?.detail?.email;
+            if (email) setSession(email);
+          }
+          window.addEventListener('landing-login', onLandingLogin);
+          return () => window.removeEventListener('landing-login', onLandingLogin);
         }, []);
 
         if (!session) return <LoginView onLogin={setSession} />;
@@ -1563,8 +1576,320 @@
         );
       }
 
+      // --- Minimal icon set to support LandingPage ---
+      const ArrowRight = ({ size = 16, className = "" }) => (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      );
+      const Check = ({ size = 16, className = "" }) => (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M20 6 9 17l-5-5"/></svg>
+      );
+      const Shield = ({ size = 16, className = "" }) => (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      );
+      const Bell = ({ size = 16, className = "" }) => (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+      );
+      const Megaphone = ({ size = 16, className = "" }) => (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 11v2a4 4 0 004 4h1"/><path d="M21 8a4 4 0 010 8"/><path d="M21 12H7a4 4 0 01-4-4V8a4 4 0 014-4h1l13 8z"/></svg>
+      );
+      const MessagesSquare = MessageSquare;
+      const ShoppingBag = ({ size = 16, className = "" }) => (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M6 2l.01 4M18 2l-.01 4"/><path d="M3 7h18l-1.5 14H4.5L3 7z"/><path d="M7 10a5 5 0 0010 0"/></svg>
+      );
+      const GraduationCap = ({ size = 16, className = "" }) => (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M22 10L12 4 2 10l10 6 10-6z"/><path d="M6 12v5a6 6 0 0012 0v-5"/></svg>
+      );
+      const BarChart3 = ({ size = 16, className = "" }) => (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 3v18h18"/><rect x="7" y="9" width="3" height="6"/><rect x="12" y="5" width="3" height="10"/><rect x="17" y="12" width="3" height="3"/></svg>
+      );
+
+      // --- Landing Page (adapted to current inline setup) ---
+      const palette = { bg: "#F7F7F4", paper: "#FFFFFF", navy: "#1E3A5F", blue: "#1D4E89", blueLite: "#E7EEF6", text: "#374151", border: "#D1D5DB" };
+      const featureBlocks = [
+        { icon: Megaphone, title: "Announcements", desc: "Reach every student and parent instantly with rich, targeted updates." },
+        { icon: CalendarDays, title: "Events", desc: "Plan, RSVP, and manage campus events with reminders and check-ins." },
+        { icon: ShoppingBag, title: "Marketplace", desc: "A safe campus buy/sell hub for books, uniforms, and services." },
+        { icon: MessagesSquare, title: "Forums", desc: "Organized discussions for classes, clubs, and departments." },
+        { icon: Users, title: "Profiles & Groups", desc: "Verified profiles with role-based access for students and staff." },
+        { icon: GraduationCap, title: "Gradebook & Attendance", desc: "Simple tracking with exports and parent visibility options." },
+        { icon: Shield, title: "Privacy-First", desc: "School-branded spaces with robust moderation and data controls." },
+        { icon: BarChart3, title: "Admin Dashboard", desc: "Analytics, roles, content approvals, and bulk actions built-in." },
+      ];
+
+      function StudentUnicon({ schoolName, plan, accent, logoUrl }) {
+        const isPremium = plan === 'Premium';
+        return (
+          <div className="relative overflow-hidden rounded-xl border" style={{ borderColor: palette.border }}>
+            {!isPremium && logoUrl && (
+              <img src={logoUrl} alt="logo watermark" className="pointer-events-none absolute right-6 bottom-6 w-44 opacity-10" />
+            )}
+            <div className="grid grid-cols-[220px_1fr]">
+              <aside className="border-r p-4" style={{ borderColor: palette.border }}>
+                <div className="flex items-center gap-2">
+                  <div className="h-7 w-7 rounded-md" style={{ backgroundColor: accent }} />
+                  <div className="text-sm font-semibold" style={{ color: palette.navy }}>{schoolName}</div>
+                </div>
+                <nav className="mt-5 space-y-3 text-sm" style={{ color: palette.text }}>
+                  <div className="rounded-lg px-3 py-2 font-medium" style={{ backgroundColor: palette.blueLite, color: palette.blue }}>Dashboard</div>
+                  <div className="rounded-lg px-3 py-2">Announcements</div>
+                  <div className="rounded-lg px-3 py-2">Events</div>
+                  <div className="rounded-lg px-3 py-2">Forums</div>
+                  <div className="rounded-lg px-3 py-2">Marketplace</div>
+                  <div className="rounded-lg px-3 py-2">Profile</div>
+                </nav>
+              </aside>
+              <main>
+                <div className="flex items-center justify-between border-b px-5 py-3" style={{ borderColor: palette.border }}>
+                  <h4 className="font-semibold" style={{ color: palette.navy }}>Welcome, Student</h4>
+                  <div className="flex items-center gap-2">
+                    <input placeholder="Search" className="rounded-lg border px-3 py-1.5 text-sm" style={{ borderColor: palette.border }} />
+                    <button className="rounded-lg px-3 py-1.5 text-sm font-semibold" style={{ backgroundColor: accent, color: 'white' }}>New Post</button>
+                  </div>
+                </div>
+                <div className="m-5 rounded-2xl p-5" style={{ backgroundColor: palette.blueLite }}>
+                  <div className="text-lg font-semibold" style={{ color: palette.navy }}>Your campus at a glance</div>
+                  <p className="mt-1 text-sm" style={{ color: palette.text }}>See updates, RSVP to events, and join forums. Plan: <span className="font-medium">{plan}</span>.</p>
+                </div>
+                <div className="grid grid-cols-1 gap-5 p-5 lg:grid-cols-3">
+                  <div className="lg:col-span-2 space-y-5">
+                    <div className="rounded-2xl border p-4" style={{ borderColor: palette.border }}>
+                      <div className="flex items-center justify-between">
+                        <div className="font-semibold" style={{ color: palette.navy }}>Latest announcements</div>
+                        <a className="text-sm hover:underline" style={{ color: palette.blue }} href="#">See all</a>
+                      </div>
+                      <ul className="mt-3 space-y-2 text-sm" style={{ color: palette.text }}>
+                        <li className="rounded-lg border p-3" style={{ borderColor: palette.border }}>Welcome back! Orientation this Monday at 9:00 AM.</li>
+                        <li className="rounded-lg border p-3" style={{ borderColor: palette.border }}>Book fair opens Wednesday in the main hall.</li>
+                      </ul>
+                    </div>
+                    <div className="rounded-2xl border p-4" style={{ borderColor: palette.border }}>
+                      <div className="flex items-center justify-between">
+                        <div className="font-semibold" style={{ color: palette.navy }}>Upcoming events</div>
+                        <a className="text-sm hover:underline" style={{ color: palette.blue }} href="#">Calendar</a>
+                      </div>
+                      <div className="mt-3 space-y-3 text-sm" style={{ color: palette.text }}>
+                        <div className="flex items-center justify-between rounded-lg border p-3" style={{ borderColor: palette.border }}>
+                          <span>Hack Club Meet — Wed 4:00 PM</span>
+                          <button className="rounded-md px-2 py-1 text-xs" style={{ backgroundColor: accent, color: 'white' }}>RSVP</button>
+                        </div>
+                        <div className="flex items-center justify-between rounded-lg border p-3" style={{ borderColor: palette.border }}>
+                          <span>Career Talk — Fri 2:00 PM</span>
+                          <button className="rounded-md px-2 py-1 text-xs" style={{ backgroundColor: accent, color: 'white' }}>RSVP</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-5">
+                    <div className="rounded-2xl border p-4" style={{ borderColor: palette.border }}>
+                      <div className="font-semibold" style={{ color: palette.navy }}>Quick links</div>
+                      <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                        {['Post','Join Forum','Marketplace','Report Issue'].map(a=> (
+                          <button key={a} className="rounded-lg border px-2 py-2" style={{ borderColor: palette.border, color: palette.navy }}>{a}</button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="rounded-2xl border p-4 text-sm" style={{ borderColor: palette.border, color: palette.text }}>
+                      <div className="font-semibold" style={{ color: palette.navy }}>Tip</div>
+                      <p className="mt-2">Enable notifications in settings to never miss an announcement.</p>
+                    </div>
+                  </div>
+                </div>
+              </main>
+            </div>
+          </div>
+        );
+      }
+
+      function LandingPage() {
+        const [openFAQ, setOpenFAQ] = useState("a");
+        const [schoolName, setSchoolName] = useState("Sample High School");
+        const [plan, setPlan] = useState("Pro");
+        const [primaryColor, setPrimaryColor] = useState("#1D4E89");
+        const [logoUrl, setLogoUrl] = useState(null);
+        const [reg, setReg] = useState({ name: "", email: "", password: "", confirm: "", agree: false, school: "", plan: "Pro", color: "#1D4E89", logo: null });
+        const [regMsg, setRegMsg] = useState(null);
+        const [auth, setAuth] = useState({ loggedIn: false, email: "" });
+        const [login, setLogin] = useState({ email: "", password: "" });
+        const [loginMsg, setLoginMsg] = useState(null);
+        const [showPassword, setShowPassword] = useState(false);
+
+        function handleRegLogoFile(e) {
+          const f = e.target.files?.[0];
+          if (!f) return;
+          const reader = new FileReader();
+          reader.onload = () => {
+            const data = String(reader.result || "");
+            setReg((prev) => ({ ...prev, logo: data }));
+            setLogoUrl(data);
+          };
+          reader.readAsDataURL(f);
+        }
+
+        function handleLogin(e) {
+          e.preventDefault();
+          setLoginMsg(null);
+          let data = null;
+          try { data = JSON.parse(localStorage.getItem("unicon_user") || "null"); } catch {}
+          if (!data) { setLoginMsg("No account found. Please register first."); return; }
+          if (data.email !== login.email || data.password !== login.password) { setLoginMsg("Invalid email or password."); return; }
+          setAuth({ loggedIn: true, email: data.email });
+          setSchoolName(data.school || schoolName);
+          setPlan(data.plan || plan);
+          setPrimaryColor(data.color || palette.blue);
+          if (data.logo) setLogoUrl(data.logo);
+          setLoginMsg("Success! Redirecting to your student page...");
+          try {
+            localStorage.setItem('uniconSessionEmail', data.email);
+            window.dispatchEvent(new CustomEvent('landing-login', { detail: { email: data.email } }));
+            window.location.hash = '#app';
+          } catch {}
+        }
+
+        function handleRegister(e) {
+          e.preventDefault();
+          setRegMsg(null);
+          if (!reg.name || !reg.email || !reg.password || !reg.confirm || !reg.school) { setRegMsg("Please fill in all fields."); return; }
+          if (!reg.email.includes("@")) { setRegMsg("Enter a valid email."); return; }
+          if (reg.password.length < 6) { setRegMsg("Password must be at least 6 characters."); return; }
+          if (reg.password !== reg.confirm) { setRegMsg("Passwords do not match."); return; }
+          if (!reg.agree) { setRegMsg("Please agree to the Terms."); return; }
+          try {
+            localStorage.setItem("unicon_user", JSON.stringify({ name: reg.name, email: reg.email, password: reg.password, school: reg.school, plan: reg.plan, color: reg.color, logo: reg.logo }));
+            localStorage.setItem('uniconBrand', JSON.stringify({ name: reg.school, color: reg.color, logoData: reg.logo, plan: reg.plan }));
+            applyBranding({ color: reg.color });
+          } catch {}
+          setSchoolName(reg.school);
+          setPlan(reg.plan);
+          setPrimaryColor(reg.color);
+          if (reg.logo) setLogoUrl(reg.logo);
+          setRegMsg("Account created! Please log in.");
+          try { window.location.hash = '#login'; } catch {}
+        }
+
+        const schoolAccent = primaryColor || palette.blue;
+        const faqs = [
+          { id: "a", q: "What is UNICON?", a: "UNICON is a school-branded campus hub—announcements, events, forums, marketplace, and academic tools in one verified app." },
+          { id: "b", q: "How long is the trial?", a: "You get a 7-day free trial with sample data and a guided setup wizard." },
+          { id: "c", q: "Is it mobile ready?", a: "Yes. UNICON runs as a responsive web app and installable PWA on Android and iOS." },
+          { id: "d", q: "Can we enable only a few modules?", a: "Absolutely. Pick the modules you need now and add more later as your school grows." },
+        ];
+
+        return (
+          <div style={{ backgroundColor: palette.bg }} className="min-h-screen text-[15px]">
+            <header className="sticky top-0 z-40 w-full backdrop-blur supports-[backdrop-filter]:bg-white/70">
+              <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <div className="flex h-16 items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <a href="register.html" className="rounded-xl border px-4 py-2 text-sm" style={{ borderColor: palette.border, color: palette.navy, backgroundColor: palette.paper }}>Register</a>
+                    <a href="login.html" className="rounded-xl border px-4 py-2 text-sm" style={{ borderColor: palette.border, color: palette.navy, backgroundColor: palette.paper }}>Log in</a>
+                    <a href="register.html" className="rounded-xl px-4 py-2 text-sm font-semibold shadow-sm transition focus:outline-none focus:ring-2 focus:ring-offset-2" style={{ backgroundColor: palette.blue, color: 'white' }}>Launch trial</a>
+                  </div>
+                </div>
+              </div>
+            </header>
+
+            <section className="relative overflow-hidden">
+              <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 py-20 sm:px-6 lg:grid-cols-2 lg:px-8">
+                <div>
+                  <MotionDiv initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="font-serif text-4xl leading-tight sm:text-5xl" style={{ color: palette.navy }}>
+                    Connect your entire school community in one app
+                  </MotionDiv>
+                  <p className="mt-6 max-w-xl text-[17px] leading-7" style={{ color: palette.text }}>
+                    Announcements, events, forums, marketplace, and academic tools—verified and school-branded. UNICON makes campus life clearer, safer, and more connected.
+                  </p>
+                  <div className="mt-8 flex flex-wrap items-center gap-3">
+                    <a href="register.html" className="inline-flex items-center gap-2 rounded-xl px-5 py-3 font-semibold shadow-sm" style={{ backgroundColor: palette.blue, color: 'white' }}>
+                      Launch your trial <ArrowRight className="h-4 w-4" />
+                    </a>
+                    <a href="#features" className="rounded-xl border px-4 py-3" style={{ borderColor: palette.border, color: palette.navy, backgroundColor: palette.paper }}>
+                      See features
+                    </a>
+                  </div>
+                  <div className="mt-8 grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
+                    {[["School-branded spaces", Check],["Role-based access", Users],["Moderation tools", Shield],["Mobile & web PWA", Bell]].map(([text, Icon]) => (
+                      <div key={text} className="flex items-center gap-2">
+                        <span className="inline-flex h-6 w-6 items-center justify-center rounded-full" style={{ backgroundColor: palette.blueLite }}>
+                          {React.createElement(Icon, { className: "h-4 w-4", style: { color: palette.blue } })}
+                        </span>
+                        <span className="text-[15px]" style={{ color: palette.text }}>{text}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <MotionDiv initial={{ opacity: 0, y: 14 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.3 }} transition={{ duration: 0.6 }} className="relative">
+                  <div className="aspect-[4/3] w-full rounded-3xl border shadow-sm" style={{ borderColor: palette.border, backgroundColor: palette.paper }} />
+                  <div className="pointer-events-none absolute -left-6 -top-6 hidden h-16 w-16 rounded-2xl md:block" style={{ backgroundColor: palette.blueLite }} />
+                  <div className="pointer-events-none absolute -bottom-6 -right-6 hidden h-16 w-16 rounded-2xl md:block" style={{ backgroundColor: palette.blueLite }} />
+                </MotionDiv>
+              </div>
+            </section>
+
+            <section id="features" className="py-16">
+              <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <h2 className="font-serif text-4xl" style={{ color: palette.navy }}>Everything in one campus hub</h2>
+                <p className="mt-2 max-w-3xl text-lg" style={{ color: palette.text }}>Pick the modules you need now and add more later. UNICON grows with your school.</p>
+                <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                  {featureBlocks.map(({ icon: Icon, title, desc }) => (
+                    <MotionDiv key={title} initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.4 }} className="group rounded-2xl border p-5 shadow-sm transition hover:shadow" style={{ borderColor: palette.border, backgroundColor: palette.paper }}>
+                      <div className="flex items-start gap-4">
+                        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl" style={{ backgroundColor: palette.blueLite }}>
+                          {React.createElement(Icon, { className: "h-5 w-5", style: { color: palette.blue } })}
+                        </div>
+                        <div>
+                          <h3 className="font-semibold" style={{ color: palette.navy }}>{title}</h3>
+                          <p className="mt-1 text-sm leading-6" style={{ color: palette.text }}>{desc}</p>
+                        </div>
+                      </div>
+                    </MotionDiv>
+                  ))}
+                </div>
+              </div>
+            </section>
+
+            {/* Registration moved to register.html */}
+
+            {/* Login moved to login.html */}
+
+            {/* Student app is now a dedicated page: app.html */}
+
+            <section id="faqs" className="pb-24 pt-8">
+              <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+                <h3 className="font-serif text-3xl" style={{ color: palette.navy }}>Frequently asked questions</h3>
+                <div className="mt-6 divide-y rounded-2xl border shadow-sm" style={{ borderColor: palette.border, backgroundColor: palette.paper }}>
+                  {faqs.map(({ id, q, a }) => (
+                    <button key={id} onClick={() => setOpenFAQ(openFAQ === id ? null : id)} className="w-full text-left">
+                      <div className="flex items-center justify-between px-5 py-4">
+                        <p className="font-medium" style={{ color: palette.navy }}>{q}</p>
+                        <span className="text-2xl leading-none" style={{ color: palette.blue }}>{openFAQ === id ? "–" : "+"}</span>
+                      </div>
+                      {openFAQ === id && (<div className="px-5 pb-5 text-[15px]" style={{ color: palette.text }}>{a}</div>)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </section>
+
+            <footer className="border-t py-10" style={{ borderColor: palette.border }}>
+              <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-6 px-4 text-sm sm:flex-row sm:px-6 lg:px-8" style={{ color: palette.text }}>
+                <div className="flex items-center gap-3">
+                  <div className="h-7 w-7 rounded-md bg-[var(--logo-bg,#1E3A5F)]" />
+                  <span style={{ color: palette.navy }}>UNICON</span>
+                </div>
+                <p>© {new Date().getFullYear()} UNICON. All rights reserved.</p>
+                <div className="flex gap-4">
+                  <a href="#" className="hover:underline">Privacy</a>
+                  <a href="#" className="hover:underline">Terms</a>
+                  <a href="#" className="hover:underline">Contact</a>
+                </div>
+              </div>
+            </footer>
+          </div>
+        );
+      }
+
+      // Render Landing only; app/flows live on separate pages
       const root = ReactDOM.createRoot(document.getElementById('root'));
-      root.render(<App />);
+      root.render(<LandingPage />);
     </script>
 </body>
 </html>
