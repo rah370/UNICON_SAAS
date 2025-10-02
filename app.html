@@ -13,8 +13,20 @@
   <script defer crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <style>
     html, body, #root { height: 100%; }
-    body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; background:#fbf7f3; }
-    .wm{position:absolute;inset:0;pointer-events:none;background-repeat:no-repeat;background-position:center;background-size:250px;opacity:.07}
+    :root{ --brand-color:#1D4E89; --bg:#fbf7f3; --card:#ffffff; --text:#0f172a; --muted:#475569; --border:#e2e8f0; }
+    body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; background:var(--bg); color:var(--text); }
+    .wm{position:absolute;inset:0;pointer-events:none;background-repeat:no-repeat;background-position:center;background-size:clamp(180px,25vw,320px);opacity:.07;background-attachment:fixed}
+    /* Brand helpers */
+    .btn-brand{ background:var(--brand-color); color:#fff; }
+    .btn-brand:hover{ filter:brightness(.95); }
+    .btn-brand:focus{ outline:2px solid color-mix(in srgb, var(--brand-color) 50%, white); outline-offset:2px; }
+    .chip-brand{ border:1px solid var(--brand-color); color:var(--brand-color); background:color-mix(in srgb, var(--brand-color) 10%, #fff); }
+    /* Optional dark theme overrides */
+    body.theme-dark{ --bg:#0b1220; --card:#0f172a; --text:#e5e7eb; --muted:#94a3b8; --border:#1f2937; }
+    body.theme-dark .bg-white{ background:var(--card) !important; }
+    body.theme-dark .border-slate-200{ border-color:var(--border) !important; }
+    body.theme-dark .text-slate-900{ color:var(--text) !important; }
+    body.theme-dark .text-slate-700{ color:var(--muted) !important; }
   </style>
 </head>
 <body>
@@ -25,7 +37,12 @@
     const { useState } = React;
     function getBranding(){ try { return JSON.parse(localStorage.getItem('uniconBrand')||'null'); }catch{ return null; } }
     function applyBranding(b){ const root = document.body; if (b?.color){ root.style.setProperty('--brand-color', b.color);} }
+    function getPrefs(){ try{ return JSON.parse(localStorage.getItem('unicon_prefs')||'null')||{}; }catch{ return {}; } }
+    function setPrefs(p){ try{ localStorage.setItem('unicon_prefs', JSON.stringify(p)); }catch{} }
     const branding = getBranding(); applyBranding(branding);
+    // Optional: previously used for gating, now unused but harmless
+    const currentPlan = (branding && branding.plan) ? branding.plan : 'Pro';
+    // Student app is plan-agnostic. Plans belong to landing/registration only.
     const API_BASE = 'api';
     async function api(path, options={}){ const res = await fetch(`${API_BASE}/${String(path).replace(/^\//,'')}`, { method:'GET', headers:{'Content-Type':'application/json'}, ...options}); let data={}; try{ data = await res.json(); }catch{} if(!res.ok) throw new Error(data?.error||`Request failed (${res.status})`); return data; }
 
@@ -38,19 +55,45 @@
       return <img src={b?.logoData || 'UNICON.png?v=1758434378'} alt="UNICON" style={{ width:size,height:size }} className="rounded-xl object-contain"/>;
     }
 
-    const Home = (props)=> (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>);
-    const Users = Home; const MessageSquare = Home; const CalendarDays = Home; const Store = Home; const LogOut = Home;
+    const Home = (props)=> (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
+    );
+    const Users = (props)=>(
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    );
+    const MessageSquare = (props)=>(
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    );
+    const CalendarDays = (props)=>(
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+    );
+    const Store = (props)=>(
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><path d="M3 9l1-5h16l1 5"/><path d="M21 9H3v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2z"/><path d="M16 13a4 4 0 0 1-8 0"/></svg>
+    );
+    const LogOut = (props)=>(
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+    );
+    const Bell = (props)=>(
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+    );
+    const Bookmark = (props)=>(
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><path d="M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+    );
+    const SearchIcon = (props)=>(
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    );
 
     function BottomNav({ active, onChange }){
       const items = [
         { key:'forYou', label:'For you', icon: Home },
-        { key:'moments', label:'Moments', icon: MessageSquare },
+        { key:'community', label:'Community', icon: Users },
+        { key:'moments', label:'Messages', icon: MessageSquare },
         { key:'marketplace', label:'Marketplace', icon: Store },
         { key:'calendar', label:'Calendar', icon: CalendarDays },
         { key:'profile', label:'Profile', icon: Users },
       ];
       return (
-        <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40">
+        <nav className="fixed bottom-2 left-1/2 -translate-x-1/2 z-40">
           <ul className="flex gap-1 bg-white/90 backdrop-blur border border-slate-200 rounded-2xl p-1 shadow-xl">
             {items.map(({key,label,icon:Icon})=> (
               <li key={key}><button onClick={()=>onChange(key)} className={`flex items-center gap-2 rounded-[1rem] px-4 py-2 text-sm transition-all ${active===key? 'bg-[var(--brand-color)] text-white shadow' : 'text-slate-700 hover:bg-slate-100'}`}><Icon/><span className="hidden sm:inline">{label}</span></button></li>
@@ -60,35 +103,596 @@
       );
     }
 
-    function ForYouFeed(){ return <div className="space-y-4"><div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">Welcome back!</div></div>; }
-    function Placeholder(){ return <div className="grid place-items-center py-16 text-slate-600">Coming soon</div>; }
+    function ForYouFeed(){
+      const [items, setItems] = React.useState(()=>{
+        try{ return JSON.parse(localStorage.getItem('unicon_feed')||'null') || [
+          { id: 'a1', title: 'Welcome back!', body: 'Orientation this Monday at 9:00 AM.', pinned: false, audience: 'All', likes:0, comments:[] },
+          { id: 'a2', title: 'Book fair', body: 'Opens Wednesday in the main hall.', pinned: false, audience: 'All', likes:0, comments:[] },
+        ]; }catch{ return []; }
+      });
+      const [title, setTitle] = React.useState('');
+      const [body, setBody] = React.useState('');
+      const [audience, setAudience] = React.useState('All');
+      const canPost = true;
+      const canPin = false;
+      React.useEffect(()=>{ try{ localStorage.setItem('unicon_feed', JSON.stringify(items)); }catch{} }, [items]);
+      function add(){ if(!title.trim()||!body.trim()) return; setItems([{ id: String(Date.now()), title, body, pinned:false, audience, likes:0, comments:[] }, ...items]); setTitle(''); setBody(''); }
+      function like(id){ setItems(arr=> arr.map(i=> i.id===id? {...i, likes:(i.likes||0)+1 }: i)); }
+      function addComment(id, text){ if(!text.trim()) return; setItems(arr=> arr.map(i=> i.id===id? {...i, comments:[...i.comments, { id:String(Date.now()), text }] }: i)); }
+      function pin(id){ /* no-op: pinning reserved for admins */ }
+      const sorted = [...items].sort((a,b)=> Number(b.pinned)-Number(a.pinned));
+      return (
+        <div className="space-y-4">
+          {/* Students can post. Admin-only features (pin/target) hidden. */}
+          {canPost && (
+            <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-2">
+              <div className="grid gap-2 md:grid-cols-2">
+                <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Announcement title" className="rounded-lg border border-slate-300 px-3 py-2" />
+                {/* Audience targeting hidden for students */}
+              </div>
+              <textarea value={body} onChange={e=>setBody(e.target.value)} placeholder="Write your update…" className="w-full rounded-lg border border-slate-300 px-3 py-2"></textarea>
+              <button onClick={add} className="rounded-lg px-4 py-2 text-sm btn-brand">Post</button>
+            </div>
+          )}
+          {sorted.map(it=> (
+            <div key={it.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="flex items-center justify-between mb-1">
+                <h3 className="font-semibold">{it.title}{it.pinned && <span className="ml-2 text-xs px-2 py-0.5 rounded-full" style={{ background:'color-mix(in srgb, var(--brand-color) 10%, white)', color:'var(--brand-color)' }}>Pinned</span>}</h3>
+                <div className="flex items-center gap-2 text-xs text-slate-600"></div>
+              </div>
+              <p className="text-slate-600">{it.body}</p>
+              <div className="mt-3 flex items-center gap-3 text-sm">
+                <button onClick={()=>like(it.id)} className="px-3 py-1 rounded-lg border border-slate-200 hover:bg-slate-50">👍 {it.likes||0}</button>
+                <details className="flex-1">
+                  <summary className="cursor-pointer text-slate-600">Comments ({it.comments?.length||0})</summary>
+                  <div className="mt-2 space-y-2">
+                    {(it.comments||[]).map(c=> (<div key={c.id} className="text-sm text-slate-700">• {c.text}</div>))}
+                    <CommentBox onSubmit={(t)=>addComment(it.id, t)} />
+                  </div>
+                </details>
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+    function CommentBox({ onSubmit }){
+      const [t, setT] = React.useState('');
+      return (
+        <div className="flex gap-2">
+          <input value={t} onChange={e=>setT(e.target.value)} placeholder="Write a comment" className="flex-1 rounded-lg border border-slate-300 px-3 py-1"/>
+          <button onClick={()=>{ onSubmit(t); setT(''); }} className="px-3 py-1 rounded-lg btn-brand">Send</button>
+        </div>
+      );
+    }
+    function Placeholder({note='Coming soon'}){ return <div className="grid place-items-center py-16 text-slate-600">{note}</div>; }
+
+    // --- Messages (simple messenger) ---
+    function Moments(){
+      const [threads, setThreads] = React.useState(()=>{ try{ return JSON.parse(localStorage.getItem('unicon_msgs_threads')||'null')||[{ id:'general', name:'Student Hub' }]; }catch{ return [{id:'general',name:'Student Hub'}]; } });
+      const [active, setActive] = React.useState('general');
+      const [msgs, setMsgs] = React.useState(()=>{ try{ return JSON.parse(localStorage.getItem('unicon_msgs')||'null')||{ general:[] }; }catch{ return { general:[] }; } });
+      const [text, setText] = React.useState('');
+      React.useEffect(()=>{ try{ localStorage.setItem('unicon_msgs', JSON.stringify(msgs)); }catch{} }, [msgs]);
+      function send(){ if(!text.trim()) return; const email=localStorage.getItem('uniconSessionEmail')||'You'; const m={ id:String(Date.now()), from:email, text, t:Date.now() }; setMsgs(s=> ({ ...s, [active]: [...(s[active]||[]), m] })); setText(''); }
+      function addThread(){ const name=prompt('New conversation name'); if(!name) return; const id=String(Date.now()); setThreads(t=>[...t,{id,name}]); setMsgs(s=> ({...s,[id]:[]})); setActive(id); }
+      const list = msgs[active]||[];
+      return (
+        <div className="grid md:grid-cols-[240px_1fr] gap-3">
+          <aside className="rounded-xl border border-slate-200 bg-white p-2">
+            <div className="flex items-center justify-between mb-2"><div className="text-sm font-semibold">Messages</div><button onClick={addThread} className="text-xs px-2 py-1 rounded border">New</button></div>
+            <div className="space-y-1">
+              {threads.map(t=> (
+                <button key={t.id} onClick={()=>setActive(t.id)} className={`w-full text-left px-3 py-2 rounded-lg text-sm ${active===t.id?'chip-brand':'hover:bg-slate-50 border border-transparent'}`}>{t.name}</button>
+              ))}
+            </div>
+          </aside>
+          <section className="rounded-xl border border-slate-200 bg-white p-3 flex flex-col min-h-[300px]">
+            <div className="font-medium mb-2">{(threads.find(t=>t.id===active)||{}).name||'Chat'}</div>
+            <div className="flex-1 overflow-auto space-y-2 pr-1">
+              {list.map(m=> (
+                <div key={m.id} className={`max-w-[80%] rounded-lg px-3 py-2 ${m.from===localStorage.getItem('uniconSessionEmail')? 'ml-auto bg-[var(--brand-color)] text-white' : 'bg-slate-100'}`}>{m.text}</div>
+              ))}
+              {list.length===0 && <div className="text-sm text-slate-500">No messages yet.</div>}
+            </div>
+            <div className="mt-2 flex gap-2"><input value={text} onChange={e=>setText(e.target.value)} onKeyDown={e=>{ if(e.key==='Enter') send(); }} placeholder="Write a message" className="flex-1 rounded-full border border-slate-300 px-3 py-2"/><button onClick={send} className="rounded-full px-4 py-2 btn-brand">Send</button></div>
+          </section>
+        </div>
+      );
+    }
+
+    // --- Sidebar ---
+    function Sidebar({ active, onSelect }){
+      const Item = ({ k, label, Icon, badge }) => (
+        <button onClick={()=>onSelect(k)} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm ${active===k? 'bg-white shadow border border-slate-200 text-slate-900':'text-slate-700 hover:bg-white/60'}`}>
+          <Icon className="w-5 h-5"/>
+          <span className="flex-1 text-left">{label}</span>
+          {badge && <span className="text-[10px] uppercase tracking-wide bg-slate-900 text-white px-2 py-0.5 rounded">{badge}</span>}
+        </button>
+      );
+      // No longer used (left sidebar removed); keeping for reference
+      return null;
+    }
+
+    // --- Top Tabs Navigation (desktop) ---
+    function TabsNav({ active, onSelect }){
+      const items = [
+        { k:'forYou', label:'Dashboard', Icon: Home },
+        { k:'forums', label:'Forums', Icon: Users },
+        { k:'marketplace', label:'Marketplace', Icon: Store },
+        { k:'calendar', label:'Events', Icon: CalendarDays },
+        { k:'profile', label:'Profile', Icon: Users },
+      ];
+      return (
+        <nav className="hidden md:block">
+          <ul className="flex flex-wrap gap-2">
+            {items.map(({k,label,Icon})=> (
+              <li key={k}>
+                <button onClick={()=>onSelect(k)} className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm border ${active===k? 'chip-brand' : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'}`}>
+                  <Icon className="w-4 h-4"/>
+                  <span>{label}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      );
+    }
+
+    function Forums(){
+      // Departments (left list)
+      const defaultDeps = ['Computer Science','Data Science','Engineering','Business','Nursing'];
+      const [departments, setDepartments] = useState(()=>{ try{ return JSON.parse(localStorage.getItem('unicon_departments')||'null') || defaultDeps; }catch{ return defaultDeps; } });
+      React.useEffect(()=>{ try{ localStorage.setItem('unicon_departments', JSON.stringify(departments)); }catch{} }, [departments]);
+
+      // Selected space: 'start' | 'announcements' | 'events' | `dep:<name>`
+      const [space, setSpace] = useState('start');
+      const [newDep, setNewDep] = useState('');
+
+      function spaceTitle(s){
+        if(s==='start') return 'Start Here';
+        if(s==='announcements') return 'Announcements';
+        if(s==='events') return 'Events';
+        if(String(s||'').startsWith('dep:')) return s.slice(4);
+        return 'Space';
+      }
+      const spaceKey = `unicon_space:${space}`;
+      const [posts, setPosts] = useState(()=>{ try{ return JSON.parse(localStorage.getItem(spaceKey)||'null') || []; }catch{ return []; } });
+      React.useEffect(()=>{ try{ localStorage.setItem(spaceKey, JSON.stringify(posts)); }catch{} }, [posts, spaceKey]);
+      // Reload posts when switching spaces
+      React.useEffect(()=>{ try{ setPosts(JSON.parse(localStorage.getItem(`unicon_space:${space}`)||'null')||[]); }catch{ setPosts([]);} }, [space]);
+
+      function addPost(text, media){ if(!text.trim() && !media) return; setPosts([{ id:String(Date.now()), text, media, created: Date.now() }, ...posts]); }
+      function removePost(id){ setPosts(arr=> arr.filter(p=> p.id!==id)); }
+      function countPostsFor(dep){ try{ const k=`unicon_space:dep:${dep}`; const arr=JSON.parse(localStorage.getItem(k)||'null')||[]; return arr.length; }catch{ return 0; } }
+      function addDepartment(){ if(!newDep.trim()) return; if(departments.includes(newDep.trim())) return; setDepartments([...departments, newDep.trim()]); setNewDep(''); }
+
+      return (
+        <div className="grid lg:grid-cols-[260px_1fr] gap-3">
+          <aside className="space-y-4">
+            <div className="rounded-2xl border border-slate-200 bg-white p-3">
+              <div className="text-xs font-semibold text-slate-500 px-1 mb-1">Community</div>
+              <nav className="space-y-1">
+                <button onClick={()=>setSpace('start')} className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm ${space==='start'?'chip-brand':'hover:bg-slate-50 border border-transparent text-slate-700'}`}>✨ Start Here</button>
+                <button onClick={()=>setSpace('announcements')} className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm ${space==='announcements'?'chip-brand':'hover:bg-slate-50 border border-transparent text-slate-700'}`}>📣 Announcements</button>
+                <button onClick={()=>setSpace('events')} className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm ${space==='events'?'chip-brand':'hover:bg-slate-50 border border-transparent text-slate-700'}`}>📅 Events</button>
+              </nav>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-3">
+              <div className="text-xs font-semibold text-slate-500 px-1 mb-2">Departments</div>
+              <div className="space-y-1">
+                {departments.map(dep=> (
+                  <button key={dep} onClick={()=>setSpace(`dep:${dep}`)} className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm ${space===`dep:${dep}`?'chip-brand':'hover:bg-slate-50 border border-transparent text-slate-700'}`}>
+                    <span>🏷️ {dep}</span>
+                    <span className="text-[10px] text-slate-500">{countPostsFor(dep)}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="mt-2 flex gap-2">
+                <input value={newDep} onChange={e=>setNewDep(e.target.value)} placeholder="Add department" className="flex-1 rounded-lg border border-slate-300 px-2 py-1 text-sm"/>
+                <button onClick={addDepartment} className="rounded-lg px-2 py-1 text-xs btn-brand">Add</button>
+              </div>
+            </div>
+          </aside>
+
+          <section>
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 mb-3 flex items-center justify-between">
+              <div className="text-lg font-semibold">{spaceTitle(space)}</div>
+              <button className="rounded-full px-3 py-1 text-sm btn-brand">Join space</button>
+            </div>
+            <SpaceComposer onPost={addPost} />
+            <div className="mt-3 space-y-3">
+              {posts.map(p=> (
+                <div key={p.id} className="rounded-xl border border-slate-200 bg-white p-4">
+                  {p.text && <div className="text-slate-800">{p.text}</div>}
+                  {p.media && <div className="mt-2"><img src={p.media} alt="media" className="max-h-72 rounded-lg object-cover"/></div>}
+                  <div className="mt-2 text-xs text-slate-500 flex items-center justify-between"><span>{new Date(p.created).toLocaleString()}</span><button onClick={()=>removePost(p.id)} className="hover:underline">Delete</button></div>
+                </div>
+              ))}
+              {posts.length===0 && <div className="text-sm text-slate-500">No posts yet in this space.</div>}
+            </div>
+          </section>
+        </div>
+      );
+    }
+
+    function SpaceComposer({ onPost }){
+      const [text, setText] = useState('');
+      const [media, setMedia] = useState('');
+      const ref = React.useRef(null);
+      function changeMedia(e){ const f=e.target.files&&e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=> setMedia(r.result); r.readAsDataURL(f); }
+      function submit(){ if(!text.trim() && !media) return; onPost(text, media); setText(''); setMedia(''); if(ref.current) ref.current.value=''; }
+      return (
+        <div className="rounded-2xl border border-slate-200 bg-white p-4">
+          <div className="grid md:grid-cols-[1fr_auto] gap-2 items-center">
+            <input value={text} onChange={e=>setText(e.target.value)} placeholder="Share something with your department…" className="rounded-full border border-slate-200 bg-slate-50 px-4 py-2"/>
+            <div className="flex items-center gap-2">
+              <input ref={ref} type="file" accept="image/*" onChange={changeMedia} />
+              <button onClick={submit} className="rounded-full px-4 py-2 btn-brand">Post</button>
+            </div>
+          </div>
+          {media && <div className="mt-3"><img src={media} className="max-h-56 rounded-lg object-cover" alt="preview"/></div>}
+        </div>
+      );
+    }
+    function PostBox({ onSubmit }){
+      const [t, setT] = useState('');
+      return (
+        <div className="flex gap-2">
+          <input value={t} onChange={e=>setT(e.target.value)} placeholder="Write a post…" className="flex-1 rounded-lg border border-slate-300 px-3 py-2" />
+          <button onClick={()=>{ onSubmit(t); setT(''); }} className="rounded-lg px-3 py-2 text-sm btn-brand">Post</button>
+        </div>
+      );
+    }
+
+    function Marketplace(){
+      const defaults = [
+        { id:1, title:'USP Hoodie', price:45, verified:true, category:'Apparel', seller:'USP Store', contact:'' },
+        { id:2, title:'Calculus Textbook', price:35, verified:false, category:'Textbooks', seller:'Alex', contact:'' },
+      ];
+      const [items, setItems] = useState(()=>{ try{ return JSON.parse(localStorage.getItem('unicon_market')||'null') || defaults; }catch{ return defaults; } });
+      const [cat, setCat] = useState('All');
+      const [query, setQuery] = useState('');
+      const [form, setForm] = useState({ title:'', price:'', category:'Other', seller:'', contact:'' });
+      React.useEffect(()=>{ try{ localStorage.setItem('unicon_market', JSON.stringify(items)); }catch{} }, [items]);
+      const categories = ['All','Apparel','Textbooks','Electronics','Other'];
+      const filtered = items.filter(i=> (cat==='All' || i.category===cat) && (i.title.toLowerCase().includes(query.toLowerCase())));
+      function add(){ if(!form.title.trim()) return; const id=String(Date.now()); setItems([{ id, ...form, price:Number(form.price)||0, verified:false }, ...items]); setForm({ title:'', price:'', category:'Other', seller:'', contact:'' }); }
+      return (
+        <div className="space-y-4">
+          <div className="bg-white rounded-xl border border-slate-200 p-4">
+            <h2 className="text-2xl font-bold text-slate-900 mb-2">Marketplace</h2>
+            <p className="text-slate-600">Buy and sell within your campus.</p>
+            <div className="mt-3 grid md:grid-cols-5 gap-2">
+              <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search items" className="md:col-span-3 rounded-lg border border-slate-300 px-3 py-2"/>
+              <select value={cat} onChange={e=>setCat(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2 md:col-span-2">
+                {categories.map(c=> <option key={c}>{c}</option>)}
+              </select>
+            </div>
+          </div>
+          <div className="bg-white rounded-xl border border-slate-200 p-4">
+            <div className="font-medium mb-2">Create listing</div>
+            <div className="grid md:grid-cols-5 gap-2">
+              <input value={form.title} onChange={e=>setForm({...form, title:e.target.value})} placeholder="Item title" className="rounded-lg border border-slate-300 px-3 py-2 md:col-span-2"/>
+              <input value={form.price} onChange={e=>setForm({...form, price:e.target.value})} placeholder="Price" className="rounded-lg border border-slate-300 px-3 py-2"/>
+              <select value={form.category} onChange={e=>setForm({...form, category:e.target.value})} className="rounded-lg border border-slate-300 px-3 py-2">
+                {categories.filter(c=>c!=='All').map(c=> <option key={c}>{c}</option>)}
+              </select>
+              <input value={form.seller} onChange={e=>setForm({...form, seller:e.target.value})} placeholder="Your name" className="rounded-lg border border-slate-300 px-3 py-2"/>
+              <input value={form.contact} onChange={e=>setForm({...form, contact:e.target.value})} placeholder="Email or phone" className="rounded-lg border border-slate-300 px-3 py-2 md:col-span-2"/>
+              <div className="md:col-span-1"><button onClick={add} className="w-full rounded-lg px-3 py-2 text-sm btn-brand">Add</button></div>
+            </div>
+          </div>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {filtered.map(i=> (
+              <div key={i.id} className="bg-white rounded-xl border border-slate-200 p-4">
+                <div className="font-semibold">{i.title} {i.verified && <span className="text-blue-500 text-xs">✓</span>}</div>
+                <div className="text-slate-600">${i.price}</div>
+                <div className="text-xs text-slate-500">{i.category} • by {i.seller}</div>
+                {i.contact && <a className="mt-2 inline-block btn-brand px-3 py-1 rounded-lg text-sm" href={`mailto:${i.contact}`}>Contact</a>}
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    function Events(){
+      const defaults = [
+        { id:'e1', title:'Hack Club Meet', time:'Wed 4:00 PM', featured: true },
+        { id:'e2', title:'Career Talk', time:'Fri 2:00 PM', featured: false },
+      ];
+      const [events, setEvents] = useState(()=>{ try{ return JSON.parse(localStorage.getItem('unicon_events')||'null') || defaults; }catch{ return defaults; } });
+      const [rsvp, setRsvp] = useState(()=>{ try{ return JSON.parse(localStorage.getItem('unicon_rsvp')||'null') || {}; }catch{ return {}; } });
+      const [title, setTitle] = useState('');
+      const [time, setTime] = useState('');
+      React.useEffect(()=>{ try{ localStorage.setItem('unicon_events', JSON.stringify(events)); }catch{} }, [events]);
+      React.useEffect(()=>{ try{ localStorage.setItem('unicon_rsvp', JSON.stringify(rsvp)); }catch{} }, [rsvp]);
+      function add(){ if(!title.trim()||!time.trim()) return; setEvents([{ id:String(Date.now()), title, time, featured:false }, ...events]); setTitle(''); setTime(''); }
+      function toggle(id){ setRsvp(s=> ({ ...s, [id]: !s[id] })); }
+      return (
+        <div className="space-y-4">
+          <div className="bg-white rounded-xl border border-slate-200 p-4">
+            <div className="font-medium mb-2">Create event</div>
+            <div className="grid md:grid-cols-3 gap-2">
+              <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Event title" className="rounded-lg border border-slate-300 px-3 py-2"/>
+              <input value={time} onChange={e=>setTime(e.target.value)} placeholder="Date & time" className="rounded-lg border border-slate-300 px-3 py-2"/>
+              <button onClick={add} className="rounded-lg px-3 py-2 text-sm btn-brand">Add</button>
+            </div>
+          </div>
+          <div className="space-y-3">
+            {events.map(ev=> (
+              <div key={ev.id} className="flex items-center justify-between rounded-lg border p-3 bg-white border-slate-200">
+                <div>
+                  <div className="font-medium">{ev.title} — {ev.time}</div>
+                  {ev.featured && <div className="text-xs text-amber-700">Featured</div>}
+                </div>
+                <button onClick={()=>toggle(ev.id)} className={`rounded-md px-2 py-1 text-xs ${rsvp[ev.id]? 'text-green-700 bg-green-50 border border-green-200':'btn-brand'}`}>{rsvp[ev.id]? 'Going' : 'RSVP'}</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // --- Calendar tab: month grid + recommended events ---
+    function CalendarTab(){
+      const [events, setEvents] = useState(()=>{ try{ return JSON.parse(localStorage.getItem('unicon_events')||'null') || [];}catch{ return []; } });
+      const today = new Date();
+      const y = today.getFullYear();
+      const m = today.getMonth();
+      const first = new Date(y, m, 1);
+      const startDay = first.getDay();
+      const daysInMonth = new Date(y, m+1, 0).getDate();
+      const cells = [];
+      for(let i=0;i<startDay;i++) cells.push(null);
+      for(let d=1; d<=daysInMonth; d++) cells.push(new Date(y,m,d));
+      const byDate = (date)=> events.filter(ev=> new Date(ev.time||'').toDateString() === date.toDateString());
+      const recs = events.slice(0,6);
+      return (
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-slate-200 bg-white p-3">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-lg font-semibold">{today.toLocaleString(undefined,{ month:'long', year:'numeric' })}</div>
+            </div>
+            <div className="grid grid-cols-7 gap-2 text-xs text-slate-500 mb-2">
+              {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d=> <div key={d} className="text-center">{d}</div>)}
+            </div>
+            <div className="grid grid-cols-7 gap-2">
+              {cells.map((c,idx)=> (
+                <div key={idx} className="min-h-[70px] rounded-lg border border-slate-200 bg-white p-1">
+                  {c && <div className="text-xs font-medium text-slate-700">{c.getDate()}</div>}
+                  <div className="space-y-1 mt-1">
+                    {c && byDate(c).slice(0,2).map(ev=> (<div key={ev.id} className="text-[10px] truncate px-1 rounded bg-[color-mix(in_srgb,var(--brand-color)_15%,white)] text-slate-700">{ev.title}</div>))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-2"><h3 className="text-xl font-semibold">Recommended community events</h3><button className="text-sm text-[var(--brand-color)]">View all events →</button></div>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {recs.length? recs.map(ev=> (
+                <div key={ev.id} className="rounded-xl border border-slate-200 bg-white p-4">
+                  <div className="font-semibold text-slate-900">{ev.title}</div>
+                  <div className="text-xs text-slate-600 mt-1">{ev.time}</div>
+                  <p className="text-sm text-slate-700 mt-2 line-clamp-3">{ev.desc || 'Campus activity'}</p>
+                  <div className="mt-2 text-xs text-slate-500">👥 {Math.floor(Math.random()*80)+1}</div>
+                </div>
+              )) : (
+                [1,2,3,4,5,6].map(i=> <div key={i} className="rounded-xl border border-slate-200 bg-white p-4"><div className="font-semibold">Community meetup</div><div className="text-xs text-slate-600 mt-1">TBD</div><p className="text-sm text-slate-700 mt-2">Join peers for a session.</p></div>)
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // --- Profile with editable fields ---
+    function Profile(){
+      const [profile, setProfile] = useState(()=>{
+        try { return JSON.parse(localStorage.getItem('uniconProfile')||'null') || { name:'Student User', email: localStorage.getItem('uniconSessionEmail'), bio:'', year:'', major:'', avatar:'👤' }; } catch { return { name:'Student User', email: localStorage.getItem('uniconSessionEmail'), bio:'', year:'', major:'', avatar:'👤' }; }
+      });
+      const [msg, setMsg] = useState('');
+      const [showUserSettings, setShowUserSettings] = useState(false);
+      const email = localStorage.getItem('uniconSessionEmail') || 'default';
+      const storageKey = `unicon_profile_posts:${email}`;
+      const [posts, setPosts] = useState(()=>{ try{ return JSON.parse(localStorage.getItem(storageKey)||'null') || []; }catch{ return []; } });
+      React.useEffect(()=>{ try{ localStorage.setItem(storageKey, JSON.stringify(posts)); }catch{} }, [posts]);
+      // Composer state
+      const [postText, setPostText] = useState('');
+      const [postMedia, setPostMedia] = useState('');
+      const mediaRef = React.useRef(null);
+      function update(field, value){ setProfile(p=>({ ...p, [field]: value })); }
+      function save(){ try{ localStorage.setItem('uniconProfile', JSON.stringify(profile)); setMsg('Saved'); setTimeout(()=>setMsg(''), 1200);}catch{} }
+      function changeAvatar(e){ const f=e.target.files&&e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{ update('avatar', r.result); }; r.readAsDataURL(f); }
+      const fileRef = React.useRef(null);
+      function changeMedia(e){ const f=e.target.files&&e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=> setPostMedia(r.result); r.readAsDataURL(f); }
+      function submitPost(){ if(!postText.trim() && !postMedia) return; setPosts([{ id:String(Date.now()), text:postText, media:postMedia, created:new Date().toISOString() }, ...posts]); setPostText(''); setPostMedia(''); if(mediaRef.current) mediaRef.current.value=''; }
+      function removePost(id){ setPosts(arr=> arr.filter(p=> p.id!==id)); }
+      return (
+        <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4">
+          <div className="flex items-start gap-4">
+            <div className="relative h-16 w-16">
+              {String(profile.avatar||'').startsWith('data:') ? (
+                <img src={profile.avatar} className="h-16 w-16 rounded-full object-cover border border-slate-200" alt="avatar"/>
+              ) : (
+                <div className="h-16 w-16 rounded-full grid place-items-center text-2xl bg-slate-100 border border-slate-200" aria-hidden>{profile.avatar||'👤'}</div>
+              )}
+              <button type="button" onClick={()=>fileRef.current && fileRef.current.click()} title="Add photo" className="absolute -bottom-1 -right-1 h-7 w-7 rounded-full btn-brand grid place-items-center text-base leading-none shadow ring-2 ring-white">+</button>
+              <input ref={fileRef} type="file" accept="image/*" onChange={changeAvatar} className="hidden" />
+            </div>
+            <div className="flex-1 grid md:grid-cols-2 gap-3">
+              <label className="block text-sm">Full name<input value={profile.name||''} onChange={e=>update('name', e.target.value)} className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2"/></label>
+              <label className="block text-sm">Email<input disabled value={profile.email||''} className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 bg-slate-50"/></label>
+              <label className="block text-sm">Year<input value={profile.year||''} onChange={e=>update('year', e.target.value)} className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2"/></label>
+              <label className="block text-sm">Major<input value={profile.major||''} onChange={e=>update('major', e.target.value)} className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2"/></label>
+              <label className="block text-sm md:col-span-2">Bio<textarea value={profile.bio||''} onChange={e=>update('bio', e.target.value)} className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2" rows="3"/></label>
+              <div className="text-xs text-slate-500 md:col-span-2">Tip: click the + on your avatar to upload a photo.</div>
+            </div>
+          </div>
+          {msg && <div className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-xl px-3 py-2 inline-block">{msg}</div>}
+          <div className="flex items-center justify-between pt-2">
+            <button onClick={save} className="rounded-xl px-4 py-2 btn-brand">Save changes</button>
+            <button onClick={()=>setShowUserSettings(true)} className="rounded-xl px-3 py-2 border border-slate-300 text-sm">Settings & privacy</button>
+          </div>
+
+          {showUserSettings && (
+            <div className="fixed inset-0 bg-black/30 grid place-items-center z-50">
+              <div className="w-full max-w-lg bg-white rounded-2xl p-4 border border-slate-200">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-lg font-semibold">Settings & privacy</h3>
+                  <button onClick={()=>setShowUserSettings(false)} className="text-slate-600">✕</button>
+                </div>
+                <div className="mb-3">
+                  <input placeholder="Search settings" className="w-full rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm" />
+                </div>
+                <div className="space-y-4 max-h-[70vh] overflow-auto pr-1">
+                  <div>
+                    <div className="text-xs font-semibold text-slate-500 mb-1">Preferences</div>
+                    <div className="divide-y divide-slate-200 rounded-xl border border-slate-200">
+                      <div className="flex items-center justify-between p-3">
+                        <div className="flex items-center gap-2"><span>🌙</span><span>Dark mode</span></div>
+                        <input type="checkbox" defaultChecked={!!getPrefs().dark} onChange={(e)=>{ const p={ ...getPrefs(), dark:e.target.checked }; setPrefs(p); document.body.classList.toggle('theme-dark', p.dark); }}/>
+                      </div>
+                      <div className="flex items-center justify-between p-3">
+                        <div className="flex items-center gap-2"><span>🖼️</span><span>Show background watermark</span></div>
+                        <input type="checkbox" defaultChecked={getPrefs().watermark===undefined? true : !!getPrefs().watermark} onChange={(e)=>{ const p={ ...getPrefs(), watermark:e.target.checked }; setPrefs(p); const wm=document.querySelector('.wm'); if(wm) wm.style.display = p.watermark? 'block':'none'; }}/>
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs font-semibold text-slate-500 mb-1">Audience and visibility</div>
+                    <div className="rounded-xl border border-slate-200">
+                      <details>
+                        <summary className="cursor-pointer p-3 flex items-center gap-2">👤 Profile details</summary>
+                        <div className="px-3 pb-3 space-y-2">
+                          <label className="block text-sm">Full name<input value={profile.name||''} onChange={e=>update('name', e.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"/></label>
+                          <label className="block text-sm">Bio<textarea value={profile.bio||''} onChange={e=>update('bio', e.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" rows="3"/></label>
+                          <div className="text-right"><button onClick={()=>{ save(); setShowUserSettings(false); }} className="rounded-lg px-3 py-2 btn-brand text-sm">Save</button></div>
+                        </div>
+                      </details>
+                    </div>
+                  </div>
+                </div>
+                <div className="pt-2 text-right">
+                  <button onClick={()=>{ localStorage.removeItem('uniconSessionEmail'); window.location.href='login.html'; }} className="rounded-lg px-3 py-2 text-sm border border-red-200 text-red-700 hover:bg-red-50">Log out</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Social composer */}
+          <div className="rounded-2xl border border-slate-200 bg-white">
+            <div className="p-4 flex items-start gap-3">
+              {String(profile.avatar||'').startsWith('data:') ? (
+                <img src={profile.avatar} className="h-10 w-10 rounded-full object-cover border border-slate-200" alt="avatar"/>
+              ) : (
+                <div className="h-10 w-10 rounded-full grid place-items-center text-lg bg-slate-100 border border-slate-200" aria-hidden>{(profile.avatar||'👤')}</div>
+              )}
+              <div className="flex-1">
+                <input value={postText} onChange={e=>setPostText(e.target.value)} placeholder="What's on your mind?" className="w-full rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-slate-700"/>
+                {postMedia && (<div className="mt-3"><img src={postMedia} alt="preview" className="max-h-56 rounded-lg object-cover"/></div>)}
+              </div>
+              { (postText.trim() || postMedia) && <button onClick={submitPost} className="ml-2 rounded-full px-4 py-2 btn-brand">Post</button> }
+            </div>
+            <div className="border-t border-slate-200 px-4 py-3 grid md:grid-cols-3 gap-2 text-sm">
+              <button onClick={()=>alert('Live video is coming soon!')} className="rounded-lg px-3 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 text-left">📹 Live video</button>
+              <button onClick={()=>mediaRef.current && mediaRef.current.click()} className="rounded-lg px-3 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 text-left">🖼️ Photo/video</button>
+              <button onClick={()=> setPostText(t=> t || '🎉 Life event: ')} className="rounded-lg px-3 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 text-left">🚩 Life event</button>
+              <input ref={mediaRef} type="file" accept="image/*,video/*" className="hidden" onChange={changeMedia} />
+            </div>
+          </div>
+
+          {/* Your posts */}
+          <div className="space-y-3">
+            {posts.map(p=> (
+              <div key={p.id} className="rounded-xl border border-slate-200 bg-white p-4">
+                <div className="flex items-center justify-between text-xs text-slate-500"><span>Your post</span><button onClick={()=>removePost(p.id)} className="hover:underline">Delete</button></div>
+                {p.text && <div className="mt-1 text-slate-800">{p.text}</div>}
+                {p.media && <div className="mt-2"><img src={p.media} alt="media" className="max-h-72 rounded-lg object-cover"/></div>}
+              </div>
+            ))}
+            {posts.length===0 && <div className="text-sm text-slate-500">No posts yet. Share something above.</div>}
+          </div>
+        </div>
+      );
+    }
 
     function App(){
       const [session, setSession] = useState(localStorage.getItem('uniconSessionEmail'));
-      const [tab, setTab] = useState('forYou');
+      const prefs = getPrefs();
+      if (prefs.dark) document.body.classList.add('theme-dark');
+      const [tab, setTab] = useState(()=> prefs.tab || 'forYou');
+      const [notif, setNotif] = useState(()=>{ try{ return Number(localStorage.getItem('unicon_notif')||'41'); }catch{ return 0; } });
+      React.useEffect(()=>{ try{ localStorage.setItem('unicon_notif', String(notif)); }catch{} }, [notif]);
+      const [search, setSearch] = useState('');
       if (!session) {
         window.location.href = 'login.html';
         return null;
       }
+      React.useEffect(()=>{ setPrefs({ ...getPrefs(), tab }); }, [tab]);
+      React.useEffect(()=>{ const wm = document.querySelector('.wm'); const pref = getPrefs(); const show = (pref.watermark===undefined) ? true : !!pref.watermark; wm.style.display = show ? 'block' : 'none'; }, []);
+      React.useEffect(()=>{
+        function onKey(e){
+          const map = { '1':'forYou','2':'community','3':'marketplace','4':'calendar','5':'profile' };
+          if (map[e.key]) setTab(map[e.key]);
+        }
+        window.addEventListener('keydown', onKey);
+        return ()=>window.removeEventListener('keydown', onKey);
+      }, []);
       return (
         <div className="min-h-screen text-slate-900 relative">
-          <div className="wm" style={{ backgroundImage: "url('UNICON.png?v=1758434378')" }} aria-hidden="true"></div>
-          <header className="sticky top-0 z-30 bg-sand-50/90 backdrop-blur border-b border-slate-200">
-            <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
-              <div className="flex items-center gap-3"><LogoMark size={64}/><div><h1 className="text-xl font-bold" style={{ background:'linear-gradient(135deg, color-mix(in srgb, var(--brand-color) 80%, white), var(--brand-color))', WebkitBackgroundClip:'text', color:'transparent' }}>UNICON</h1><p className="text-xs text-slate-600">{getBranding()?.name || 'Your School'}</p></div></div>
-              <div className="flex items-center gap-3">
-                <button onClick={()=>setTab('moments')} className="rounded-full px-4 py-2" style={{ background:'var(--brand-color)', color:'#fff' }}>POST</button>
-                <button onClick={()=>{ localStorage.removeItem('uniconSessionEmail'); window.location.href='login.html'; }} className="rounded-full text-white px-5 py-2" style={{ background:'var(--brand-color)' }}>SIGN OUT</button>
+          <div className="wm" style={{ backgroundImage: `url('${(branding && branding.plan==='Premium' && branding.logoData) ? branding.logoData : 'UNICON.png?v=1758434378'}')` }} aria-hidden="true"></div>
+          <header className="sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-slate-200">
+            <div className="max-w-7xl mx-auto px-3 h-16 flex items-center justify-between gap-3">
+              <button type="button" onClick={()=>setTab('profile')} title="Open profile" className="flex items-center gap-3 rounded-lg hover:bg-slate-50 px-2 py-1">
+                <LogoMark size={48}/>
+                <div><h1 className="text-xl font-bold" style={{ background:'linear-gradient(135deg, color-mix(in srgb, var(--brand-color) 80%, white), var(--brand-color))', WebkitBackgroundClip:'text', color:'transparent' }}>UNICON</h1><p className="text-xs text-slate-600">{getBranding()?.name || 'Your School'}</p></div>
+              </button>
+              <div className="flex-1 max-w-xl">
+                <div className="relative">
+                  <input value={search} onChange={e=>setSearch(e.target.value)} onKeyDown={(e)=>{ if(e.key==='Enter'){ /* future: open search page */ } }} placeholder="Search" className="w-full rounded-full border border-slate-200 bg-slate-50 px-4 py-2 pl-9"/>
+                  <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"/>
+                </div>
+              </div>
+              <div className="flex items-center gap-4">
+                <button className="text-slate-700 hover:text-slate-900" title="Bookmarks"><Bookmark/></button>
+                <button onClick={()=>setNotif(0)} className="relative text-slate-700 hover:text-slate-900" title="Notifications">
+                  <Bell/>
+                  {notif>0 && (<span className="absolute -top-2 -right-2 inline-flex items-center justify-center text-[10px] font-semibold rounded-full bg-amber-400 text-slate-900 h-5 px-2">{notif}</span>)}
+                </button>
+                <button onClick={()=>setTab('moments')} className="text-slate-700 hover:text-slate-900" title="Messages"><MessageSquare/></button>
+                <button onClick={()=>setTab('profile')} className="h-9 w-9 rounded-full overflow-hidden border border-slate-200 bg-slate-100">
+                  {(()=>{ try{ const p=JSON.parse(localStorage.getItem('uniconProfile')||'null'); if(p && String(p.avatar||'').startsWith('data:')) return <img src={p.avatar} alt="me" className="h-full w-full object-cover"/>; }catch{} return <span className="grid place-items-center h-full w-full">👤</span>; })()}
+                </button>
               </div>
             </div>
           </header>
-          <main className="max-w-5xl mx-auto px-4 pt-6 pb-28">
-            {tab==='forYou' && <MotionDiv initial={{opacity:0,y:8}} animate={{opacity:1,y:0}} className="space-y-6 bg-white/80 backdrop-blur rounded-2xl p-4"><h2 className="text-xl font-semibold">For you</h2><ForYouFeed/></MotionDiv>}
-            {tab==='forums' && <MotionDiv initial={{opacity:0,y:8}} animate={{opacity:1,y:0}} className="bg-white/80 backdrop-blur rounded-2xl p-4"><Placeholder/></MotionDiv>}
-            {tab==='marketplace' && <MotionDiv initial={{opacity:0,y:8}} animate={{opacity:1,y:0}} className="space-y-6"><Placeholder/></MotionDiv>}
-            {tab==='moments' && <MotionDiv initial={{opacity:0,y:8}} animate={{opacity:1,y:0}} className="space-y-6"><Placeholder/></MotionDiv>}
-            {tab==='calendar' && <MotionDiv initial={{opacity:0,y:8}} animate={{opacity:1,y:0}} className="space-y-6"><Placeholder/></MotionDiv>}
-            {tab==='profile' && <MotionDiv initial={{opacity:0,y:8}} animate={{opacity:1,y:0}} className="space-y-6"><Placeholder/></MotionDiv>}
+          <main className="max-w-7xl mx-auto px-2 pt-4 pb-16 space-y-4">
+            {/* Top tabs removed as requested */}
+            <div>
+              {/* promo cards show only on Dashboard */}
+              {tab==='forYou' && (
+                <div className="grid md:grid-cols-2 gap-3 mb-3">
+                  <div className="rounded-2xl p-4 border border-slate-200" style={{ background:'color-mix(in srgb, var(--brand-color) 25%, #fff)' }}>
+                    <div className="text-xl font-semibold mb-1">Bootcamps & opportunities</div>
+                    <p className="text-slate-700">Join campus programs and build portfolio‑ready projects.</p>
+                  </div>
+                  <div className="rounded-2xl p-4 border border-slate-200 bg-white">
+                    <div className="text-xl font-semibold mb-1">Featured event</div>
+                    <p className="text-slate-700">Full Stack Developer Bootcamp for beginners.</p>
+                  </div>
+                </div>
+              )}
+            {tab==='forYou' && <MotionDiv initial={{opacity:0,y:8}} animate={{opacity:1,y:0}} className="space-y-4 bg-white/80 backdrop-blur rounded-2xl p-3"><h2 className="text-xl font-semibold">Announcements</h2><ForYouFeed/><h3 className="text-lg font-semibold mt-4">Upcoming events</h3><Events/></MotionDiv>}
+            {(tab==='community' || tab==='forums') && <MotionDiv initial={{opacity:0,y:8}} animate={{opacity:1,y:0}} className="bg-white/80 backdrop-blur rounded-2xl p-3"><Forums/></MotionDiv>}
+            {tab==='marketplace' && <MotionDiv initial={{opacity:0,y:8}} animate={{opacity:1,y:0}} className="space-y-4"><Marketplace/></MotionDiv>}
+            {tab==='moments' && <MotionDiv initial={{opacity:0,y:8}} animate={{opacity:1,y:0}} className="space-y-4"><Moments/></MotionDiv>}
+            {tab==='calendar' && <MotionDiv initial={{opacity:0,y:8}} animate={{opacity:1,y:0}} className="space-y-4"><CalendarTab/></MotionDiv>}
+            {tab==='profile' && <MotionDiv initial={{opacity:0,y:8}} animate={{opacity:1,y:0}} className="space-y-4"><Profile/></MotionDiv>}
+            </div>
           </main>
           <BottomNav active={tab} onChange={setTab}/>
         </div>
@@ -100,6 +704,3 @@
   </script>
 </body>
 </html>
-
-
-
