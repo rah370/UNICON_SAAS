@@ -1,0 +1,10 @@
+{
+  // Set Prettier as the default formatter
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  // Ensure HTML uses this formatter
+  "[html]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  // Optional: format on save
+  "editor.formatOnSave": true
+}
