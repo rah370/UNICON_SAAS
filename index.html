@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content="UNICON is a private, school‑branded social platform with announcements, events, marketplace, forums, and profiles—built for students and admins." />
     <title>UNICON SaaS – School Social Platform</title>
-    <link rel="icon" href="UNICON.png?v=1758434378" type="image/png" />
+    <link rel="icon" href="UNICON.png" type="image/png" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -32,9 +32,9 @@
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
         background: #fbf7f3;
-        /* Default brand color for UNICON (emerald-600 fallback) */
-        --brand-color: #059669;
-        --brand-color-700: #047857;
+        /* Default brand color for UNICON (blue theme fallback) */
+        --brand-color: #1D4E89;
+        --brand-color-700: #153B66;
       }
       
       /* Unique Visual Touches */
@@ -107,13 +107,14 @@
       }
       /* Watermark background that doesn't fade content */
       .wm {
-        position: absolute;
+        position: fixed;
         inset: 0;
         pointer-events: none;
         background-repeat: no-repeat;
         background-position: center;
-        background-size: 250px;
-        opacity: 0.07;
+        background-size: clamp(300px, 55vw, 700px);
+        opacity: 0.08;
+        z-index: 0;
       }
 
       /* Brand utility classes used across the app */
@@ -148,6 +149,21 @@
       .hover-brand-text:hover { color: var(--brand-color) !important; }
       .hover-brand-border:hover { border-color: var(--brand-color) !important; }
       .brand-gradient { background: linear-gradient(135deg, color-mix(in srgb, var(--brand-color) 70%, white), var(--brand-color)); }
+      /* Header pill styles (landing) */
+      .pill{ border:1px solid color-mix(in srgb, var(--brand-color) 15%, #dbe3ef); background:#fff; color:#475569; }
+      .pill:hover{ background: color-mix(in srgb, var(--brand-color) 6%, #fff); }
+      .pill-active{ background: linear-gradient(135deg, color-mix(in srgb, var(--brand-color) 20%, #9ec5ff), var(--brand-color)); color:#fff; border-color: color-mix(in srgb, var(--brand-color) 50%, #fff); box-shadow: 0 10px 22px color-mix(in srgb, var(--brand-color) 35%, transparent); }
+      /* Primary gradient buttons (landing only) */
+      .btn-grad {
+        /* Azure grey → brand gradient */
+        background: linear-gradient(135deg, #E6F0FF, var(--brand-color));
+        color: #fff !important;
+        border: 1.5px solid color-mix(in srgb, var(--brand-color) 55%, #1E3A5F);
+        box-shadow: 0 12px 28px color-mix(in srgb, var(--brand-color) 30%, transparent);
+        transition: filter .15s ease, transform .15s ease;
+      }
+      .btn-grad:hover { filter: brightness(.97); transform: translateY(-1px); }
+      .btn-outline-brand { border:1.5px solid var(--brand-color); color: var(--brand-color); background:#fff; }
     </style>
     <!-- React + ReactDOM + Babel -->
     <script defer crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -358,13 +374,20 @@
       }
 
       function SchoolSignup({ onDone, onBack }) {
-        const [plan, setPlan] = useState('pro');
+        const [plan, setPlan] = useState('basic');
         const [name, setName] = useState('');
         const [color, setColor] = useState('#059669');
         const [logoData, setLogoData] = useState(null);
         const [saving, setSaving] = useState(false);
-        const prices = { pro: 2000, premium: 3500 };
+        const prices = { basic: 0, pro: 2000, premium: 3500 };
 
+        const basicFeatures = [
+          'School space with logo',
+          'Announcements + events',
+          'Community forums (3)',
+          'Basic moderation',
+          'Email support (5-day)'
+        ];
         const proFeatures = [
           'Custom school colors + logo',
           'Unlimited announcements & posts',
@@ -419,7 +442,8 @@
               <button className="text-sm text-slate-600 hover:underline" onClick={onBack}>Back to login</button>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-4 mb-4">
+            <div className="grid md:grid-cols-3 gap-4 mb-4">
+              <PlanCard plan="basic" selected={plan} onSelect={setPlan} price={`${prices.basic===0?'Free':`₱${prices.basic.toLocaleString()}`}`} features={basicFeatures} />
               <PlanCard plan="pro" selected={plan} onSelect={setPlan} price={`₱${prices.pro.toLocaleString()}`} features={proFeatures} />
               <PlanCard plan="premium" selected={plan} onSelect={setPlan} price={`₱${prices.premium.toLocaleString()}`} features={premiumFeatures} />
             </div>
@@ -1611,7 +1635,6 @@
         { icon: ShoppingBag, title: "Marketplace", desc: "A safe campus buy/sell hub for books, uniforms, and services." },
         { icon: MessagesSquare, title: "Forums", desc: "Organized discussions for classes, clubs, and departments." },
         { icon: Users, title: "Profiles & Groups", desc: "Verified profiles with role-based access for students and staff." },
-        { icon: GraduationCap, title: "Gradebook & Attendance", desc: "Simple tracking with exports and parent visibility options." },
         { icon: Shield, title: "Privacy-First", desc: "School-branded spaces with robust moderation and data controls." },
         { icon: BarChart3, title: "Admin Dashboard", desc: "Analytics, roles, content approvals, and bulk actions built-in." },
       ];
@@ -1702,7 +1725,7 @@
 
       function LandingPage() {
         const [openFAQ, setOpenFAQ] = useState("a");
-        const [schoolName, setSchoolName] = useState("Sample High School");
+        const [schoolName, setSchoolName] = useState("UNICON");
         const [plan, setPlan] = useState("Pro");
         const [primaryColor, setPrimaryColor] = useState("#1D4E89");
         const [logoUrl, setLogoUrl] = useState(null);
@@ -1775,30 +1798,46 @@
         ];
 
         return (
-          <div style={{ backgroundColor: palette.bg }} className="min-h-screen text-[15px]">
-            <header className="sticky top-0 z-40 w-full backdrop-blur supports-[backdrop-filter]:bg-white/70">
+          <div style={{ backgroundColor: palette.bg }} className="min-h-screen text-[15px] relative">
+            {/* Watermark logo for landing */}
+            <div className="wm" style={{ backgroundImage: `url('${logoUrl || 'UNICON.png?v=1758434378'}')` }} aria-hidden="true"></div>
+            <header className="sticky top-0 z-40 w-full backdrop-blur supports-[backdrop-filter]:bg-white/70 border-b" style={{ borderColor: palette.border }}>
               <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                <div className="flex h-16 items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <a href="register.html" className="rounded-xl border px-4 py-2 text-sm" style={{ borderColor: palette.border, color: palette.navy, backgroundColor: palette.paper }}>Register</a>
-                    <a href="login.html" className="rounded-xl border px-4 py-2 text-sm" style={{ borderColor: palette.border, color: palette.navy, backgroundColor: palette.paper }}>Log in</a>
-                    <a href="register.html" className="rounded-xl px-4 py-2 text-sm font-semibold shadow-sm transition focus:outline-none focus:ring-2 focus:ring-offset-2" style={{ backgroundColor: palette.blue, color: 'white' }}>Launch trial</a>
+                <div className="flex h-16 items-center justify-between gap-4">
+                  {/* Brand */}
+                  <a href="#home" className="flex items-center gap-2">
+                    <img src={logoUrl || 'UNICON.png?v=1758434378'} alt="UNICON" className="h-9 w-9 rounded-lg object-contain" />
+                    <span className="text-xl font-semibold" style={{ color: palette.navy }}>{schoolName || 'UNICON'}</span>
+                  </a>
+                  {/* Center nav pills */}
+                  <nav className="hidden md:flex items-center gap-2">
+                    <a href="#home" className="px-4 py-2 rounded-full text-sm border pill">Home</a>
+                    <a href="#features" className="px-4 py-2 rounded-full text-sm border pill">Features</a>
+                    <a href="#plans" className="px-4 py-2 rounded-full text-sm border pill-active">Pricing</a>
+                    <a href="#solutions" className="px-4 py-2 rounded-full text-sm border pill">Solutions</a>
+                    <a href="#faqs" className="px-4 py-2 rounded-full text-sm border pill">FAQ</a>
+                    <a href="#footer" className="px-4 py-2 rounded-full text-sm border pill">Contact</a>
+                  </nav>
+                  {/* Right actions */}
+                  <div className="hidden md:flex items-center gap-3">
+                    <a href="login.html" className="px-4 py-2 rounded-full btn-outline-brand">Login</a>
+                    <a href="register.html" className="px-5 py-2 rounded-full btn-grad">Start Free Trial</a>
                   </div>
                 </div>
               </div>
             </header>
 
-            <section className="relative overflow-hidden">
-              <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 py-20 sm:px-6 lg:grid-cols-2 lg:px-8">
+            <section className="relative overflow-hidden" id="home">
+              <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 py-16 sm:px-6 lg:grid-cols-2 lg:px-8">
                 <div>
                   <MotionDiv initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="font-serif text-4xl leading-tight sm:text-5xl" style={{ color: palette.navy }}>
                     Connect your entire school community in one app
                   </MotionDiv>
                   <p className="mt-6 max-w-xl text-[17px] leading-7" style={{ color: palette.text }}>
-                    Announcements, events, forums, marketplace, and academic tools—verified and school-branded. UNICON makes campus life clearer, safer, and more connected.
+                    Announcements, events, forums, marketplace, and academic tools—verified and school‑branded. UNICON makes campus life clearer, safer, and more connected.
                   </p>
                   <div className="mt-8 flex flex-wrap items-center gap-3">
-                    <a href="register.html" className="inline-flex items-center gap-2 rounded-xl px-5 py-3 font-semibold shadow-sm" style={{ backgroundColor: palette.blue, color: 'white' }}>
+                    <a href="register.html" className="inline-flex items-center gap-2 rounded-full px-6 py-3 font-semibold shadow-sm btn-grad">
                       Launch your trial <ArrowRight className="h-4 w-4" />
                     </a>
                     <a href="#features" className="rounded-xl border px-4 py-3" style={{ borderColor: palette.border, color: palette.navy, backgroundColor: palette.paper }}>
@@ -1817,22 +1856,25 @@
                   </div>
                 </div>
                 <MotionDiv initial={{ opacity: 0, y: 14 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.3 }} transition={{ duration: 0.6 }} className="relative">
-                  <div className="aspect-[4/3] w-full rounded-3xl border shadow-sm" style={{ borderColor: palette.border, backgroundColor: palette.paper }} />
-                  <div className="pointer-events-none absolute -left-6 -top-6 hidden h-16 w-16 rounded-2xl md:block" style={{ backgroundColor: palette.blueLite }} />
-                  <div className="pointer-events-none absolute -bottom-6 -right-6 hidden h-16 w-16 rounded-2xl md:block" style={{ backgroundColor: palette.blueLite }} />
+                  <div className="aspect-[4/3] w-11/12 md:w-4/5 mx-auto rounded-3xl border shadow-sm overflow-hidden" style={{ borderColor: palette.border, backgroundColor: palette.paper }}>
+                    <img src="pic.jpeg" alt="UNICON preview" className="h-full w-full object-cover" />
+                  </div>
+                  <div className="pointer-events-none absolute -left-5 -top-5 hidden h-12 w-12 rounded-2xl md:block" style={{ backgroundColor: palette.blueLite }} />
+                  <div className="pointer-events-none absolute -bottom-5 -right-5 hidden h-12 w-12 rounded-2xl md:block" style={{ backgroundColor: palette.blueLite }} />
                 </MotionDiv>
               </div>
             </section>
 
+            {/* Features directly after hero */}
             <section id="features" className="py-16">
               <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 <h2 className="font-serif text-4xl" style={{ color: palette.navy }}>Everything in one campus hub</h2>
                 <p className="mt-2 max-w-3xl text-lg" style={{ color: palette.text }}>Pick the modules you need now and add more later. UNICON grows with your school.</p>
                 <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                   {featureBlocks.map(({ icon: Icon, title, desc }) => (
-                    <MotionDiv key={title} initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.4 }} className="group rounded-2xl border p-5 shadow-sm transition hover:shadow" style={{ borderColor: palette.border, backgroundColor: palette.paper }}>
+                    <MotionDiv key={title} initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.4 }} className="group rounded-2xl border p-5 bg-white shadow-soft transition hover:shadow" style={{ borderColor: palette.border }}>
                       <div className="flex items-start gap-4">
-                        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl" style={{ backgroundColor: palette.blueLite }}>
+                        <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl border" style={{ backgroundColor: palette.blueLite, borderColor: palette.border }}>
                           {React.createElement(Icon, { className: "h-5 w-5", style: { color: palette.blue } })}
                         </div>
                         <div>
@@ -1845,6 +1887,85 @@
                 </div>
               </div>
             </section>
+
+            {/* Plans table */}
+            <section id="plans" className="py-16">
+              <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <h2 className="text-center font-serif text-4xl" style={{ color: palette.navy }}>Pricing</h2>
+                <p className="mt-2 mb-8 text-center max-w-3xl mx-auto" style={{ color: palette.text }}>Choose the plan that fits your campus. Upi ytime.</p>
+                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                  {[
+                    {name:'Basic', price:'₱888.00', popular:false, features:['School landing page','1000 users','Basic support','Email notifications','Mobile responsive']},
+                    {name:'Pro', price:'₱1,888.00', popular:true, features:['Unlimited posts','RSVP events','Priority support','Marketplace','Custom branding','Advanced reporting']},
+                    {name:'Premium', price:'₱3,888.00', popular:false, features:['White‑label UI','Verified marketplace','API access','Advanced analytics','Custom integrations','Priority feature requests']}
+                  ].map(card => (
+                    <div key={card.name} className={`relative rounded-3xl border p-6 bg-white shadow-sm ${card.popular? 'ring-2 brand-ring':''}`} style={{ borderColor: card.popular? palette.blue : palette.border }}>
+                      {card.popular && (
+                        <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-xs px-2 py-1 rounded-full" style={{ backgroundColor: palette.blueLite, color: palette.blue, border:`1px solid ${palette.border}` }}>Most Popular</span>
+                      )}
+                      <h3 className="text-2xl font-semibold text-center" style={{ color: palette.navy }}>{card.name}</h3>
+                      <div className="mt-2 text-center" style={{ color: palette.blue }}>
+                        <div className="text-4xl font-bold">{card.price}</div>
+                        <div className="text-sm text-slate-500">per month</div>
+                      </div>
+                      <ul className="mt-6 space-y-3 text-sm text-slate-700">
+                        {card.features.map(f=> (
+                          <li key={f} className="flex items-start gap-2"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg><span>{f}</span></li>
+                        ))}
+                      </ul>
+                      <div className="mt-6 text-center">
+                        <a href="register.html" className={`inline-block rounded-full px-5 py-2 btn-grad`}>Start Free Trial</a>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
+
+            <section id="solutions" className="py-16">
+              <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <div className="text-center">
+                  <h2 className="font-serif text-4xl" style={{ color: palette.navy }}>Solutions for your campus</h2>
+                  <p className="mt-3 text-[15px] sm:text-lg max-w-3xl mx-auto" style={{ color: palette.text }}>
+                    Verified, school‑branded tools that scale from small departments to whole universities.
+                  </p>
+                </div>
+                <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                  {[
+                    {icon: Megaphone, title:'Verified announcements', desc:'Targeted updates with analytics and optional pinning.'},
+                    {icon: CalendarDays, title:'Events & RSVPs', desc:'Create events, collect RSVPs, remind attendees, and check‑in.'},
+                    {icon: ShoppingBag, title:'Student marketplace', desc:'Safe buy/sell with verified school IDs.'},
+                    {icon: MessagesSquare, title:'Forums & chats', desc:'Class and club discussions with moderation tools.'},
+                    {icon: Users, title:'Role‑based access', desc:'Students, staff, and admins get the right permissions.'},
+                    {icon: Shield, title:'Privacy‑first spaces', desc:'School branding, content approvals, and data controls.'},
+                  ].map(({icon:Icon,title,desc}) => (
+                    <div key={title} className="rounded-2xl border p-5 bg-white shadow-soft transition hover:shadow hover:translate-y-[-2px]" style={{ borderColor: palette.border }}>
+                      <div className="flex items-start gap-4">
+                        <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl border" style={{ backgroundColor: palette.blueLite, borderColor: palette.border }}>
+                          {React.createElement(Icon, { className: 'h-5 w-5', style: { color: palette.blue } })}
+                        </div>
+                        <div>
+                          <h3 className="font-semibold" style={{ color: palette.navy }}>{title}</h3>
+                          <p className="mt-1 text-sm leading-6" style={{ color: palette.text }}>{desc}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
+
+            {/* For Schools (anchor target) */}
+            <section id="schools" className="py-16">
+              <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 text-center">
+                <h2 className="font-serif text-3xl sm:text-4xl" style={{ color: palette.navy }}>Built for schools</h2>
+                <p className="mt-3 text-[15px] sm:text-lg max-w-3xl mx-auto" style={{ color: palette.text }}>
+                  Role‑based access, moderation tools and privacy by default keep students safe and admins in control.
+                </p>
+              </div>
+            </section>
+
+            
 
             {/* Registration moved to register.html */}
 
