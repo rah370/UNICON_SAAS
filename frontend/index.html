@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content="UNICON is a private, school‑branded social platform with announcements, events, marketplace, forums, and profiles—built for students and admins." />
     <title>UNICON SaaS – School Social Platform</title>
-    <link rel="icon" href="UNICON.png" type="image/png" />
+    <link rel="icon" href="../UNICON.png" type="image/png" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -290,7 +290,7 @@
 
       function LogoMark({ size = 56 }) {
         const branding = getBranding();
-        const src = branding?.logoData || 'UNICON.png?v=1758434378';
+        const src = branding?.logoData || '../UNICON.png?v=1758434378';
         const alt = branding?.name ? `${branding.name} Logo` : 'UNICON Logo';
         return (
           <img
@@ -464,7 +464,7 @@
               <div className="md:col-span-1 flex items-end">
                 <div className="w-full border border-dashed border-slate-300 rounded-xl p-3 text-center">
                   <div className="text-xs text-slate-600 mb-1">Preview</div>
-                  <img alt="Logo preview" src={logoData || 'UNICON.png?v=1758434378'} className="mx-auto h-16 object-contain rounded"/>
+                  <img alt="Logo preview" src={logoData || '../UNICON.png?v=1758434378'} className="mx-auto h-16 object-contain rounded"/>
                 </div>
               </div>
             </div>
@@ -520,7 +520,7 @@
         if (showSignup) {
           return (
             <div className="min-h-[92vh] grid place-items-center bg-sand-50 text-slate-900 relative">
-              <div className="wm" style={{ backgroundImage: "url('UNICON.png?v=1758434378')", backgroundSize: '200px' }} aria-hidden="true"></div>
+              <div className="wm" style={{ backgroundImage: "url('../UNICON.png?v=1758434378')", backgroundSize: '200px' }} aria-hidden="true"></div>
               <SchoolSignup onDone={() => setShowSignup(false)} onBack={() => setShowSignup(false)} />
             </div>
           );
@@ -528,7 +528,7 @@
 
         return (
           <div className="min-h-[92vh] grid place-items-center bg-sand-50 text-slate-900 relative">
-            <div className="wm" style={{ backgroundImage: "url('UNICON.png?v=1758434378')", backgroundSize: '200px' }} aria-hidden="true"></div>
+            <div className="wm" style={{ backgroundImage: "url('../UNICON.png?v=1758434378')", backgroundSize: '200px' }} aria-hidden="true"></div>
             <MotionDiv
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
@@ -1440,7 +1440,7 @@
 
         return (
           <div className="min-h-screen text-slate-900 relative">
-            <div className="wm" style={{ backgroundImage: "url('UNICON.png?v=1758434378')" }} aria-hidden="true"></div>
+            <div className="wm" style={{ backgroundImage: "url('../UNICON.png?v=1758434378')" }} aria-hidden="true"></div>
             {/* Top Bar */}
             <header className="sticky top-0 z-30 bg-sand-50/90 backdrop-blur border-b border-slate-200">
               <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
@@ -1800,13 +1800,13 @@
         return (
           <div style={{ backgroundColor: palette.bg }} className="min-h-screen text-[15px] relative">
             {/* Watermark logo for landing */}
-            <div className="wm" style={{ backgroundImage: `url('${logoUrl || 'UNICON.png?v=1758434378'}')` }} aria-hidden="true"></div>
+            <div className="wm" style={{ backgroundImage: `url('${logoUrl || '../UNICON.png?v=1758434378'}')` }} aria-hidden="true"></div>
             <header className="sticky top-0 z-40 w-full backdrop-blur supports-[backdrop-filter]:bg-white/70 border-b" style={{ borderColor: palette.border }}>
               <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div className="flex h-16 items-center justify-between gap-4">
                   {/* Brand */}
                   <a href="#home" className="flex items-center gap-2">
-                    <img src={logoUrl || 'UNICON.png?v=1758434378'} alt="UNICON" className="h-9 w-9 rounded-lg object-contain" />
+                    <img src={logoUrl || '../UNICON.png?v=1758434378'} alt="UNICON" className="h-9 w-9 rounded-lg object-contain" />
                     <span className="text-xl font-semibold" style={{ color: palette.navy }}>{schoolName || 'UNICON'}</span>
                   </a>
                   {/* Center nav pills */}

@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Log in – UNICON</title>
-  <link rel="icon" href="UNICON.png?v=1758434378" type="image/png" />
+  <link rel="icon" href="../UNICON.png?v=1758434378" type="image/png" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
@@ -77,7 +77,7 @@
     function hexToHsl(hex){ hex=hex.replace('#',''); if(hex.length===3) hex=[...hex].map(x=>x+x).join(''); const r=parseInt(hex.slice(0,2),16)/255,g=parseInt(hex.slice(2,4),16)/255,b=parseInt(hex.slice(4,6),16)/255; const max=Math.max(r,g,b),min=Math.min(r,g,b); let h,s,l=(max+min)/2; if(max===min){h=s=0;} else { const d=max-min; s=l>0.5? d/(2-max-min): d/(max+min); switch(max){case r:h=(g-b)/d+(g<b?6:0);break;case g:h=(b-r)/d+2;break;case b:h=(r-g)/d+4;break;} h/=6; } return {h:Math.round(h*360),s:Math.round(s*100),l:Math.round(l*100)} }
     function lighten(hex,by){ const {h,s,l}=hexToHsl(hex); const nl=Math.min(100, l+by); return `hsl(${h} ${s}% ${nl}%)`; }
     if (brand?.color){ setCssVar('--brand', brand.color); setCssVar('--brand2', lighten(brand.color, 25)); }
-    document.getElementById('wm').style.backgroundImage = `url('${brand?.logoData || 'UNICON.png?v=1758434378'}')`;
+    document.getElementById('wm').style.backgroundImage = `url('${brand?.logoData || '../UNICON.png?v=1758434378'}')`;
 
     // Login form handler (localStorage demo auth)
     const form = document.getElementById('loginForm');
@@ -93,7 +93,7 @@
         if (data.email !== email || data.password !== password) return show('Invalid email or password.');
         try { localStorage.setItem('uniconSessionEmail', email); } catch{}
         show('Success! Redirecting…', true);
-        setTimeout(()=>{ window.location.href = 'app.html'; }, 400);
+        setTimeout(()=>{ window.location.href = 'for-you.html'; }, 400);
       });
     }
   </script>

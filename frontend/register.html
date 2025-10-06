@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Register – UNICON</title>
-  <link rel="icon" href="UNICON.png?v=1758434378" type="image/png" />
+  <link rel="icon" href="../UNICON.png?v=1758434378" type="image/png" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
@@ -149,7 +149,7 @@
       try{
         const brand = JSON.parse(localStorage.getItem('uniconBrand')||'null');
         if (brand?.logoData) document.getElementById('wm').style.backgroundImage = `url('${brand.logoData}')`;
-        else document.getElementById('wm').style.backgroundImage = `url('UNICON.png?v=1758434378')`;
+        else document.getElementById('wm').style.backgroundImage = `url('../UNICON.png?v=1758434378')`;
         if (brand?.color) document.getElementById('submit').style.background = brand.color;
       }catch{}
     })();
@@ -209,7 +209,7 @@
     });
 
     // Initialize with saved brand if exists
-    (function(){ try{ const brand = JSON.parse(localStorage.getItem('uniconBrand')||'null'); if(brand?.color){ $('color').value = brand.color; setBrandColor(brand.color);} document.getElementById('wm').style.backgroundImage = `url('${brand?.logoData || 'UNICON.png?v=1758434378'}')`; }catch{} })();
+    (function(){ try{ const brand = JSON.parse(localStorage.getItem('uniconBrand')||'null'); if(brand?.color){ $('color').value = brand.color; setBrandColor(brand.color);} document.getElementById('wm').style.backgroundImage = `url('${brand?.logoData || '../UNICON.png?v=1758434378'}')`; }catch{} })();
   </script>
 </body>
 </html>
