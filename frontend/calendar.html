@@ -20,9 +20,25 @@
 <body class="antialiased">
   <div class="wm" style="background-image:url('../UNICON.png?v=1758434378')" aria-hidden="true"></div>
   <main class="relative z-10 min-h-screen px-4 py-6">
-    <header class="max-w-6xl mx-auto mb-4 flex items-center justify-between">
-      <a href="index.html" class="text-sm text-slate-600 hover:underline">← Back to landing</a>
-      <div class="text-sm text-slate-600">Calendar</div>
+    <header class="max-w-6xl mx-auto mb-4 flex items-center gap-3 justify-between">
+      <div class="hidden md:flex items-center gap-2 flex-1 max-w-xl">
+        <div class="relative flex-1">
+          <svg class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input id="globalSearch" type="search" placeholder="Search events…" class="w-full rounded-full border border-slate-200 bg-white px-10 py-2 text-sm" />
+        </div>
+      </div>
+      <div class="relative flex items-center gap-2">
+        <button title="Notifications" class="h-9 w-9 grid place-items-center rounded-full border border-slate-200 bg-white">🔔</button>
+        <button id="userMenuBtn" title="Account" class="h-9 w-9 rounded-full border border-slate-200 bg-[var(--brand-color)] text-white grid place-items-center">👤</button>
+        <div id="userMenu" class="hidden absolute right-0 top-12 w-60 rounded-2xl border border-slate-200 bg-white shadow-xl p-2">
+          <a id="menuProfile" class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-50 text-[var(--brand-color)]" href="javascript:void(0)">👤 Profile</a>
+          <a id="menuSettings" class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-50" href="javascript:void(0)">⚙️ Settings</a>
+          <a id="menuHome" class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-50" href="javascript:void(0)">🏠 My Home</a>
+          <a id="menuHelp" class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-50" href="javascript:void(0)">❓ Help Center ↗</a>
+          <div class="my-2 border-t"></div>
+          <a id="menuLogout" class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-50 text-rose-600" href="javascript:void(0)">Log Out</a>
+        </div>
+      </div>
     </header>
     <section class="max-w-6xl mx-auto">
       <div id="root"><div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">Loading…</div></div>
@@ -44,9 +60,21 @@
   function getBranding(){ try { return JSON.parse(localStorage.getItem('uniconBrand')||'null'); }catch{ return null; } }
   function applyBranding(b){ const root = document.body; if (b?.color){ root.style.setProperty('--brand-color', b.color);} }
   const branding = getBranding(); applyBranding(branding);
+  (function(){
+    const menuBtn = document.getElementById('userMenuBtn');
+    const menu = document.getElementById('userMenu');
+    if(menuBtn && menu){ menuBtn.addEventListener('click', (e)=>{ e.stopPropagation(); menu.classList.toggle('hidden'); }); document.addEventListener('click', ()=> menu.classList.add('hidden')); }
+    function nav(id, href){ const el=document.getElementById(id); if(!el) return; el.addEventListener('click', ()=>{ if(id==='menuLogout'){ try{ localStorage.removeItem('uniconSessionEmail'); }catch{} } location.href = href; }); }
+    nav('menuProfile','profile.html'); nav('menuSettings','settings.html'); nav('menuHome','for-you.html'); const help=document.getElementById('menuHelp'); if(help) help.addEventListener('click', ()=> window.open('https://example.com/help','_blank'));
+    const input = document.getElementById('globalSearch'); if(input){ const saved=localStorage.getItem('unicon_global_search')||''; if(saved) input.value=saved; input.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ localStorage.setItem('unicon_global_search', input.value); try{ window.dispatchEvent(new CustomEvent('unicon_search',{ detail: input.value })); }catch{} } }); }
+  })();
 
   function CalendarTab(){
     const [events, setEvents] = useState(()=>{ try{ return JSON.parse(localStorage.getItem('unicon_events')||'null') || [];}catch{ return []; } });
+    React.useEffect(()=>{ try{ localStorage.setItem('unicon_events', JSON.stringify(events)); }catch{} }, [events]);
+    const [newTitle, setNewTitle] = useState('');
+    const [newStart, setNewStart] = useState('');
+    const [newEnd, setNewEnd] = useState('');
     const today = new Date();
     const [view, setView] = useState(()=> new Date(today.getFullYear(), today.getMonth(), 1));
     const y = view.getFullYear();
@@ -85,8 +113,19 @@
 
     const recs = events.slice(0,6);
 
+    function addEvent(){ if(!newTitle.trim()||!newStart){ return; } const ev = { id:String(Date.now()), title:newTitle, start:newStart, end:newEnd||newStart }; setEvents([ev, ...events]); setNewTitle(''); setNewStart(''); setNewEnd(''); }
+
     return (
       <div className="space-y-4">
+        <div className="bg-white rounded-xl border border-slate-200 p-4">
+          <div className="font-medium mb-2">Create event</div>
+          <div className="grid md:grid-cols-4 gap-2">
+            <input value={newTitle} onChange={e=>setNewTitle(e.target.value)} placeholder="Event title" className="rounded-lg border border-slate-300 px-3 py-2"/>
+            <input value={newStart} onChange={e=>setNewStart(e.target.value)} type="date" className="rounded-lg border border-slate-300 px-3 py-2"/>
+            <input value={newEnd} onChange={e=>setNewEnd(e.target.value)} type="date" className="rounded-lg border border-slate-300 px-3 py-2"/>
+            <button onClick={addEvent} className="rounded-lg px-3 py-2 text-sm btn-brand">Add</button>
+          </div>
+        </div>
         <div className="bg-white rounded-xl border border-slate-200 p-4">
           <div className="flex items-center justify-between mb-2">
             <div className="text-xl font-semibold">{view.toLocaleString(undefined,{ month:'long', year:'numeric' })}</div>

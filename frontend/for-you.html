@@ -20,9 +20,25 @@
 <body class="antialiased">
   <div class="wm" style="background-image:url('../UNICON.png?v=1758434378')" aria-hidden="true"></div>
   <main class="relative z-10 min-h-screen px-4 py-6">
-    <header class="max-w-6xl mx-auto mb-4 flex items-center justify-between">
-      <a href="index.html" class="text-sm text-slate-600 hover:underline">← Back to landing</a>
-      <div class="text-sm text-slate-600">For You</div>
+    <header class="max-w-6xl mx-auto mb-4 flex items-center gap-3 justify-between">
+      <div class="hidden md:flex items-center gap-2 flex-1 max-w-xl">
+        <div class="relative flex-1">
+          <svg class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input id="globalSearch" type="search" placeholder="Search…" class="w-full rounded-full border border-slate-200 bg-white px-10 py-2 text-sm" />
+        </div>
+      </div>
+      <div class="relative flex items-center gap-2">
+        <button title="Notifications" class="h-9 w-9 grid place-items-center rounded-full border border-slate-200 bg-white">🔔</button>
+        <button id="userMenuBtn" title="Account" class="h-9 w-9 rounded-full border border-slate-200 bg-[var(--brand-color)] text-white grid place-items-center">👤</button>
+        <div id="userMenu" class="hidden absolute right-0 top-12 w-60 rounded-2xl border border-slate-200 bg-white shadow-xl p-2">
+          <a id="menuProfile" class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-50 text-[var(--brand-color)]" href="javascript:void(0)">👤 Profile</a>
+          <a id="menuSettings" class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-50" href="javascript:void(0)">⚙️ Settings</a>
+          <a id="menuHome" class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-50" href="javascript:void(0)">🏠 My Home</a>
+          <a id="menuHelp" class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-50" href="javascript:void(0)">❓ Help Center ↗</a>
+          <div class="my-2 border-t"></div>
+          <a id="menuLogout" class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-50 text-rose-600" href="javascript:void(0)">Log Out</a>
+        </div>
+      </div>
     </header>
 
     <section class="max-w-6xl mx-auto">
@@ -45,6 +61,15 @@
   function getBranding(){ try { return JSON.parse(localStorage.getItem('uniconBrand')||'null'); }catch{ return null; } }
   function applyBranding(b){ const root = document.body; if (b?.color){ root.style.setProperty('--brand-color', b.color);} }
   const branding = getBranding(); applyBranding(branding);
+  // header interactions
+  (function(){
+    const menuBtn = document.getElementById('userMenuBtn');
+    const menu = document.getElementById('userMenu');
+    if(menuBtn && menu){ menuBtn.addEventListener('click', (e)=>{ e.stopPropagation(); menu.classList.toggle('hidden'); }); document.addEventListener('click', ()=> menu.classList.add('hidden')); }
+    function nav(id, href){ const el=document.getElementById(id); if(!el) return; el.addEventListener('click', ()=>{ if(id==='menuLogout'){ try{ localStorage.removeItem('uniconSessionEmail'); }catch{} } location.href = href; }); }
+    nav('menuProfile','profile.html'); nav('menuSettings','settings.html'); nav('menuHome','for-you.html'); const help=document.getElementById('menuHelp'); if(help) help.addEventListener('click', ()=> window.open('https://example.com/help','_blank'));
+    const input = document.getElementById('globalSearch'); if(input){ const saved=localStorage.getItem('unicon_global_search')||''; if(saved) input.value=saved; input.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ localStorage.setItem('unicon_global_search', input.value); try{ window.dispatchEvent(new CustomEvent('unicon_search',{ detail: input.value })); }catch{} } }); }
+  })();
   function toast(message, type='info'){ try{ window.dispatchEvent(new CustomEvent('unicon_toast', { detail:{ message, type, id:String(Date.now()) } })); }catch{} }
 
   function ForYouFeed(){
@@ -56,14 +81,28 @@
     });
     const [title, setTitle] = React.useState('');
     const [body, setBody] = React.useState('');
+    const [q, setQ] = React.useState('');
+    const [editId, setEditId] = React.useState('');
+    const [editTitle, setEditTitle] = React.useState('');
+    const [editBody, setEditBody] = React.useState('');
     const canPost = true;
     React.useEffect(()=>{ try{ localStorage.setItem('unicon_feed', JSON.stringify(items)); }catch{} }, [items]);
+    React.useEffect(()=>{ function on(e){ setQ(e.detail||''); } window.addEventListener('unicon_search', on); return ()=>window.removeEventListener('unicon_search', on); }, []);
     function add(){ if(!title.trim()||!body.trim()) return; setItems([{ id: String(Date.now()), title, body, pinned:false, audience:'All', likes:0, comments:[] }, ...items]); setTitle(''); setBody(''); }
     function like(id){ setItems(arr=> arr.map(i=> i.id===id? {...i, likes:(i.likes||0)+1 }: i)); }
     function addComment(id, text){ if(!text.trim()) return; setItems(arr=> arr.map(i=> i.id===id? {...i, comments:[...i.comments, { id:String(Date.now()), text }] }: i)); }
-    const sorted = [...items].sort((a,b)=> Number(b.pinned)-Number(a.pinned));
+    function remove(id){ setItems(arr=> arr.filter(i=> i.id!==id)); }
+    function startEdit(it){ setEditId(it.id); setEditTitle(it.title); setEditBody(it.body); }
+    function saveEdit(){ if(!editTitle.trim()||!editBody.trim()) return; setItems(arr=> arr.map(i=> i.id===editId? { ...i, title:editTitle, body:editBody }: i)); cancelEdit(); }
+    function cancelEdit(){ setEditId(''); setEditTitle(''); setEditBody(''); }
+    function togglePin(id){ setItems(arr=> arr.map(i=> i.id===id? { ...i, pinned:!i.pinned }: i)); }
+    const filtered = items.filter(i=> !q || i.title.toLowerCase().includes(q.toLowerCase()) || i.body.toLowerCase().includes(q.toLowerCase()));
+    const sorted = [...filtered].sort((a,b)=> Number(b.pinned)-Number(a.pinned));
     return (
       <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search announcements" className="flex-1 rounded-lg border border-slate-300 px-3 py-2"/>
+        </div>
         {canPost && (
           <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-2">
             <div className="grid gap-2 md:grid-cols-2">
@@ -75,10 +114,28 @@
         )}
         {sorted.map(it=> (
           <div key={it.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="flex items-center justify-between mb-1">
-              <h3 className="font-semibold">{it.title}{it.pinned && <span className="ml-2 text-xs px-2 py-0.5 rounded-full" style={{ background:'color-mix(in srgb, var(--brand-color) 10%, white)', color:'var(--brand-color)' }}>Pinned</span>}</h3>
-            </div>
-            <p className="text-slate-600">{it.body}</p>
+            {editId===it.id ? (
+              <div className="space-y-2">
+                <input value={editTitle} onChange={e=>setEditTitle(e.target.value)} className="w-full rounded-lg border border-slate-300 px-3 py-2" />
+                <textarea value={editBody} onChange={e=>setEditBody(e.target.value)} className="w-full rounded-lg border border-slate-300 px-3 py-2" />
+                <div className="flex items-center gap-2">
+                  <button onClick={saveEdit} className="rounded-md px-3 py-1 btn-brand text-sm">Save</button>
+                  <button onClick={cancelEdit} className="rounded-md px-3 py-1 border text-sm">Cancel</button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between mb-1">
+                  <h3 className="font-semibold">{it.title}{it.pinned && <span className="ml-2 text-xs px-2 py-0.5 rounded-full" style={{ background:'color-mix(in srgb, var(--brand-color) 10%, white)', color:'var(--brand-color)' }}>Pinned</span>}</h3>
+                  <div className="flex items-center gap-2 text-xs">
+                    <button onClick={()=>togglePin(it.id)} className="rounded border px-2 py-0.5">{it.pinned? 'Unpin':'Pin'}</button>
+                    <button onClick={()=>startEdit(it)} className="rounded border px-2 py-0.5">Edit</button>
+                    <button onClick={()=>remove(it.id)} className="rounded border px-2 py-0.5">Delete</button>
+                  </div>
+                </div>
+                <p className="text-slate-600">{it.body}</p>
+              </>
+            )}
             <div className="mt-3 flex items-center gap-3 text-sm">
               <button onClick={()=>like(it.id)} className="px-3 py-1 rounded-lg border border-slate-200 hover:bg-slate-50">👍 {it.likes||0}</button>
               <details className="flex-1">

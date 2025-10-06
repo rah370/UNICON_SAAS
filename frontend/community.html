@@ -20,9 +20,25 @@
 <body class="antialiased">
   <div class="wm" style="background-image:url('../UNICON.png?v=1758434378')" aria-hidden="true"></div>
   <main class="relative z-10 min-h-screen px-4 py-6">
-    <header class="max-w-6xl mx-auto mb-4 flex items-center justify-between">
-      <a href="index.html" class="text-sm text-slate-600 hover:underline">← Back to landing</a>
-      <div class="text-sm text-slate-600">Community</div>
+    <header class="max-w-6xl mx-auto mb-4 flex items-center gap-3 justify-between">
+      <div class="hidden md:flex items-center gap-2 flex-1 max-w-xl">
+        <div class="relative flex-1">
+          <svg class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input id="globalSearch" type="search" placeholder="Search…" class="w-full rounded-full border border-slate-200 bg-white px-10 py-2 text-sm" />
+        </div>
+      </div>
+      <div class="relative flex items-center gap-2">
+        <button title="Notifications" class="h-9 w-9 grid place-items-center rounded-full border border-slate-200 bg-white">🔔</button>
+        <button id="userMenuBtn" title="Account" class="h-9 w-9 rounded-full border border-slate-200 bg-[var(--brand-color)] text-white grid place-items-center">👤</button>
+        <div id="userMenu" class="hidden absolute right-0 top-12 w-60 rounded-2xl border border-slate-200 bg-white shadow-xl p-2">
+          <a id="menuProfile" class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-50 text-[var(--brand-color)]" href="javascript:void(0)">👤 Profile</a>
+          <a id="menuSettings" class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-50" href="javascript:void(0)">⚙️ Settings</a>
+          <a id="menuHome" class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-50" href="javascript:void(0)">🏠 My Home</a>
+          <a id="menuHelp" class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-50" href="javascript:void(0)">❓ Help Center ↗</a>
+          <div class="my-2 border-t"></div>
+          <a id="menuLogout" class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-50 text-rose-600" href="javascript:void(0)">Log Out</a>
+        </div>
+      </div>
     </header>
     <section class="max-w-6xl mx-auto">
       <div id="root"><div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">Loading…</div></div>
@@ -58,6 +74,24 @@
     }catch{ return dataUrl; }
   }
   const store = { get(k,f){ try{ const v=JSON.parse(localStorage.getItem(k)||'null'); return v==null? f : v; }catch{ return f; } }, set(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch{} } };
+  // header interactions
+  (function(){
+    const menuBtn = document.getElementById('userMenuBtn');
+    const menu = document.getElementById('userMenu');
+    if(menuBtn && menu){ menuBtn.addEventListener('click', (e)=>{ e.stopPropagation(); menu.classList.toggle('hidden'); }); document.addEventListener('click', ()=> menu.classList.add('hidden')); }
+    function nav(id, href){ const el=document.getElementById(id); if(!el) return; el.addEventListener('click', ()=>{ if(id==='menuLogout'){ try{ localStorage.removeItem('uniconSessionEmail'); }catch{} } location.href = href; }); }
+    nav('menuProfile','profile.html'); nav('menuSettings','settings.html'); nav('menuHome','for-you.html'); const help=document.getElementById('menuHelp'); if(help) help.addEventListener('click', ()=> window.open('https://example.com/help','_blank'));
+    const input = document.getElementById('globalSearch'); if(input){ const saved=localStorage.getItem('unicon_global_search')||''; if(saved) input.value=saved; input.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ localStorage.setItem('unicon_global_search', input.value); try{ window.dispatchEvent(new CustomEvent('unicon_search',{ detail: input.value })); }catch{} } }); }
+  })();
+  function CommentBox({ onSubmit }){
+    const [t, setT] = React.useState('');
+    return (
+      <div className="flex gap-2">
+        <input value={t} onChange={e=>setT(e.target.value)} placeholder="Write a comment" className="flex-1 rounded-lg border border-slate-300 px-3 py-1"/>
+        <button onClick={()=>{ onSubmit(t); setT(''); }} className="px-3 py-1 rounded-lg btn-brand">Send</button>
+      </div>
+    );
+  }
 
   function SpaceComposer({ onPost }){
     const [text, setText] = useState('');
@@ -217,13 +251,29 @@
             <>
               <SpaceComposer onPost={addPost} />
               <div className="mt-3 space-y-3">
-                {posts.map(p=> (
-                  <div key={p.id} className="rounded-xl border border-slate-200 bg-white p-4">
-                    {p.text && <div className="text-slate-800">{p.text}</div>}
-                    {p.media && <div className="mt-2"><img src={p.media} alt="media" className="max-h-72 rounded-lg object-cover"/></div>}
-                    <div className="mt-2 text-xs text-slate-500 flex items-center justify-between"><span>{new Date(p.created||Date.now()).toLocaleString()}</span><button onClick={()=>removePost(p.id)} className="hover:underline">Delete</button></div>
-                  </div>
-                ))}
+                {posts.map(p=> {
+                  const comments = p.comments || [];
+                  const addComment = (text)=>{
+                    if(!text.trim()) return;
+                    const c = { id:String(Date.now()), text };
+                    const next = posts.map(x=> x.id===p.id? { ...x, comments:[...(x.comments||[]), c] } : x);
+                    setPosts(next);
+                  };
+                  return (
+                    <div key={p.id} className="rounded-xl border border-slate-200 bg-white p-4">
+                      {p.text && <div className="text-slate-800 whitespace-pre-wrap">{p.text}</div>}
+                      {p.media && <div className="mt-2"><img src={p.media} alt="media" className="max-h-72 rounded-lg object-cover"/></div>}
+                      <div className="mt-2 text-xs text-slate-500 flex items-center justify-between"><span>{new Date(p.created||Date.now()).toLocaleString()}</span><button onClick={()=>removePost(p.id)} className="hover:underline">Delete</button></div>
+                      <details className="mt-2">
+                        <summary className="cursor-pointer text-sm text-slate-600">Comments ({comments.length})</summary>
+                        <div className="mt-2 space-y-2">
+                          {comments.map(c=> (<div key={c.id} className="text-sm text-slate-700">• {c.text}</div>))}
+                          <CommentBox onSubmit={addComment}/>
+                        </div>
+                      </details>
+                    </div>
+                  );
+                })}
                 {posts.length===0 && <div className="text-sm text-slate-500">No posts yet in this space.</div>}
               </div>
             </>
