@@ -1,0 +1,328 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --brand-color: #1d4e89;
+  --brand-color-700: #153b66;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
+    Helvetica, Arial;
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: #fbf7f3;
+}
+
+/* Brand utilities */
+.brand-bg {
+  background-color: var(--brand-color) !important;
+  color: #fff;
+}
+
+.brand-bg:hover {
+  background-color: var(--brand-color-700) !important;
+}
+
+.brand-text {
+  color: var(--brand-color) !important;
+}
+
+.brand-border {
+  border-color: var(--brand-color) !important;
+}
+
+.brand-ring {
+  --tw-ring-color: color-mix(in srgb, var(--brand-color) 35%, white) !important;
+}
+
+.focus-brand:focus {
+  outline: none;
+  border-color: var(--brand-color-700) !important;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand-color) 30%, transparent) !important;
+}
+
+.brand-soft-bg {
+  background: color-mix(in srgb, var(--brand-color) 8%, white) !important;
+}
+
+.brand-soft-border {
+  border-color: color-mix(in srgb, var(--brand-color) 25%, white) !important;
+}
+
+.brand-soft-text {
+  color: var(--brand-color-700) !important;
+}
+
+.hover-brand-text:hover {
+  color: var(--brand-color) !important;
+}
+
+.hover-brand-border:hover {
+  border-color: var(--brand-color) !important;
+}
+
+.brand-gradient {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--brand-color) 70%, white),
+    var(--brand-color)
+  );
+}
+
+/* Header pill styles */
+.pill {
+  border: 1px solid color-mix(in srgb, var(--brand-color) 15%, #dbe3ef);
+  background: #fff;
+  color: #475569;
+}
+
+.pill:hover {
+  background: color-mix(in srgb, var(--brand-color) 6%, #fff);
+}
+
+.pill-active {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--brand-color) 20%, #9ec5ff),
+    var(--brand-color)
+  );
+  color: #fff;
+  border-color: color-mix(in srgb, var(--brand-color) 50%, #fff);
+  box-shadow: 0 10px 22px
+    color-mix(in srgb, var(--brand-color) 35%, transparent);
+}
+
+/* Primary gradient buttons */
+.btn-grad {
+  background: linear-gradient(135deg, #e6f0ff, var(--brand-color));
+  color: #fff !important;
+  border: 1.5px solid color-mix(in srgb, var(--brand-color) 55%, #1e3a5f);
+  box-shadow: 0 12px 28px
+    color-mix(in srgb, var(--brand-color) 30%, transparent);
+  transition: filter 0.15s ease, transform 0.15s ease;
+}
+
+.btn-grad:hover {
+  filter: brightness(0.97);
+  transform: translateY(-1px);
+}
+
+.btn-outline-brand {
+  border: 1.5px solid var(--brand-color);
+  color: var(--brand-color);
+  background: #fff;
+}
+
+/* Animations */
+.hover-lift {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+/* Glass effect */
+.glass-effect {
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+/* Floating animation */
+.floating-animation {
+  animation: float 6s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+/* Pulse glow */
+.pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes pulse-glow {
+  from {
+    box-shadow: 0 0 20px color-mix(in srgb, var(--brand-color) 40%, transparent);
+  }
+  to {
+    box-shadow: 0 0 30px color-mix(in srgb, var(--brand-color) 65%, transparent);
+  }
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--brand-color) 80%, white),
+    var(--brand-color)
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Sparkle effect */
+.sparkle {
+  position: relative;
+  overflow: hidden;
+}
+
+.sparkle::before {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent,
+    rgba(255, 255, 255, 0.1),
+    transparent
+  );
+  transform: rotate(45deg);
+  transition: all 0.5s;
+  opacity: 0;
+}
+
+.sparkle:hover::before {
+  animation: sparkle 0.6s ease-in-out;
+}
+
+@keyframes sparkle {
+  0% {
+    transform: translateX(-100%) translateY(-100%) rotate(45deg);
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(100%) translateY(100%) rotate(45deg);
+    opacity: 0;
+  }
+}
+
+/* Scroll Reveal Animations */
+.animate-fade-in-up {
+  opacity: 0;
+  transform: translateY(30px);
+  animation: fadeInUp 0.8s ease-out forwards;
+}
+
+.animate-fade-in-left {
+  opacity: 0;
+  transform: translateX(-30px);
+  animation: fadeInLeft 0.8s ease-out forwards;
+}
+
+.animate-fade-in-right {
+  opacity: 0;
+  transform: translateX(30px);
+  animation: fadeInRight 0.8s ease-out forwards;
+}
+
+.animate-scale-in {
+  opacity: 0;
+  transform: scale(0.9);
+  animation: scaleIn 0.6s ease-out forwards;
+}
+
+@keyframes fadeInUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInLeft {
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeInRight {
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes scaleIn {
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Staggered animations */
+.animate-stagger-1 {
+  animation-delay: 0.1s;
+}
+.animate-stagger-2 {
+  animation-delay: 0.2s;
+}
+.animate-stagger-3 {
+  animation-delay: 0.3s;
+}
+.animate-stagger-4 {
+  animation-delay: 0.4s;
+}
+.animate-stagger-5 {
+  animation-delay: 0.5s;
+}
+.animate-stagger-6 {
+  animation-delay: 0.6s;
+}
+
+/* FAQ Specific Styles */
+.faq-item {
+  transition: all 0.3s ease;
+}
+
+.faq-item:hover {
+  transform: translateY(-1px);
+}
+
+.faq-icon-container {
+  transition: all 0.3s ease;
+}
+
+.faq-icon-container:hover {
+  transform: scale(1.1);
+}
+
+/* Smooth accordion animation */
+.faq-content {
+  transition: max-height 0.5s ease-in-out, opacity 0.3s ease-in-out;
+}
+
+/* Enhanced hover effects */
+.hover-lift-subtle {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.hover-lift-subtle:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}

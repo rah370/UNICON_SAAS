@@ -1,14 +1,13 @@
 <?php
-// Simple router for PHP's built-in server.
-// - Serves existing files directly
+// Router for UNICON SaaS - React SPA with PHP API
+// - Serves React SPA for all frontend routes
 // - Routes /api/* to api/index.php
-// - Falls back to index.html for the SPA
+// - Serves static assets directly
 
 $uri = urldecode(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH));
-$file = __DIR__ . $uri;
 
-// Serve files that exist (assets, images, etc.)
-if ($uri !== '/' && file_exists($file) && !is_dir($file)) {
+// Serve static assets directly (images, CSS, JS, etc.)
+if ($uri !== '/' && file_exists(__DIR__ . $uri) && !is_dir(__DIR__ . $uri)) {
     return false; // let the built-in server handle it
 }
 
@@ -18,5 +17,7 @@ if (preg_match('#^/api(/.*)?$#', $uri)) {
     return true;
 }
 
-// Default to SPA entry
+// Serve React SPA for all other routes
+// This handles client-side routing
 require __DIR__ . '/index.html';
+return true;
