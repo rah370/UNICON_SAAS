@@ -10,17 +10,19 @@ import StudentLogin from "./pages/StudentLogin";
 import AdminLogin from "./pages/AdminLogin";
 import Register from "./pages/Register";
 import ForYou from "./pages/ForYou";
-import Profile from "./pages/Profile";
 import Community from "./pages/Community";
 import Messages from "./pages/Messages";
 import Marketplace from "./pages/Marketplace";
 import Calendar from "./pages/Calendar";
 import Settings from "./pages/Settings";
 import AdminDashboard from "./pages/AdminDashboard";
+import Profile from "./pages/Profile";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { BrandingProvider } from "./contexts/BrandingContext";
 import Header from "./components/Header";
 import BottomNav from "./components/BottomNav";
+import { EngagementNudges } from "./components/EngagementNudges";
+import OfflineManager from "./components/OfflineManager";
 
 // Protected Route Component
 function ProtectedRoute({
@@ -44,17 +46,74 @@ function ProtectedRoute({
 // Main App Layout
 function AppLayout({ children }) {
   const { isAuthenticated } = useAuth();
+  const location = window.location.pathname;
+
+  // Hide global header on Community page since it has its own header
+  const showGlobalHeader =
+    isAuthenticated && !location.startsWith("/community");
 
   return (
-    <div className="min-h-screen bg-sand-50">
-      {isAuthenticated && <Header />}
-      <main className={isAuthenticated ? "pb-16" : ""}>{children}</main>
-      {isAuthenticated && <BottomNav />}
+    <div
+      className="min-h-screen relative overflow-hidden"
+      style={{
+        background:
+          "linear-gradient(135deg, #f4f7fb 0%, #eef2f6 45%, #dfe6ed 100%)",
+      }}
+    >
+      {/* Subtle animated background */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+        <div
+          className="absolute inset-0 opacity-80"
+          style={{
+            background:
+              "linear-gradient(125deg, color-mix(in srgb, var(--brand-color, #365b6d) 8%, transparent), transparent)",
+          }}
+        ></div>
+        <div
+          className="absolute -top-24 left-1/4 w-96 h-96 rounded-full blur-3xl animate-bounce"
+          style={{
+            background:
+              "color-mix(in srgb, var(--brand-color, #365b6d) 18%, transparent)",
+          }}
+        ></div>
+        <div
+          className="absolute bottom-0 right-1/5 w-[28rem] h-[28rem] rounded-full blur-3xl animate-bounce"
+          style={{
+            animationDelay: "1s",
+            background:
+              "color-mix(in srgb, var(--brand-color, #365b6d) 12%, transparent)",
+          }}
+        ></div>
+      </div>
+
+      {/* Main Content */}
+      <div className="relative z-10">
+        {showGlobalHeader && <Header />}
+        <main className={`${isAuthenticated ? "pb-20" : ""} animate-fadeIn`}>
+          {children}
+        </main>
+        {isAuthenticated && <BottomNav />}
+        <OfflineManager />
+      </div>
     </div>
   );
 }
 
 function App() {
+  // Register service worker for offline functionality
+  useEffect(() => {
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker
+        .register("/sw.js")
+        .then((registration) => {
+          console.log("Service Worker registered successfully:", registration);
+        })
+        .catch((error) => {
+          console.log("Service Worker registration failed:", error);
+        });
+    }
+  }, []);
+
   return (
     <BrandingProvider>
       <AuthProvider>
@@ -79,17 +138,17 @@ function App() {
               }
             />
             <Route
-              path="/profile"
+              path="/community"
               element={
                 <ProtectedRoute>
                   <AppLayout>
-                    <Profile />
+                    <Community />
                   </AppLayout>
                 </ProtectedRoute>
               }
             />
             <Route
-              path="/community"
+              path="/community/:channelId"
               element={
                 <ProtectedRoute>
                   <AppLayout>
@@ -134,6 +193,16 @@ function App() {
                 <ProtectedRoute>
                   <AppLayout>
                     <Settings />
+                  </AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <AppLayout>
+                    <Profile />
                   </AppLayout>
                 </ProtectedRoute>
               }

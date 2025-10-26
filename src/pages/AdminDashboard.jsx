@@ -161,18 +161,18 @@ function AdminDashboard() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
       {/* Header */}
       <header className="bg-white shadow-sm border-b border-slate-200">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="w-full px-6 lg:px-10">
           <div className="flex h-16 items-center justify-between">
             <div className="flex items-center gap-3">
               {schoolBranding.logoData ? (
                 <img
                   src={schoolBranding.logoData}
                   alt={schoolBranding.name}
-                  className="h-10 w-10 rounded-lg object-contain"
+                  className="h-10 w-10 rounded-2xl border border-slate-200 bg-white/95 p-1 shadow-sm object-contain"
                 />
               ) : (
                 <div
-                  className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-lg"
+                  className="w-10 h-10 rounded-2xl border border-slate-200 bg-white flex items-center justify-center text-white font-bold text-lg shadow-sm"
                   style={{ backgroundColor: schoolBranding.color }}
                 >
                   U
@@ -209,7 +209,7 @@ function AdminDashboard() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+      <div className="w-full px-6 lg:px-10 py-8">
         <div className="grid lg:grid-cols-4 gap-8">
           {/* Sidebar */}
           <div className="lg:col-span-1">

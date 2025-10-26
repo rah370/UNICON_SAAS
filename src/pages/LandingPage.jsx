@@ -149,7 +149,7 @@ function LandingPage() {
                   <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-gray-200 z-50">
                     <div className="py-2">
                       <Link
-                        to="/student-login"
+                        to="/login"
                         className="block px-4 py-3 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-900 transition-colors border-l-4 border-transparent hover:border-blue-500"
                         onClick={() => setShowLoginDropdown(false)}
                       >
