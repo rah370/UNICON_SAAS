@@ -1,1076 +1,901 @@
-import React, { useState, useEffect } from "react";
+import React, { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useBranding } from "../contexts/BrandingContext";
 
-function AdminDashboard() {
-  const { user, logout } = useAuth();
+const adminPalette = {
+  primary: "#6b21a8",
+  primaryDark: "#581c87",
+  surface: "#0b1020",
+  card: "#10172c",
+  border: "rgba(255,255,255,0.08)",
+};
+
+const defaultAnnouncements = [
+  {
+    id: 1,
+    title: "Network maintenance",
+    content: "Platform will be offline Sunday 1–3 AM.",
+    createdAt: "2024-11-02T08:45:00Z",
+    audience: "Everyone",
+    status: "published",
+    reach: 86,
+  },
+  {
+    id: 2,
+    title: "New marketplace rules",
+    content: "All listings now require ID verification.",
+    createdAt: "2024-11-01T12:00:00Z",
+    audience: "Sellers",
+    status: "draft",
+    reach: 0,
+  },
+];
+
+const defaultEvents = [
+  {
+    id: 1,
+    title: "Leadership Summit",
+    date: "2024-11-18",
+    venue: "Auditorium",
+    capacity: 400,
+    rsvp: 312,
+    moderated: true,
+  },
+  {
+    id: 2,
+    title: "Winter Career Expo",
+    date: "2024-12-02",
+    venue: "Innovation Hall",
+    capacity: 250,
+    rsvp: 127,
+    moderated: false,
+  },
+];
+
+const defaultUsers = [
+  {
+    id: 1,
+    name: "Alex Johnson",
+    email: "alex@campus.edu",
+    role: "student",
+    status: "active",
+    lastLogin: "2h ago",
+  },
+  {
+    id: 2,
+    name: "Maria Garcia",
+    email: "maria@campus.edu",
+    role: "teacher",
+    status: "active",
+    lastLogin: "35m ago",
+  },
+  {
+    id: 3,
+    name: "Prof. Smith",
+    email: "smith@campus.edu",
+    role: "staff",
+    status: "suspended",
+    lastLogin: "1d ago",
+  },
+  {
+    id: 4,
+    name: "Security Desk",
+    email: "security@campus.edu",
+    role: "admin",
+    status: "active",
+    lastLogin: "Online",
+  },
+];
+
+const defaultMarketplace = [
+  {
+    id: 1,
+    title: "Chemistry kit",
+    seller: "Alex Johnson",
+    price: 80,
+    status: "pending",
+    flagged: false,
+  },
+  {
+    id: 2,
+    title: "MacBook Air 2020",
+    seller: "Maria Garcia",
+    price: 690,
+    status: "approved",
+    flagged: true,
+  },
+];
+
+function StatCard({ label, value, trend, suffix }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-white shadow-lg shadow-black/30">
+      <p className="text-xs uppercase tracking-[0.35em] text-white/50">
+        {label}
+      </p>
+      <p className="mt-2 text-3xl font-bold">
+        {value}
+        {suffix}
+      </p>
+      {trend && (
+        <p className="text-xs text-emerald-300 mt-1">
+          ▲ {trend} vs last period
+        </p>
+      )}
+    </div>
+  );
+}
+
+function SectionCard({ title, children, actions }) {
+  return (
+    <div className="rounded-3xl border border-white/[0.08] bg-white/[0.06] p-6 shadow-[0_25px_60px_rgba(0,0,0,0.45)] backdrop-blur-lg">
+      <div className="mb-5 flex flex-wrap items-center gap-3">
+        <h3 className="text-lg font-semibold text-white">{title}</h3>
+        <div className="ml-auto flex flex-wrap gap-2">{actions}</div>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+export default function AdminDashboard() {
+  const navigate = useNavigate();
+  const { user, logout, isAuthenticated } = useAuth();
   const { schoolBranding, updateSchoolBranding } = useBranding();
   const [activeTab, setActiveTab] = useState("overview");
-  const [stats, setStats] = useState({
-    totalUsers: 1247,
-    activeUsers: 892,
-    announcements: 23,
-    events: 15,
-    marketplaceItems: 45,
-    messages: 156,
+  const [announcements, setAnnouncements] = useState(defaultAnnouncements);
+  const [events, setEvents] = useState(defaultEvents);
+  const [users, setUsers] = useState(defaultUsers);
+  const [marketplace, setMarketplace] = useState(defaultMarketplace);
+
+  // Redirect to admin login if not authenticated or not admin
+  React.useEffect(() => {
+    if (!isAuthenticated || user?.role !== "admin") {
+      navigate("/admin-login");
+    }
+  }, [isAuthenticated, user, navigate]);
+
+  const [announcementForm, setAnnouncementForm] = useState({
+    title: "",
+    content: "",
+    audience: "Everyone",
   });
-
-  const [announcements, setAnnouncements] = useState([
-    {
-      id: 1,
-      title: "Welcome Back to School",
-      content: "Welcome to the new academic year...",
-      created: "2024-01-15",
-      views: 892,
-    },
-    {
-      id: 2,
-      title: "Library Hours Update",
-      content: "New library hours starting Monday...",
-      created: "2024-01-14",
-      views: 456,
-    },
-    {
-      id: 3,
-      title: "Sports Day Registration",
-      content: "Register for the annual sports day...",
-      created: "2024-01-13",
-      views: 234,
-    },
-  ]);
-
-  const [events, setEvents] = useState([
-    {
-      id: 1,
-      title: "Graduation Ceremony",
-      date: "2024-06-15",
-      attendees: 450,
-      maxAttendees: 500,
-    },
-    {
-      id: 2,
-      title: "Science Fair",
-      date: "2024-03-20",
-      attendees: 120,
-      maxAttendees: 200,
-    },
-    {
-      id: 3,
-      title: "Career Day",
-      date: "2024-04-10",
-      attendees: 89,
-      maxAttendees: 150,
-    },
-  ]);
-
-  const [users, setUsers] = useState([
-    {
-      id: 1,
-      name: "Alex Johnson",
-      email: "alex@school.edu",
-      role: "student",
-      status: "active",
-      lastLogin: "2024-01-15",
-    },
-    {
-      id: 2,
-      name: "Maria Garcia",
-      email: "maria@school.edu",
-      role: "teacher",
-      status: "active",
-      lastLogin: "2024-01-14",
-    },
-    {
-      id: 3,
-      name: "John Smith",
-      email: "john@school.edu",
-      role: "admin",
-      status: "active",
-      lastLogin: "2024-01-15",
-    },
-  ]);
-
-  const [marketplaceItems, setMarketplaceItems] = useState([
-    {
-      id: 1,
-      title: "Calculus Textbook",
-      seller: "Alex Johnson",
-      price: 45,
-      status: "active",
-      category: "textbooks",
-    },
-    {
-      id: 2,
-      title: "Laptop Stand",
-      seller: "Maria Garcia",
-      price: 25,
-      status: "sold",
-      category: "electronics",
-    },
-    {
-      id: 3,
-      title: "Chemistry Lab Kit",
-      seller: "John Smith",
-      price: 80,
-      status: "active",
-      category: "supplies",
-    },
-  ]);
-
-  const [schoolSettings, setSchoolSettings] = useState({
-    name: schoolBranding.name || "UNICON University",
-    primaryColor: schoolBranding.color || "#1a237e",
-    logo: schoolBranding.logoData || null,
-    plan: schoolBranding.plan || "Pro",
-    domain: "school.edu",
-    timezone: "UTC-5",
+  const [eventForm, setEventForm] = useState({
+    title: "",
+    date: "",
+    venue: "",
+    capacity: 100,
+  });
+  const [userSearch, setUserSearch] = useState("");
+  const [settingsForm, setSettingsForm] = useState({
+    name: schoolBranding.name || "UNICON Admin",
+    domain: "campus.edu",
+    timezone: "UTC",
+    color: schoolBranding.color || adminPalette.primary,
     language: "English",
   });
 
-  const handleLogoUpload = async (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const logoData = e.target.result;
-        updateSchoolBranding({ logoData });
-        setSchoolSettings((prev) => ({ ...prev, logo: logoData }));
-      };
-      reader.readAsDataURL(file);
-    }
+  const filteredUsers = useMemo(() => {
+    if (!userSearch.trim()) return users;
+    return users.filter(
+      (u) =>
+        u.name.toLowerCase().includes(userSearch.toLowerCase()) ||
+        u.email.toLowerCase().includes(userSearch.toLowerCase())
+    );
+  }, [users, userSearch]);
+
+  const overviewStats = useMemo(
+    () => [
+      { label: "Total users", value: users.length, trend: "4.2%" },
+      {
+        label: "Announcements",
+        value: announcements.length,
+        trend: "1 new",
+      },
+      {
+        label: "Events",
+        value: events.length,
+        suffix: "",
+        trend: "2 live",
+      },
+      {
+        label: "Marketplace",
+        value: marketplace.length,
+        trend: "3 pending",
+      },
+    ],
+    [users.length, announcements.length, events.length, marketplace.length]
+  );
+
+  const addAnnouncement = () => {
+    if (!announcementForm.title.trim() || !announcementForm.content.trim())
+      return;
+    setAnnouncements((prev) => [
+      {
+        id: Date.now(),
+        ...announcementForm,
+        status: "draft",
+        createdAt: new Date().toISOString(),
+        reach: 0,
+      },
+      ...prev,
+    ]);
+    setAnnouncementForm({ title: "", content: "", audience: "Everyone" });
   };
 
-  const handleSettingsUpdate = (field, value) => {
-    setSchoolSettings((prev) => ({ ...prev, [field]: value }));
-    if (field === "name" || field === "primaryColor" || field === "logo") {
+  const publishAnnouncement = (id) => {
+    setAnnouncements((prev) =>
+      prev.map((item) =>
+        item.id === id ? { ...item, status: "published", reach: 100 } : item
+      )
+    );
+  };
+
+  const archiveAnnouncement = (id) => {
+    setAnnouncements((prev) => prev.filter((item) => item.id !== id));
+  };
+
+  const addEvent = () => {
+    if (!eventForm.title || !eventForm.date || !eventForm.venue) return;
+    setEvents((prev) => [
+      {
+        id: Date.now(),
+        ...eventForm,
+        rsvp: 0,
+        moderated: true,
+      },
+      ...prev,
+    ]);
+    setEventForm({ title: "", date: "", venue: "", capacity: 100 });
+  };
+
+  const approveListing = (id, status) => {
+    setMarketplace((prev) =>
+      prev.map((item) =>
+        item.id === id
+          ? { ...item, status, flagged: status !== "approved" }
+          : item
+      )
+    );
+  };
+
+  const toggleUserStatus = (id) => {
+    setUsers((prev) =>
+      prev.map((user) =>
+        user.id === id
+          ? {
+              ...user,
+              status: user.status === "active" ? "suspended" : "active",
+            }
+          : user
+      )
+    );
+  };
+
+  const updateSettings = (field, value) => {
+    setSettingsForm((prev) => ({ ...prev, [field]: value }));
+    if (field === "name" || field === "color") {
       updateSchoolBranding({ [field]: value });
     }
   };
 
-  const tabs = [
-    { id: "overview", label: "Overview", icon: "Dashboard" },
-    { id: "announcements", label: "Announcements", icon: "Announce" },
-    { id: "events", label: "Events", icon: "Calendar" },
-    { id: "users", label: "Users", icon: "Users" },
-    { id: "marketplace", label: "Marketplace", icon: "Store" },
-    { id: "analytics", label: "Analytics", icon: "Chart" },
-    { id: "settings", label: "Settings", icon: "Settings" },
-  ];
+  const tabClass = (id) =>
+    `rounded-2xl px-4 py-3 text-sm font-semibold transition border border-white/10 ${
+      activeTab === id
+        ? "text-white bg-white/15"
+        : "text-white/60 hover:text-white"
+    }`;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b border-slate-200">
-        <div className="w-full px-6 lg:px-10">
-          <div className="flex h-16 items-center justify-between">
-            <div className="flex items-center gap-3">
-              {schoolBranding.logoData ? (
-                <img
-                  src={schoolBranding.logoData}
-                  alt={schoolBranding.name}
-                  className="h-10 w-10 rounded-2xl border border-slate-200 bg-white/95 p-1 shadow-sm object-contain"
-                />
-              ) : (
-                <div
-                  className="w-10 h-10 rounded-2xl border border-slate-200 bg-white flex items-center justify-center text-white font-bold text-lg shadow-sm"
-                  style={{ backgroundColor: schoolBranding.color }}
-                >
-                  U
-                </div>
-              )}
-              <div>
-                <h1
-                  className="text-xl font-bold"
-                  style={{ color: schoolBranding.color }}
-                >
-                  {schoolBranding.name} Admin
-                </h1>
-                <p className="text-sm text-slate-500">
-                  Administrative Dashboard
-                </p>
-              </div>
+    <div
+      className="min-h-screen"
+      style={{ background: "linear-gradient(135deg,#05070e,#1e1140)" }}
+    >
+      <header className="border-b border-white/10 bg-black/30 backdrop-blur">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4 text-white">
+          <div className="flex items-center gap-3">
+            <div className="rounded-2xl border border-white/20 bg-white/10 p-2">
+              <span className="text-sm font-semibold">
+                {schoolBranding.name?.[0] || "A"}
+              </span>
             </div>
-
-            <div className="flex items-center gap-4">
-              <div className="text-right">
-                <p className="text-sm font-medium text-slate-900">
-                  {user?.name}
-                </p>
-                <p className="text-xs text-slate-500">{user?.role}</p>
-              </div>
+            <div>
+              <p className="text-sm uppercase tracking-[0.35em] text-white/60">
+                Admin Command
+              </p>
+              <h1 className="text-xl font-bold">{schoolBranding.name}</h1>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 text-sm">
+            <div>
+              <p className="font-semibold">{user?.name}</p>
+              <p className="text-white/60">{user?.role}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => navigate("/for-you")}
+                className="rounded-full border border-white/20 px-4 py-1 text-sm font-semibold text-white/80 hover:border-white/60 hover:bg-white/5 transition-colors"
+              >
+                Student view
+              </button>
               <button
                 onClick={logout}
-                className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
+                className="rounded-full border border-white/20 px-4 py-1 text-sm font-semibold text-white/80 hover:border-white/60 hover:bg-red-500/10 transition-colors"
               >
-                Logout
+                Log out
               </button>
             </div>
           </div>
         </div>
       </header>
 
-      <div className="w-full px-6 lg:px-10 py-8">
-        <div className="grid lg:grid-cols-4 gap-8">
-          {/* Sidebar */}
-          <div className="lg:col-span-1">
-            <nav className="space-y-2">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 text-left rounded-lg transition-colors ${
-                    activeTab === tab.id
-                      ? "text-white shadow-lg"
-                      : "text-slate-600 hover:bg-white hover:shadow-sm"
-                  }`}
-                  style={{
-                    backgroundColor:
-                      activeTab === tab.id
-                        ? schoolBranding.color
-                        : "transparent",
-                  }}
-                >
-                  <span className="text-sm font-medium">{tab.icon}</span>
-                  <span className="font-medium">{tab.label}</span>
-                </button>
-              ))}
-            </nav>
-          </div>
+      <main className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-8 text-white lg:flex-row">
+        <aside className="lg:w-64">
+          <nav className="sticky top-6 flex flex-col gap-2">
+            {[
+              ["/admin-dashboard", "Overview", "overview"],
+              ["/admin/announcements", "Announcements", "announcements"],
+              ["/admin/events", "Events", "events"],
+              ["/admin/users", "People", "users"],
+              ["/admin/marketplace", "Marketplace", "marketplace"],
+              ["/admin/analytics", "Analytics", "analytics"],
+              ["/admin/settings", "Settings", "settings"],
+            ].map(([path, label, id]) => (
+              <button
+                key={id}
+                className={tabClass(id)}
+                onClick={() => navigate(path)}
+              >
+                {label}
+              </button>
+            ))}
+          </nav>
+        </aside>
 
-          {/* Main Content */}
-          <div className="lg:col-span-3">
-            {/* Overview Tab */}
-            {activeTab === "overview" && (
-              <div className="space-y-6">
-                <div>
-                  <h2 className="text-2xl font-bold text-slate-900 mb-6">
-                    Dashboard Overview
-                  </h2>
-
-                  {/* Stats Grid */}
-                  <div className="grid grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-                    <div className="bg-white p-6 rounded-xl shadow-sm border">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-slate-600">
-                            Total Users
-                          </p>
-                          <p
-                            className="text-3xl font-bold"
-                            style={{ color: schoolBranding.color }}
-                          >
-                            {stats.totalUsers.toLocaleString()}
-                          </p>
-                        </div>
-                        <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                          <span className="text-sm font-semibold text-blue-600">
-                            Users
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="bg-white p-6 rounded-xl shadow-sm border">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-slate-600">
-                            Active Users
-                          </p>
-                          <p
-                            className="text-3xl font-bold"
-                            style={{ color: schoolBranding.color }}
-                          >
-                            {stats.activeUsers.toLocaleString()}
-                          </p>
-                        </div>
-                        <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                          <span className="text-sm font-semibold text-green-600">
-                            Active
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="bg-white p-6 rounded-xl shadow-sm border">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-slate-600">
-                            Announcements
-                          </p>
-                          <p
-                            className="text-3xl font-bold"
-                            style={{ color: schoolBranding.color }}
-                          >
-                            {stats.announcements}
-                          </p>
-                        </div>
-                        <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                          <span className="text-sm font-semibold text-purple-600">
-                            Announce
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="bg-white p-6 rounded-xl shadow-sm border">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-slate-600">
-                            Events
-                          </p>
-                          <p
-                            className="text-3xl font-bold"
-                            style={{ color: schoolBranding.color }}
-                          >
-                            {stats.events}
-                          </p>
-                        </div>
-                        <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                          <span className="text-sm font-semibold text-orange-600">
-                            Events
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="bg-white p-6 rounded-xl shadow-sm border">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-slate-600">
-                            Marketplace Items
-                          </p>
-                          <p
-                            className="text-3xl font-bold"
-                            style={{ color: schoolBranding.color }}
-                          >
-                            {stats.marketplaceItems}
-                          </p>
-                        </div>
-                        <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                          <span className="text-sm font-semibold text-yellow-600">
-                            Store
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="bg-white p-6 rounded-xl shadow-sm border">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-slate-600">
-                            Messages
-                          </p>
-                          <p
-                            className="text-3xl font-bold"
-                            style={{ color: schoolBranding.color }}
-                          >
-                            {stats.messages}
-                          </p>
-                        </div>
-                        <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center">
-                          <span className="text-sm font-semibold text-indigo-600">
-                            Messages
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Recent Activity */}
-                  <div className="bg-white rounded-xl shadow-sm border p-6">
-                    <h3 className="text-lg font-semibold text-slate-900 mb-4">
-                      Recent Activity
-                    </h3>
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
-                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                          <span className="text-blue-600 text-sm font-semibold">
-                            A
-                          </span>
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-slate-900">
-                            New announcement published
-                          </p>
-                          <p className="text-xs text-slate-500">2 hours ago</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
-                        <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                          <span className="text-green-600 text-sm font-semibold">
-                            U
-                          </span>
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-slate-900">
-                            New user registered
-                          </p>
-                          <p className="text-xs text-slate-500">4 hours ago</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
-                        <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                          <span className="text-purple-600 text-sm font-semibold">
-                            E
-                          </span>
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-slate-900">
-                            Event created
-                          </p>
-                          <p className="text-xs text-slate-500">6 hours ago</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+        <section className="flex-1 space-y-6 pb-16">
+          {activeTab === "overview" && (
+            <div className="space-y-6">
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                {overviewStats.map((stat) => (
+                  <StatCard key={stat.label} {...stat} />
+                ))}
               </div>
-            )}
 
-            {/* Announcements Tab */}
-            {activeTab === "announcements" && (
-              <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-2xl font-bold text-slate-900">
-                    Announcements
-                  </h2>
-                  <button
-                    className="px-4 py-2 text-white font-medium rounded-lg shadow-lg hover:shadow-xl transition-all"
-                    style={{ backgroundColor: schoolBranding.color }}
-                  >
-                    + Create Announcement
-                  </button>
-                </div>
-
-                <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-slate-200">
-                      <thead className="bg-slate-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                            Title
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                            Created
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                            Views
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                            Actions
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-slate-200">
-                        {announcements.map((announcement) => (
-                          <tr key={announcement.id}>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm font-medium text-slate-900">
-                                {announcement.title}
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-                              {announcement.created}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-                              {announcement.views}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                              <button className="text-blue-600 hover:text-blue-900 mr-3">
-                                Edit
-                              </button>
-                              <button className="text-red-600 hover:text-red-900">
-                                Delete
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Events Tab */}
-            {activeTab === "events" && (
-              <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-2xl font-bold text-slate-900">Events</h2>
-                  <button
-                    className="px-4 py-2 text-white font-medium rounded-lg shadow-lg hover:shadow-xl transition-all"
-                    style={{ backgroundColor: schoolBranding.color }}
-                  >
-                    + Create Event
-                  </button>
-                </div>
-
-                <div className="grid gap-6">
-                  {events.map((event) => (
+              <SectionCard title="Automation queue">
+                <div className="grid gap-3 text-sm text-white/80 lg:grid-cols-2">
+                  {[
+                    "Auto-approve verified student marketplace items",
+                    "Escalate flagged messages to moderators",
+                    "Sync Google Calendar schedule to campus feed",
+                    "Trigger onboarding drip for new freshmen",
+                  ].map((task, index) => (
                     <div
-                      key={event.id}
-                      className="bg-white rounded-xl shadow-sm border p-6"
+                      key={task}
+                      className="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/20 p-3"
                     >
-                      <div className="flex items-center justify-between">
+                      <span className="rounded-full bg-white/10 px-2 py-1 text-xs">
+                        #{index + 1}
+                      </span>
+                      <p>{task}</p>
+                      <span className="ml-auto text-emerald-300 text-xs">
+                        Active
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </SectionCard>
+            </div>
+          )}
+
+          {activeTab === "announcements" && (
+            <div className="space-y-5">
+              <SectionCard
+                title="Compose announcement"
+                actions={
+                  <button
+                    onClick={addAnnouncement}
+                    className="rounded-full px-4 py-2 text-sm font-semibold"
+                    style={{ backgroundColor: adminPalette.primary }}
+                  >
+                    Publish draft
+                  </button>
+                }
+              >
+                <div className="grid gap-4 text-sm text-white/80 lg:grid-cols-3">
+                  <input
+                    value={announcementForm.title}
+                    onChange={(e) =>
+                      setAnnouncementForm((prev) => ({
+                        ...prev,
+                        title: e.target.value,
+                      }))
+                    }
+                    placeholder="Title"
+                    className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2 text-white"
+                  />
+                  <select
+                    value={announcementForm.audience}
+                    onChange={(e) =>
+                      setAnnouncementForm((prev) => ({
+                        ...prev,
+                        audience: e.target.value,
+                      }))
+                    }
+                    className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2 text-white"
+                  >
+                    <option>Everyone</option>
+                    <option>Students</option>
+                    <option>Faculty</option>
+                    <option>Admins</option>
+                  </select>
+                </div>
+                <textarea
+                  value={announcementForm.content}
+                  onChange={(e) =>
+                    setAnnouncementForm((prev) => ({
+                      ...prev,
+                      content: e.target.value,
+                    }))
+                  }
+                  placeholder="Share details..."
+                  rows={4}
+                  className="mt-3 w-full rounded-2xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"
+                />
+              </SectionCard>
+
+              <SectionCard title="Announcement pipeline">
+                <div className="space-y-3">
+                  {announcements.map((item) => (
+                    <div
+                      key={item.id}
+                      className="rounded-2xl border border-white/10 bg-black/30 p-4 text-sm"
+                    >
+                      <div className="flex flex-wrap gap-3">
                         <div>
-                          <h3 className="text-lg font-semibold text-slate-900">
-                            {event.title}
-                          </h3>
-                          <p className="text-sm text-slate-500">
-                            Date: {event.date}
+                          <p className="font-semibold text-white">
+                            {item.title}
                           </p>
-                          <div className="mt-2">
-                            <div className="flex items-center gap-2">
-                              <div className="w-full bg-slate-200 rounded-full h-2">
-                                <div
-                                  className="h-2 rounded-full"
-                                  style={{
-                                    width: `${
-                                      (event.attendees / event.maxAttendees) *
-                                      100
-                                    }%`,
-                                    backgroundColor: schoolBranding.color,
-                                  }}
-                                ></div>
-                              </div>
-                              <span className="text-sm text-slate-600">
-                                {event.attendees}/{event.maxAttendees}
-                              </span>
-                            </div>
-                          </div>
+                          <p className="text-white/60">
+                            {item.content.slice(0, 120)}
+                            {item.content.length > 120 ? "…" : ""}
+                          </p>
                         </div>
-                        <div className="flex gap-2">
-                          <button className="px-3 py-1 text-sm text-blue-600 hover:text-blue-900 border border-blue-300 rounded-lg hover:bg-blue-50">
-                            Edit
-                          </button>
-                          <button className="px-3 py-1 text-sm text-red-600 hover:text-red-900 border border-red-300 rounded-lg hover:bg-red-50">
-                            Delete
-                          </button>
+                        <div className="ml-auto flex items-center gap-2 text-xs">
+                          <span className="rounded-full bg-white/10 px-3 py-1">
+                            {item.audience}
+                          </span>
+                          <span className="text-white/50">
+                            {new Date(item.createdAt).toLocaleString()}
+                          </span>
                         </div>
+                      </div>
+                      <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                        <button
+                          onClick={() => publishAnnouncement(item.id)}
+                          className="rounded-full border border-white/20 px-3 py-1 text-white/80"
+                        >
+                          Publish
+                        </button>
+                        <button
+                          onClick={() => archiveAnnouncement(item.id)}
+                          className="rounded-full border border-white/20 px-3 py-1 text-red-300"
+                        >
+                          Archive
+                        </button>
+                        {item.status === "published" && (
+                          <span className="ml-auto text-emerald-300">
+                            Reach {item.reach}%
+                          </span>
+                        )}
                       </div>
                     </div>
                   ))}
                 </div>
-              </div>
-            )}
+              </SectionCard>
+            </div>
+          )}
 
-            {/* Users Tab */}
-            {activeTab === "users" && (
-              <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-2xl font-bold text-slate-900">Users</h2>
+          {activeTab === "events" && (
+            <div className="space-y-5">
+              <SectionCard
+                title="Schedule event"
+                actions={
                   <button
-                    className="px-4 py-2 text-white font-medium rounded-lg shadow-lg hover:shadow-xl transition-all"
-                    style={{ backgroundColor: schoolBranding.color }}
+                    onClick={addEvent}
+                    className="rounded-full px-4 py-2 text-sm font-semibold"
+                    style={{ backgroundColor: adminPalette.primary }}
                   >
-                    + Add User
+                    Save event
                   </button>
+                }
+              >
+                <div className="grid gap-3 text-sm text-white/80 lg:grid-cols-4">
+                  <input
+                    value={eventForm.title}
+                    onChange={(e) =>
+                      setEventForm((prev) => ({
+                        ...prev,
+                        title: e.target.value,
+                      }))
+                    }
+                    placeholder="Event title"
+                    className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2 text-white"
+                  />
+                  <input
+                    type="date"
+                    value={eventForm.date}
+                    onChange={(e) =>
+                      setEventForm((prev) => ({
+                        ...prev,
+                        date: e.target.value,
+                      }))
+                    }
+                    className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2 text-white"
+                  />
+                  <input
+                    value={eventForm.venue}
+                    onChange={(e) =>
+                      setEventForm((prev) => ({
+                        ...prev,
+                        venue: e.target.value,
+                      }))
+                    }
+                    placeholder="Venue"
+                    className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2 text-white"
+                  />
+                  <input
+                    type="number"
+                    min={1}
+                    value={eventForm.capacity}
+                    onChange={(e) =>
+                      setEventForm((prev) => ({
+                        ...prev,
+                        capacity: Number(e.target.value),
+                      }))
+                    }
+                    className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2 text-white"
+                  />
                 </div>
+              </SectionCard>
 
-                <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-slate-200">
-                      <thead className="bg-slate-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                            Name
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                            Email
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                            Role
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                            Status
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                            Last Login
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                            Actions
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-slate-200">
-                        {users.map((user) => (
-                          <tr key={user.id}>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm font-medium text-slate-900">
-                                {user.name}
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-                              {user.email}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span
-                                className={`px-2 py-1 text-xs font-medium rounded-full ${
-                                  user.role === "admin"
-                                    ? "bg-red-100 text-red-800"
-                                    : user.role === "teacher"
-                                    ? "bg-blue-100 text-blue-800"
-                                    : "bg-green-100 text-green-800"
-                                }`}
-                              >
-                                {user.role}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span
-                                className={`px-2 py-1 text-xs font-medium rounded-full ${
-                                  user.status === "active"
-                                    ? "bg-green-100 text-green-800"
-                                    : "bg-red-100 text-red-800"
-                                }`}
-                              >
-                                {user.status}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-                              {user.lastLogin}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                              <button className="text-blue-600 hover:text-blue-900 mr-3">
-                                Edit
-                              </button>
-                              <button className="text-red-600 hover:text-red-900">
-                                Suspend
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Marketplace Tab */}
-            {activeTab === "marketplace" && (
-              <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-2xl font-bold text-slate-900">
-                    Marketplace
-                  </h2>
-                  <div className="flex gap-2">
-                    <select className="px-3 py-2 border border-slate-300 rounded-lg text-sm">
-                      <option>All Categories</option>
-                      <option>Textbooks</option>
-                      <option>Electronics</option>
-                      <option>Supplies</option>
-                    </select>
-                    <button
-                      className="px-4 py-2 text-white font-medium rounded-lg shadow-lg hover:shadow-xl transition-all"
-                      style={{ backgroundColor: schoolBranding.color }}
+              <SectionCard title="Event approvals">
+                <div className="space-y-3 text-sm text-white/80">
+                  {events.map((event) => (
+                    <div
+                      key={event.id}
+                      className="rounded-2xl border border-white/10 bg-black/30 p-4 flex flex-wrap gap-3"
                     >
-                      Manage Items
-                    </button>
-                  </div>
-                </div>
-
-                <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-slate-200">
-                      <thead className="bg-slate-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                            Item
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                            Seller
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                            Price
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                            Category
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                            Status
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                            Actions
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-slate-200">
-                        {marketplaceItems.map((item) => (
-                          <tr key={item.id}>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm font-medium text-slate-900">
-                                {item.title}
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-                              {item.seller}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-                              ${item.price}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-                              {item.category}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span
-                                className={`px-2 py-1 text-xs font-medium rounded-full ${
-                                  item.status === "active"
-                                    ? "bg-green-100 text-green-800"
-                                    : "bg-gray-100 text-gray-800"
-                                }`}
-                              >
-                                {item.status}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                              <button className="text-blue-600 hover:text-blue-900 mr-3">
-                                View
-                              </button>
-                              <button className="text-red-600 hover:text-red-900">
-                                Remove
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Analytics Tab */}
-            {activeTab === "analytics" && (
-              <div className="space-y-6">
-                <h2 className="text-2xl font-bold text-slate-900">Analytics</h2>
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <div className="bg-white rounded-xl shadow-sm border p-6">
-                    <h3 className="text-lg font-semibold text-slate-900 mb-4">
-                      User Engagement
-                    </h3>
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-slate-600">
-                          Daily Active Users
-                        </span>
-                        <span
-                          className="text-sm font-semibold"
-                          style={{ color: schoolBranding.color }}
-                        >
-                          892
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-slate-600">
-                          Weekly Active Users
-                        </span>
-                        <span
-                          className="text-sm font-semibold"
-                          style={{ color: schoolBranding.color }}
-                        >
-                          1,156
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-slate-600">
-                          Monthly Active Users
-                        </span>
-                        <span
-                          className="text-sm font-semibold"
-                          style={{ color: schoolBranding.color }}
-                        >
-                          1,247
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-white rounded-xl shadow-sm border p-6">
-                    <h3 className="text-lg font-semibold text-slate-900 mb-4">
-                      Content Performance
-                    </h3>
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-slate-600">
-                          Announcement Views
-                        </span>
-                        <span
-                          className="text-sm font-semibold"
-                          style={{ color: schoolBranding.color }}
-                        >
-                          2,456
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-slate-600">
-                          Event RSVPs
-                        </span>
-                        <span
-                          className="text-sm font-semibold"
-                          style={{ color: schoolBranding.color }}
-                        >
-                          659
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-slate-600">
-                          Messages Sent
-                        </span>
-                        <span
-                          className="text-sm font-semibold"
-                          style={{ color: schoolBranding.color }}
-                        >
-                          1,234
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-white rounded-xl shadow-sm border p-6">
-                  <h3 className="text-lg font-semibold text-slate-900 mb-4">
-                    Growth Metrics
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="text-center">
-                      <div className="text-3xl font-bold text-green-600">
-                        +12%
-                      </div>
-                      <div className="text-sm text-slate-600">User Growth</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-3xl font-bold text-blue-600">
-                        +8%
-                      </div>
-                      <div className="text-sm text-slate-600">Engagement</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-3xl font-bold text-purple-600">
-                        +15%
-                      </div>
-                      <div className="text-sm text-slate-600">
-                        Content Views
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Settings Tab */}
-            {activeTab === "settings" && (
-              <div className="space-y-6">
-                <h2 className="text-2xl font-bold text-slate-900">
-                  School Settings
-                </h2>
-
-                <div className="bg-white rounded-xl shadow-sm border p-6">
-                  <h3 className="text-lg font-semibold text-slate-900 mb-6">
-                    Branding & Appearance
-                  </h3>
-
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div className="space-y-4">
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">
-                          School Name
-                        </label>
-                        <input
-                          type="text"
-                          value={schoolSettings.name}
-                          onChange={(e) =>
-                            handleSettingsUpdate("name", e.target.value)
-                          }
-                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        />
+                        <p className="text-white font-semibold">
+                          {event.title}
+                        </p>
+                        <p className="text-xs text-white/60">
+                          {event.date} • {event.venue}
+                        </p>
                       </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">
-                          Primary Color
-                        </label>
-                        <div className="flex items-center gap-3">
+                      <div className="ml-auto flex items-center gap-3 text-xs">
+                        <span className="text-white/60">
+                          RSVP {event.rsvp}/{event.capacity}
+                        </span>
+                        <label className="inline-flex items-center gap-1">
                           <input
-                            type="color"
-                            value={schoolSettings.primaryColor}
-                            onChange={(e) =>
-                              handleSettingsUpdate(
-                                "primaryColor",
-                                e.target.value
+                            type="checkbox"
+                            checked={event.moderated}
+                            onChange={() =>
+                              setEvents((prev) =>
+                                prev.map((e) =>
+                                  e.id === event.id
+                                    ? { ...e, moderated: !e.moderated }
+                                    : e
+                                )
                               )
                             }
-                            className="w-12 h-10 border border-slate-300 rounded-lg cursor-pointer"
                           />
-                          <input
-                            type="text"
-                            value={schoolSettings.primaryColor}
-                            onChange={(e) =>
-                              handleSettingsUpdate(
-                                "primaryColor",
-                                e.target.value
-                              )
-                            }
-                            className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">
-                          School Logo
+                          <span>Moderation</span>
                         </label>
-                        <div className="flex items-center gap-4">
-                          {schoolSettings.logo ? (
-                            <img
-                              src={schoolSettings.logo}
-                              alt="School Logo"
-                              className="w-16 h-16 rounded-lg object-contain border border-slate-300"
-                            />
-                          ) : (
-                            <div className="w-16 h-16 rounded-lg border-2 border-dashed border-slate-300 flex items-center justify-center">
-                              <span className="text-slate-400 text-sm">
-                                No logo
-                              </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </SectionCard>
+            </div>
+          )}
+
+          {activeTab === "users" && (
+            <div className="space-y-6">
+              <SectionCard
+                title="User Management"
+                actions={
+                  <button
+                    onClick={() => alert("Bulk import feature coming soon")}
+                    className="rounded-full border border-white/20 px-4 py-2 text-sm font-semibold text-white/80 hover:border-white/60"
+                  >
+                    + Import Users
+                  </button>
+                }
+              >
+                <div className="space-y-4">
+                  <div className="flex gap-3">
+                    <input
+                      placeholder="Search by name or email…"
+                      value={userSearch}
+                      onChange={(e) => setUserSearch(e.target.value)}
+                      className="flex-1 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white placeholder-white/40"
+                    />
+                    <select className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white">
+                      <option>All Roles</option>
+                      <option>Students</option>
+                      <option>Teachers</option>
+                      <option>Staff</option>
+                      <option>Admins</option>
+                    </select>
+                    <select className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white">
+                      <option>All Status</option>
+                      <option>Active</option>
+                      <option>Suspended</option>
+                    </select>
+                  </div>
+
+                  <div className="overflow-hidden rounded-2xl border border-white/10">
+                    <div className="grid grid-cols-6 border-b border-white/10 bg-black/30 px-4 py-3 text-xs font-semibold text-white/60">
+                      <span className="col-span-2">User</span>
+                      <span>Role</span>
+                      <span>Status</span>
+                      <span>Last Login</span>
+                      <span className="text-center">Actions</span>
+                    </div>
+                    <div className="max-h-[500px] overflow-y-auto">
+                      {filteredUsers.map((u) => (
+                        <div
+                          key={u.id}
+                          className="grid grid-cols-6 items-center border-b border-white/5 bg-black/20 px-4 py-4 text-sm last:border-b-0 hover:bg-black/30 transition-colors"
+                        >
+                          <div className="col-span-2 flex items-center gap-3">
+                            <div className="rounded-xl border border-white/10 bg-white/5 flex h-10 w-10 items-center justify-center text-xs font-bold">
+                              {u.name
+                                .split(" ")
+                                .map((n) => n[0])
+                                .join("")}
                             </div>
-                          )}
-                          <div>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              onChange={handleLogoUpload}
-                              className="hidden"
-                              id="logo-upload"
-                            />
-                            <label
-                              htmlFor="logo-upload"
-                              className="px-4 py-2 text-sm font-medium text-white rounded-lg cursor-pointer hover:shadow-lg transition-all"
-                              style={{ backgroundColor: schoolBranding.color }}
+                            <div>
+                              <p className="font-semibold text-white">
+                                {u.name}
+                              </p>
+                              <p className="text-xs text-white/50">{u.email}</p>
+                            </div>
+                          </div>
+                          <select
+                            value={u.role}
+                            onChange={(e) =>
+                              setUsers((prev) =>
+                                prev.map((user) =>
+                                  user.id === u.id
+                                    ? { ...user, role: e.target.value }
+                                    : user
+                                )
+                              )
+                            }
+                            className="rounded-xl border border-white/10 bg-black/30 px-3 py-1.5 text-xs text-white"
+                          >
+                            <option value="student">Student</option>
+                            <option value="teacher">Teacher</option>
+                            <option value="staff">Staff</option>
+                            <option value="admin">Admin</option>
+                          </select>
+                          <span
+                            className={`inline-block rounded-full px-3 py-1 text-center text-xs font-semibold ${
+                              u.status === "active"
+                                ? "bg-emerald-500/20 text-emerald-300"
+                                : "bg-red-500/20 text-red-300"
+                            }`}
+                          >
+                            {u.status}
+                          </span>
+                          <span className="text-xs text-white/60">
+                            {u.lastLogin}
+                          </span>
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => toggleUserStatus(u.id)}
+                              className={`rounded-lg px-3 py-1 text-xs font-semibold transition hover:opacity-80 ${
+                                u.status === "active"
+                                  ? "bg-red-500/20 text-red-300 border border-red-500/30"
+                                  : "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                              }`}
                             >
-                              Upload Logo
-                            </label>
-                            <p className="text-xs text-slate-500 mt-1">
-                              PNG, JPG up to 2MB
-                            </p>
+                              {u.status === "active" ? "Suspend" : "Restore"}
+                            </button>
+                            <button
+                              onClick={() =>
+                                alert(`Delete user ${u.name}?`) &&
+                                setUsers((prev) =>
+                                  prev.filter((user) => user.id !== u.id)
+                                )
+                              }
+                              className="rounded-lg border border-white/20 px-3 py-1 text-xs font-semibold text-red-300 hover:border-red-500/50 hover:bg-red-500/10"
+                            >
+                              Delete
+                            </button>
                           </div>
                         </div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">
-                          School Domain
-                        </label>
-                        <input
-                          type="text"
-                          value={schoolSettings.domain}
-                          onChange={(e) =>
-                            handleSettingsUpdate("domain", e.target.value)
-                          }
-                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">
-                          Timezone
-                        </label>
-                        <select
-                          value={schoolSettings.timezone}
-                          onChange={(e) =>
-                            handleSettingsUpdate("timezone", e.target.value)
-                          }
-                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        >
-                          <option value="UTC-5">UTC-5 (Eastern)</option>
-                          <option value="UTC-6">UTC-6 (Central)</option>
-                          <option value="UTC-7">UTC-7 (Mountain)</option>
-                          <option value="UTC-8">UTC-8 (Pacific)</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">
-                          Language
-                        </label>
-                        <select
-                          value={schoolSettings.language}
-                          onChange={(e) =>
-                            handleSettingsUpdate("language", e.target.value)
-                          }
-                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        >
-                          <option value="English">English</option>
-                          <option value="Spanish">Spanish</option>
-                          <option value="French">French</option>
-                          <option value="German">German</option>
-                        </select>
-                      </div>
+                      ))}
                     </div>
                   </div>
+                </div>
+              </SectionCard>
 
-                  <div className="mt-6 pt-6 border-t border-slate-200">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="text-sm font-medium text-slate-900">
-                          Current Plan
-                        </h4>
-                        <p className="text-sm text-slate-500">
-                          {schoolSettings.plan} Plan
-                        </p>
-                      </div>
+              <SectionCard title="User Statistics">
+                <div className="grid gap-4 text-sm sm:grid-cols-4">
+                  <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
+                    <p className="text-xs uppercase tracking-[0.35em] text-white/50">
+                      Total Users
+                    </p>
+                    <p className="mt-2 text-2xl font-bold text-white">
+                      {users.length}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
+                    <p className="text-xs uppercase tracking-[0.35em] text-white/50">
+                      Active
+                    </p>
+                    <p className="mt-2 text-2xl font-bold text-emerald-300">
+                      {users.filter((u) => u.status === "active").length}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
+                    <p className="text-xs uppercase tracking-[0.35em] text-white/50">
+                      Suspended
+                    </p>
+                    <p className="mt-2 text-2xl font-bold text-red-300">
+                      {users.filter((u) => u.status === "suspended").length}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
+                    <p className="text-xs uppercase tracking-[0.35em] text-white/50">
+                      Students
+                    </p>
+                    <p className="mt-2 text-2xl font-bold text-blue-300">
+                      {users.filter((u) => u.role === "student").length}
+                    </p>
+                  </div>
+                </div>
+              </SectionCard>
+            </div>
+          )}
+
+          {activeTab === "marketplace" && (
+            <SectionCard title="Listing review">
+              <div className="space-y-3 text-sm text-white/80">
+                {marketplace.map((item) => (
+                  <div
+                    key={item.id}
+                    className="rounded-2xl border border-white/10 bg-black/30 p-4 flex flex-wrap gap-3"
+                  >
+                    <div>
+                      <p className="text-white font-semibold">{item.title}</p>
+                      <p className="text-white/60">
+                        {item.seller} • ${item.price}
+                      </p>
+                    </div>
+                    <div className="ml-auto flex items-center gap-2 text-xs">
                       <button
-                        className="px-4 py-2 text-white font-medium rounded-lg shadow-lg hover:shadow-xl transition-all"
-                        style={{ backgroundColor: schoolBranding.color }}
+                        onClick={() => approveListing(item.id, "approved")}
+                        className="rounded-full border border-white/20 px-3 py-1 text-emerald-300"
                       >
-                        Upgrade Plan
+                        Approve
                       </button>
+                      <button
+                        onClick={() => approveListing(item.id, "rejected")}
+                        className="rounded-full border border-white/20 px-3 py-1 text-red-300"
+                      >
+                        Reject
+                      </button>
+                      {item.flagged && (
+                        <span className="ml-2 rounded-full bg-red-500/20 px-2 py-1 text-red-200">
+                          Flagged
+                        </span>
+                      )}
                     </div>
                   </div>
-                </div>
-
-                <div className="bg-white rounded-xl shadow-sm border p-6">
-                  <h3 className="text-lg font-semibold text-slate-900 mb-4">
-                    Security Settings
-                  </h3>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="text-sm font-medium text-slate-900">
-                          Two-Factor Authentication
-                        </h4>
-                        <p className="text-sm text-slate-500">
-                          Add an extra layer of security
-                        </p>
-                      </div>
-                      <button className="px-4 py-2 text-sm font-medium text-blue-600 border border-blue-300 rounded-lg hover:bg-blue-50">
-                        Enable
-                      </button>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="text-sm font-medium text-slate-900">
-                          Password Policy
-                        </h4>
-                        <p className="text-sm text-slate-500">
-                          Configure password requirements
-                        </p>
-                      </div>
-                      <button className="px-4 py-2 text-sm font-medium text-blue-600 border border-blue-300 rounded-lg hover:bg-blue-50">
-                        Configure
-                      </button>
-                    </div>
-                  </div>
-                </div>
+                ))}
               </div>
-            )}
-          </div>
-        </div>
-      </div>
+            </SectionCard>
+          )}
+
+          {activeTab === "analytics" && (
+            <div className="space-y-6">
+              <SectionCard title="Engagement snapshot">
+                <div className="grid gap-4 text-sm text-white/80 sm:grid-cols-2">
+                  {[
+                    { label: "Daily active", value: "68%" },
+                    { label: "New signups", value: "+122" },
+                    { label: "Moderation queue", value: "4 pending" },
+                    { label: "Marketplace volume", value: "$12.4k" },
+                  ].map((row) => (
+                    <div
+                      key={row.label}
+                      className="rounded-2xl border border-white/10 bg-black/30 p-4"
+                    >
+                      <p className="text-xs uppercase tracking-[0.35em] text-white/50">
+                        {row.label}
+                      </p>
+                      <p className="mt-2 text-2xl font-semibold text-white">
+                        {row.value}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </SectionCard>
+            </div>
+          )}
+
+          {activeTab === "settings" && (
+            <SectionCard title="Brand + controls">
+              <div className="grid gap-4 text-sm text-white/80 lg:grid-cols-2">
+                <input
+                  value={settingsForm.name}
+                  onChange={(e) => updateSettings("name", e.target.value)}
+                  className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2 text-white"
+                  placeholder="Campus name"
+                />
+                <input
+                  value={settingsForm.domain}
+                  onChange={(e) => updateSettings("domain", e.target.value)}
+                  className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2 text-white"
+                  placeholder="Domain"
+                />
+                <select
+                  value={settingsForm.timezone}
+                  onChange={(e) => updateSettings("timezone", e.target.value)}
+                  className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2 text-white"
+                >
+                  <option value="UTC">UTC</option>
+                  <option value="UTC-5">UTC-5</option>
+                  <option value="UTC+8">UTC+8</option>
+                </select>
+                <select
+                  value={settingsForm.language}
+                  onChange={(e) => updateSettings("language", e.target.value)}
+                  className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2 text-white"
+                >
+                  <option>English</option>
+                  <option>Filipino</option>
+                  <option>Spanish</option>
+                </select>
+                <label className="flex flex-col gap-1">
+                  <span className="text-xs text-white/60">
+                    Primary accent color
+                  </span>
+                  <input
+                    type="color"
+                    value={settingsForm.color}
+                    onChange={(e) => updateSettings("color", e.target.value)}
+                    className="h-10 rounded-2xl border border-white/10 bg-black/20 p-1"
+                  />
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className="text-xs text-white/60">Logo</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const reader = new FileReader();
+                      reader.onload = (upload) =>
+                        updateSchoolBranding({
+                          logoData: upload.target?.result,
+                        });
+                      reader.readAsDataURL(file);
+                    }}
+                    className="rounded-2xl border border-dashed border-white/20 bg-black/20 px-3 py-2 text-xs text-white/70"
+                  />
+                </label>
+              </div>
+            </SectionCard>
+          )}
+        </section>
+      </main>
     </div>
   );
 }
-
-export default AdminDashboard;

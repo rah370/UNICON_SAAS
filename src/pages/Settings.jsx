@@ -90,31 +90,31 @@ function Settings() {
               <nav className="space-y-2">
                 <a
                   href="#profile"
-                  className="block px-3 py-2 rounded-lg bg-blue-100 text-blue-700 font-medium"
+                  className="block px-3 py-2 rounded-lg bg-[#e1e6ed] text-[#3c4b58] font-medium"
                 >
                   👤 Profile
                 </a>
                 <a
                   href="#notifications"
-                  className="block px-3 py-2 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors"
+                  className="block px-3 py-2 rounded-lg text-slate-600 hover:bg-[#d0d7df] transition-colors"
                 >
                   Notifications
                 </a>
                 <a
                   href="#privacy"
-                  className="block px-3 py-2 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors"
+                  className="block px-3 py-2 rounded-lg text-slate-600 hover:bg-[#d0d7df] transition-colors"
                 >
                   🔒 Privacy
                 </a>
                 <a
                   href="#appearance"
-                  className="block px-3 py-2 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors"
+                  className="block px-3 py-2 rounded-lg text-slate-600 hover:bg-[#d0d7df] transition-colors"
                 >
                   🎨 Appearance
                 </a>
                 <a
                   href="#account"
-                  className="block px-3 py-2 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors"
+                  className="block px-3 py-2 rounded-lg text-slate-600 hover:bg-[#d0d7df] transition-colors"
                 >
                   Account
                 </a>
@@ -134,7 +134,7 @@ function Settings() {
               </h2>
               <div className="space-y-4">
                 <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center text-2xl">
+                  <div className="w-16 h-16 bg-[#e1e6ed] rounded-full flex items-center justify-center text-2xl">
                     👤
                   </div>
                   <div>
@@ -222,7 +222,7 @@ function Settings() {
                         }
                         className="sr-only peer"
                       />
-                      <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                      <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#708090]"></div>
                     </label>
                   </div>
                 ))}
@@ -281,7 +281,7 @@ function Settings() {
                         }
                         className="sr-only peer"
                       />
-                      <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                      <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#708090]"></div>
                     </label>
                   </div>
                   <div className="flex items-center justify-between">
@@ -306,7 +306,7 @@ function Settings() {
                         }
                         className="sr-only peer"
                       />
-                      <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                      <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#708090]"></div>
                     </label>
                   </div>
                 </div>
@@ -338,7 +338,7 @@ function Settings() {
                       className="rounded-lg border border-slate-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
-                  <button className="mt-3 px-4 py-2 rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition-colors">
+                  <button className="mt-3 px-4 py-2 rounded-lg bg-[#708090] text-white hover:bg-[#708090] transition-colors">
                     Update Password
                   </button>
                 </div>
@@ -358,7 +358,7 @@ function Settings() {
             <div className="flex justify-end">
               <button
                 onClick={handleSaveSettings}
-                className="px-6 py-3 rounded-lg bg-blue-500 text-white font-semibold hover:bg-blue-600 transition-colors"
+                className="px-6 py-3 rounded-lg bg-[#708090] text-white font-semibold hover:bg-[#708090] transition-colors"
               >
                 Save Changes
               </button>

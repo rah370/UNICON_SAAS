@@ -162,7 +162,7 @@ function AnalyticsDashboard() {
                   {analytics.overview?.totalUsers?.toLocaleString()}
                 </p>
               </div>
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+              <div className="w-12 h-12 bg-[#e1e6ed] rounded-lg flex items-center justify-center">
                 <span className="text-2xl">👥</span>
               </div>
             </div>
@@ -233,7 +233,7 @@ function AnalyticsDashboard() {
               📊 Engagement Insights
             </h2>
             <div className="space-y-4">
-              <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+              <div className="flex items-center justify-between p-3 bg-[#708090]/10 rounded-lg">
                 <div>
                   <p className="text-sm font-medium text-slate-900">Peak Activity Hours</p>
                   <p className="text-xs text-slate-600">{analytics.engagementInsights?.peakHours}</p>
@@ -269,7 +269,7 @@ function AnalyticsDashboard() {
                 </div>
                 <div className="w-full bg-slate-200 rounded-full h-2">
                   <div
-                    className="bg-blue-500 h-2 rounded-full"
+                    className="bg-[#708090] h-2 rounded-full"
                     style={{ width: `${analytics.engagementInsights?.userJourney?.newUserRetention}%` }}
                   ></div>
                 </div>
@@ -281,7 +281,7 @@ function AnalyticsDashboard() {
                 </div>
                 <div className="w-full bg-slate-200 rounded-full h-2">
                   <div
-                    className="bg-green-500 h-2 rounded-full"
+                    className="bg-[#708090] h-2 rounded-full"
                     style={{ width: `${analytics.engagementInsights?.userJourney?.weeklyActiveUsers}%` }}
                   ></div>
                 </div>
@@ -308,7 +308,7 @@ function AnalyticsDashboard() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-slate-600">Active Nudges</span>
-                <span className="text-lg font-semibold text-blue-600">{analytics.nudges?.activeNudges}</span>
+                <span className="text-lg font-semibold text-[#4a5a68]">{analytics.nudges?.activeNudges}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-slate-600">Success Rate</span>
@@ -352,7 +352,7 @@ function AnalyticsDashboard() {
                 </div>
                 <div className="w-full bg-slate-200 rounded-full h-2">
                   <div
-                    className="bg-blue-500 h-2 rounded-full"
+                    className="bg-[#708090] h-2 rounded-full"
                     style={{ width: "75%" }}
                   ></div>
                 </div>
@@ -364,7 +364,7 @@ function AnalyticsDashboard() {
                 </div>
                 <div className="w-full bg-slate-200 rounded-full h-2">
                   <div
-                    className="bg-green-500 h-2 rounded-full"
+                    className="bg-[#708090] h-2 rounded-full"
                     style={{ width: "68%" }}
                   ></div>
                 </div>
@@ -376,7 +376,7 @@ function AnalyticsDashboard() {
                 </div>
                 <div className="w-full bg-slate-200 rounded-full h-2">
                   <div
-                    className="bg-red-500 h-2 rounded-full"
+                    className="bg-[#708090] h-2 rounded-full"
                     style={{ width: "18%" }}
                   ></div>
                 </div>
@@ -431,7 +431,7 @@ function AnalyticsDashboard() {
                   className="flex items-center justify-between p-3 rounded-lg bg-slate-50"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <div className="w-2 h-2 bg-[#708090] rounded-full"></div>
                     <span className="text-sm font-medium text-slate-900">
                       {activity.time}
                     </span>
@@ -464,7 +464,7 @@ function AnalyticsDashboard() {
                     </div>
                     <div className="w-full bg-slate-200 rounded-full h-2">
                       <div
-                        className="bg-blue-500 h-2 rounded-full"
+                        className="bg-[#708090] h-2 rounded-full"
                         style={{ width: `${level.percentage}%` }}
                       ></div>
                     </div>
@@ -487,7 +487,7 @@ function AnalyticsDashboard() {
                 <p className="text-sm text-slate-600 mb-3">Encourage new users to participate in community discussions</p>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-slate-500">Success Rate: 78%</span>
-                  <button className="px-3 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600">
+                  <button className="px-3 py-1 bg-[#708090] text-white rounded text-xs hover:bg-[#708090]">
                     Configure
                   </button>
                 </div>
@@ -497,7 +497,7 @@ function AnalyticsDashboard() {
                 <p className="text-sm text-slate-600 mb-3">Remind users to complete their profile information</p>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-slate-500">Success Rate: 65%</span>
-                  <button className="px-3 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600">
+                  <button className="px-3 py-1 bg-[#708090] text-white rounded text-xs hover:bg-[#708090]">
                     Configure
                   </button>
                 </div>
@@ -507,7 +507,7 @@ function AnalyticsDashboard() {
                 <p className="text-sm text-slate-600 mb-3">Notify users about upcoming campus events</p>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-slate-500">Success Rate: 82%</span>
-                  <button className="px-3 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600">
+                  <button className="px-3 py-1 bg-[#708090] text-white rounded text-xs hover:bg-[#708090]">
                     Configure
                   </button>
                 </div>
@@ -517,7 +517,7 @@ function AnalyticsDashboard() {
                 <p className="text-sm text-slate-600 mb-3">Promote marketplace features to increase usage</p>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-slate-500">Success Rate: 71%</span>
-                  <button className="px-3 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600">
+                  <button className="px-3 py-1 bg-[#708090] text-white rounded text-xs hover:bg-[#708090]">
                     Configure
                   </button>
                 </div>
@@ -527,7 +527,7 @@ function AnalyticsDashboard() {
                 <p className="text-sm text-slate-600 mb-3">Suggest joining study groups based on courses</p>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-slate-500">Success Rate: 68%</span>
-                  <button className="px-3 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600">
+                  <button className="px-3 py-1 bg-[#708090] text-white rounded text-xs hover:bg-[#708090]">
                     Configure
                   </button>
                 </div>
@@ -537,7 +537,7 @@ function AnalyticsDashboard() {
                 <p className="text-sm text-slate-600 mb-3">Recommend tutoring based on academic performance</p>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-slate-500">Success Rate: 74%</span>
-                  <button className="px-3 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600">
+                  <button className="px-3 py-1 bg-[#708090] text-white rounded text-xs hover:bg-[#708090]">
                     Configure
                   </button>
                 </div>
@@ -552,10 +552,10 @@ function AnalyticsDashboard() {
             Export & Reports
           </h2>
           <div className="flex gap-4 flex-wrap">
-            <button className="px-4 py-2 rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition-colors">
+            <button className="px-4 py-2 rounded-lg bg-[#708090] text-white hover:bg-[#708090] transition-colors">
               Export CSV
             </button>
-            <button className="px-4 py-2 rounded-lg bg-green-500 text-white hover:bg-green-600 transition-colors">
+            <button className="px-4 py-2 rounded-lg bg-[#708090] text-white hover:bg-[#5a6a78] transition-colors">
               Export PDF Report
             </button>
             <button className="px-4 py-2 rounded-lg bg-purple-500 text-white hover:bg-purple-600 transition-colors">

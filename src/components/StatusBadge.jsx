@@ -2,7 +2,7 @@ import React from "react";
 
 export function StatusBadge({ children, variant = "default", dot = false }) {
   const variants = {
-    default: "bg-blue-50 text-blue-700 border-blue-200",
+    default: "bg-[#708090]/10 text-[#3c4b58] border-blue-200",
     success: "bg-green-50 text-green-700 border-green-200",
     warning: "bg-yellow-50 text-yellow-700 border-yellow-200",
     danger: "bg-red-50 text-red-700 border-red-200",
@@ -17,12 +17,12 @@ export function StatusBadge({ children, variant = "default", dot = false }) {
         <div
           className={`w-1.5 h-1.5 rounded-full ${
             variant === "success"
-              ? "bg-green-500"
+              ? "bg-[#708090]"
               : variant === "warning"
               ? "bg-yellow-500"
               : variant === "danger"
-              ? "bg-red-500"
-              : "bg-blue-500"
+              ? "bg-[#708090]"
+              : "bg-[#708090]"
           }`}
         ></div>
       )}
@@ -50,14 +50,14 @@ export function UnreadBadge({ count }) {
 export function OnlineIndicator({ online }) {
   if (!online) return null;
   return (
-    <div className="absolute bottom-0.5 right-0.5 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-white"></div>
+    <div className="absolute bottom-0.5 right-0.5 w-3.5 h-3.5 bg-[#708090] rounded-full border-2 border-white"></div>
   );
 }
 
 export function VerifiedBadge({ verified }) {
   if (!verified) return null;
   return (
-    <div className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-blue-600 rounded-full flex items-center justify-center">
+    <div className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-[#708090] rounded-full flex items-center justify-center">
       <svg
         className="w-2.5 h-2.5 text-white"
         fill="currentColor"

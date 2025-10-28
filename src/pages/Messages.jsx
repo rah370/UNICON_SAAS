@@ -88,6 +88,20 @@ const fakeConversations = [
     reported: false,
   },
   {
+    id: "conv6",
+    name: "Admin User",
+    avatar: "",
+    lastMessage: "System maintenance tonight",
+    timestamp: timeNow(),
+    unread: 0,
+    online: false,
+    isGroup: false,
+    verified: true,
+    role: "admin",
+    blocked: false,
+    reported: false,
+  },
+  {
     id: "conv4",
     name: "Study Group CS101",
     avatar: "",
@@ -151,6 +165,20 @@ const fakeThread = [
   },
 ];
 
+const quickFilters = [
+  { id: "all", label: "All" },
+  { id: "unread", label: "Unread" },
+  { id: "verified", label: "Verified" },
+  { id: "flagged", label: "Flagged" },
+];
+
+const quickReplies = [
+  "On my way!",
+  "Sending it now.",
+  "Let’s meet at 3?",
+  "Thanks for the update!",
+];
+
 // --- Safety and moderation features ---
 const safetySettings = {
   contentFilter: true,
@@ -178,15 +206,15 @@ function Avatar({ name, online, verified, role, flagged }) {
         {initials(name)}
       </div>
       {online && (
-        <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-green-500 ring-2 ring-white" />
+        <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-green-400 ring-2 ring-white" />
       )}
       {verified && (
-        <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-blue-500 flex items-center justify-center">
+        <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-blue-400 flex items-center justify-center">
           <span className="text-white text-xs">✓</span>
         </span>
       )}
       {flagged && (
-        <span className="absolute -top-1 -left-1 h-4 w-4 rounded-full bg-red-500 flex items-center justify-center">
+        <span className="absolute -top-1 -left-1 h-4 w-4 rounded-full bg-[#708090] flex items-center justify-center">
           <span className="text-white text-xs">⚠</span>
         </span>
       )}
@@ -197,7 +225,7 @@ function Avatar({ name, online, verified, role, flagged }) {
 function SafetyBadge({ type, verified, role }) {
   if (verified) {
     return (
-      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-[#e1e6ed] text-blue-800">
         ✓ Verified {role}
       </span>
     );
@@ -216,7 +244,7 @@ function SkeletonLine() {
 function EmptyState({ title, caption, action }) {
   return (
     <div className="flex flex-col items-center justify-center text-center p-8">
-      <div className="w-14 h-14 rounded-2xl bg-blue-50 grid place-items-center mb-3">
+      <div className="w-14 h-14 rounded-2xl bg-[#708090]/10 grid place-items-center mb-3">
         <span className="text-xl">💬</span>
       </div>
       <p className="text-slate-900 font-semibold">{title}</p>
@@ -235,6 +263,7 @@ function ConversationList({
   onBlock,
   onReport,
   isAdmin,
+  filterKey = "all",
 }) {
   const [q, setQ] = useState("");
   const [debounced, setDebounced] = useState("");
@@ -246,15 +275,31 @@ function ConversationList({
     return () => clearTimeout(t);
   }, [q]);
 
+  const passesFilter = useCallback(
+    (conversation) => {
+      switch (filterKey) {
+        case "unread":
+          return (conversation.unread || 0) > 0;
+        case "verified":
+          return conversation.verified;
+        case "flagged":
+          return conversation.flagged || conversation.reported;
+        default:
+          return true;
+      }
+    },
+    [filterKey]
+  );
+
   const filtered = useMemo(() => {
-    if (!debounced) return items.filter((item) => !item.blocked);
-    return items.filter(
+    const base = items.filter((item) => !item.blocked && passesFilter(item));
+    if (!debounced) return base;
+    return base.filter(
       (c) =>
-        !c.blocked &&
-        (c.name.toLowerCase().includes(debounced) ||
-          (c.lastMessage || "").toLowerCase().includes(debounced))
+        c.name.toLowerCase().includes(debounced) ||
+        (c.lastMessage || "").toLowerCase().includes(debounced)
     );
-  }, [items, debounced]);
+  }, [items, debounced, passesFilter]);
 
   const handleSafetyAction = (conversationId, action) => {
     if (action === "block") {
@@ -277,7 +322,6 @@ function ConversationList({
           className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
         />
       </div>
-
       <div className="max-h-[28rem] overflow-y-auto">
         {filtered.length === 0 && (
           <EmptyState
@@ -292,7 +336,7 @@ function ConversationList({
               onClick={() => onSelect(c)}
               className={classNames(
                 "w-full text-left p-4 hover:bg-slate-50 focus:outline-none focus:bg-slate-50 transition-colors relative",
-                selectedId === c.id && "bg-blue-50/40"
+                selectedId === c.id && "bg-[#708090]/10/40"
               )}
             >
               <div className="flex items-start gap-3">
@@ -301,10 +345,10 @@ function ConversationList({
                     {initials(c.name)}
                   </div>
                   {c.online && (
-                    <div className="absolute bottom-0.5 right-0.5 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-white"></div>
+                    <div className="absolute bottom-0.5 right-0.5 w-3.5 h-3.5 bg-green-400 rounded-full border-2 border-white"></div>
                   )}
                   {c.verified && (
-                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-blue-600 rounded-full flex items-center justify-center">
+                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-blue-400 rounded-full flex items-center justify-center">
                       <svg
                         className="w-2.5 h-2.5 text-white"
                         fill="currentColor"
@@ -328,7 +372,7 @@ function ConversationList({
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       {c.unread > 0 && (
-                        <span className="w-5 h-5 bg-blue-600 text-white text-xs font-semibold rounded-full flex items-center justify-center">
+                        <span className="w-5 h-5 bg-gradient-to-br from-green-400 to-green-500 text-white text-xs font-semibold rounded-full flex items-center justify-center shadow-md">
                           {c.unread}
                         </span>
                       )}
@@ -358,7 +402,7 @@ function ConversationList({
                     {c.lastMessage}
                   </p>
                   {c.verified && (
-                    <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 text-xs font-medium rounded-full">
+                    <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 text-xs font-medium rounded-full border border-blue-200">
                       <svg
                         className="w-3 h-3"
                         fill="currentColor"
@@ -370,7 +414,13 @@ function ConversationList({
                           clipRule="evenodd"
                         />
                       </svg>
-                      Verified student
+                      {c.role === "professor" || c.role === "teacher"
+                        ? "Instructor"
+                        : c.role === "admin"
+                        ? "Admin"
+                        : c.role === "group"
+                        ? "Group"
+                        : "Student"}
                     </div>
                   )}
                 </div>
@@ -427,8 +477,10 @@ function MessageBubble({ own, text, ts, status, verified, flagged, onReport }) {
         <div
           className={classNames(
             "max-w-[75%] rounded-2xl px-4 py-2",
-            own ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-900",
-            flagged && "border-2 border-red-300 bg-red-50"
+            own
+              ? "bg-gradient-to-br from-[var(--brand-color)] to-[var(--brand-color-700)] text-white shadow-md"
+              : "bg-white text-slate-900 border border-slate-200",
+            flagged && "border-2 border-red-400 bg-red-50 shadow-red-200"
           )}
           role="text"
         >
@@ -440,7 +492,7 @@ function MessageBubble({ own, text, ts, status, verified, flagged, onReport }) {
             )}
           >
             <span>{formatClock(ts)}</span>
-            {!own && verified && <span className="text-blue-500">✓</span>}
+            {!own && verified && <span className="text-[#4a5a68]">✓</span>}
             {own && (
               <span
                 aria-label={
@@ -510,6 +562,7 @@ function ChatWindow({
 }) {
   const [draft, setDraft] = useState("");
   const [showSafetyPanel, setShowSafetyPanel] = useState(false);
+  const fileInputRef = useRef(null);
   const viewportRef = useRef(null);
 
   // auto-scroll
@@ -558,58 +611,61 @@ function ChatWindow({
     [draft, onSend]
   );
 
+  const handleAttach = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleQuickReply = (reply) => {
+    setDraft((prev) => (prev ? `${prev} ${reply}` : reply));
+  };
+
   return (
-    <div className="bg-white rounded-xl border border-slate-200 h-[32rem] flex flex-col">
+    <div className="bg-white rounded-3xl border border-slate-200 h-[34rem] flex flex-col shadow-lg">
       {/* header */}
-      <div className="p-3 border-b border-slate-200 flex items-center gap-3">
-        <button
-          className="lg:hidden mr-1 rounded-lg px-2 py-1 hover:bg-slate-100"
-          onClick={onBack}
-          aria-label="Back to conversations"
-        >
-          ←
-        </button>
-        <Avatar
-          name={conversation.name}
-          online={conversation.online}
-          verified={conversation.verified}
-          role={conversation.role}
-          flagged={conversation.flagged}
-        />
-        <div className="min-w-0">
-          <p className="font-semibold text-slate-900 truncate">
-            {conversation.name}
-          </p>
-          <p className="text-xs text-slate-500">
-            {conversation.online ? "Online" : "Last seen recently"}
-            {conversation.verified && " • Verified"}
-          </p>
+      <div className="p-4 border-b border-slate-200 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+        <div className="flex items-center gap-3 min-w-0">
+          <button
+            className="lg:hidden mr-1 rounded-lg px-2 py-1 hover:bg-[#d0d7df]"
+            onClick={onBack}
+            aria-label="Back to conversations"
+          >
+            ←
+          </button>
+          <Avatar
+            name={conversation.name}
+            online={conversation.online}
+            verified={conversation.verified}
+            role={conversation.role}
+            flagged={conversation.flagged}
+          />
+          <div className="min-w-0">
+            <p className="font-semibold text-slate-900 truncate">
+              {conversation.name}
+            </p>
+            <p className="text-xs text-slate-500">
+              {conversation.online ? (
+                <span className="text-green-500 font-medium">● Online now</span>
+              ) : (
+                "Last seen recently"
+              )}
+            </p>
+          </div>
         </div>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="flex flex-wrap gap-2 sm:ml-auto">
           <button
             onClick={() => setShowSafetyPanel(!showSafetyPanel)}
-            className="px-2 py-1 rounded-lg hover:bg-slate-100"
-            aria-label="Safety settings"
+            className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900"
           >
-            🛡️
+            🛡️ Safety
           </button>
-          <button
-            className="px-2 py-1 rounded-lg hover:bg-slate-100"
-            aria-label="Start call"
-          >
-            📞
+          <button className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900">
+            📞 Call
           </button>
-          <button
-            className="px-2 py-1 rounded-lg hover:bg-slate-100"
-            aria-label="Start video"
-          >
-            📹
+          <button className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900">
+            🎥 Video
           </button>
-          <button
-            className="px-2 py-1 rounded-lg hover:bg-slate-100"
-            aria-label="More"
-          >
-            ⋯
+          <button className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900">
+            ⋯ More
           </button>
         </div>
       </div>
@@ -630,7 +686,10 @@ function ChatWindow({
       )}
 
       {/* messages */}
-      <div ref={viewportRef} className="flex-1 p-4 overflow-y-auto">
+      <div
+        ref={viewportRef}
+        className="flex-1 p-4 overflow-y-auto bg-slate-50/60"
+      >
         {grouped.map((row) =>
           row.type === "divider" ? (
             <DayDivider key={row.id} label={row.label} />
@@ -650,18 +709,41 @@ function ChatWindow({
         {typing && <div className="mt-2 text-xs text-slate-500">Typing…</div>}
       </div>
 
+      <div className="px-4 pt-2 border-t border-slate-200 bg-white">
+        <div className="flex flex-wrap gap-2 pb-2">
+          {quickReplies.map((reply) => (
+            <button
+              key={reply}
+              type="button"
+              onClick={() => handleQuickReply(reply)}
+              className="rounded-full border border-slate-200 px-3 py-1 text-xs text-slate-600 hover:border-slate-400"
+            >
+              {reply}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* composer with safety features */}
       <form
         onSubmit={submit}
-        className="p-3 border-t border-slate-200 flex items-end gap-2"
+        className="p-4 border-t border-slate-200 flex items-end gap-3 bg-white"
       >
         <button
           type="button"
-          className="rounded-lg px-2 py-2 hover:bg-slate-100"
+          className="rounded-lg px-3 py-2 hover:bg-[#d0d7df]"
           aria-label="Add attachment"
+          onClick={handleAttach}
         >
           📎
         </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          className="hidden"
+          multiple
+          onChange={() => alert("Attachments captured locally.")}
+        />
         <textarea
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
@@ -677,17 +759,20 @@ function ChatWindow({
         />
         <button
           type="submit"
-          className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60"
+          className="px-6 py-2 rounded-lg text-white font-semibold shadow-md hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-60 disabled:transform-none"
+          style={{
+            background:
+              "linear-gradient(135deg, var(--brand-color) 0%, var(--brand-color-700) 100%)",
+          }}
           disabled={!draft.trim()}
         >
-          Send
+          Send →
         </button>
       </form>
 
       {/* Safety footer */}
-      <div className="px-3 py-2 bg-slate-50 border-t border-slate-200 text-xs text-slate-500 text-center">
-        🛡️ Messages are monitored for safety. Report any concerns to campus
-        security.
+      <div className="px-4 py-2 bg-slate-50 border-t border-slate-200 text-xs text-slate-500 text-center rounded-b-3xl">
+        🛡️ Messages stay encrypted within UNICON. Report concerns anytime.
       </div>
     </div>
   );
@@ -703,6 +788,7 @@ export default function Messages() {
   const [typing, setTyping] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportedContent, setReportedContent] = useState("");
+  const [conversationFilter, setConversationFilter] = useState("all");
 
   useEffect(() => {
     // initial load
@@ -809,6 +895,11 @@ export default function Messages() {
     };
   }, [selected]);
 
+  const handleNewChat = useCallback(
+    () => alert("New chat creation coming soon"),
+    []
+  );
+
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50">
@@ -834,34 +925,40 @@ export default function Messages() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="bg-white border-b border-slate-200 px-4 py-4">
-        <div className="flex items-center justify-between max-w-6xl mx-auto">
-          <h1 className="text-xl font-bold text-slate-900">Messages</h1>
-          <button className="p-2 hover:bg-slate-50 rounded-lg transition-colors">
-            <svg
-              className="w-5 h-5 text-slate-500"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              />
-            </svg>
-          </button>
+    <div className="min-h-screen bg-[#f5f7fa] pb-16">
+      <section className="mx-auto max-w-6xl px-4 pt-6">
+        <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+          <div className="flex flex-wrap gap-2">
+            {quickFilters.map((filter) => (
+              <button
+                key={filter.id}
+                onClick={() => setConversationFilter(filter.id)}
+                className={`flex-1 rounded-xl px-4 py-2 text-sm font-semibold transition-all ${
+                  conversationFilter === filter.id
+                    ? "text-white shadow-md"
+                    : "text-slate-600 hover:bg-slate-50"
+                }`}
+                style={
+                  conversationFilter === filter.id
+                    ? {
+                        background:
+                          "linear-gradient(135deg, var(--brand-color) 0%, var(--brand-color-700) 100%)",
+                      }
+                    : { backgroundColor: "#f8fafc" }
+                }
+              >
+                {filter.label}
+              </button>
+            ))}
+          </div>
         </div>
-      </header>
+      </section>
 
-      <main className="max-w-6xl mx-auto px-4 py-6">
-        <div className="grid gap-6 lg:grid-cols-3">
-          {/* left pane */}
+      <section className="mx-auto mt-6 max-w-6xl px-4">
+        <div className="grid gap-6 lg:grid-cols-[340px,1fr]">
           <div
             className={classNames(
-              "lg:col-span-1",
+              "transition-all",
               selected && "hidden lg:block"
             )}
           >
@@ -869,17 +966,17 @@ export default function Messages() {
               items={conversations}
               selectedId={selected?.id}
               onSelect={openConversation}
-              onNewChat={() => alert("New chat modal")}
+              onNewChat={handleNewChat}
               onBlock={handleBlock}
               onReport={handleReport}
               isAdmin={isAdmin}
+              filterKey={conversationFilter}
             />
           </div>
 
-          {/* right pane */}
           <div
             className={classNames(
-              "lg:col-span-2",
+              "transition-all",
               !selected && "hidden lg:block"
             )}
           >
@@ -894,16 +991,20 @@ export default function Messages() {
                 isAdmin={isAdmin}
               />
             ) : (
-              <div className="bg-white rounded-xl border border-slate-200 h-[32rem] grid place-items-center">
+              <div className="rounded-3xl border border-dashed border-slate-300 bg-white/80 h-[34rem] grid place-items-center text-center">
                 <EmptyState
-                  title="Select a conversation"
-                  caption="Choose someone from the left to start chatting safely."
+                  title="No chat open"
+                  caption="Choose a conversation or start a new one."
                   action={
                     <button
-                      onClick={() => alert("Start new chat")}
-                      className="mt-3 px-3 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+                      onClick={handleNewChat}
+                      className="mt-3 px-6 py-2 rounded-xl text-white font-semibold shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all"
+                      style={{
+                        background:
+                          "linear-gradient(135deg, var(--brand-color) 0%, var(--brand-color-700) 100%)",
+                      }}
                     >
-                      Start a new chat
+                      Start chatting
                     </button>
                   }
                 />
@@ -911,7 +1012,7 @@ export default function Messages() {
             )}
           </div>
         </div>
-      </main>
+      </section>
 
       {/* Report Modal */}
       {showReportModal && (
@@ -947,7 +1048,7 @@ export default function Messages() {
               </button>
               <button
                 onClick={submitReport}
-                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-[#5a6a78] transition-colors"
               >
                 Submit Report
               </button>

@@ -71,7 +71,7 @@ function StudentLogin() {
             {/* Right login card */}
             <div className="bg-white p-8 md:p-12 flex items-center">
               <div className="w-full">
-                <h2 className="text-center font-semibold tracking-wide text-blue-600">
+                <h2 className="text-center font-semibold tracking-wide text-[#4a5a68]">
                   STUDENT LOGIN
                 </h2>
                 <form
@@ -126,7 +126,7 @@ function StudentLogin() {
                       />
                       Remember
                     </label>
-                    <a href="#" className="hover:underline text-blue-600">
+                    <a href="#" className="hover:underline text-[#4a5a68]">
                       Forgot password?
                     </a>
                   </div>

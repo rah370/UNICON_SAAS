@@ -115,7 +115,7 @@ function EngagementNudges() {
       case "medium":
         return "border-yellow-200 bg-yellow-50";
       case "low":
-        return "border-blue-200 bg-blue-50";
+        return "border-blue-200 bg-[#708090]/10";
       default:
         return "border-gray-200 bg-gray-50";
     }
@@ -124,9 +124,9 @@ function EngagementNudges() {
   const getActionColor = (color) => {
     switch (color) {
       case "blue":
-        return "bg-blue-500 hover:bg-blue-600";
+        return "bg-[#708090] hover:bg-[#708090]";
       case "green":
-        return "bg-green-500 hover:bg-green-600";
+        return "bg-[#708090] hover:bg-[#5a6a78]";
       case "purple":
         return "bg-purple-500 hover:bg-purple-600";
       case "orange":
@@ -134,7 +134,7 @@ function EngagementNudges() {
       case "indigo":
         return "bg-indigo-500 hover:bg-indigo-600";
       case "red":
-        return "bg-red-500 hover:bg-red-600";
+        return "bg-[#708090] hover:bg-red-600";
       default:
         return "bg-gray-500 hover:bg-gray-600";
     }
@@ -324,11 +324,11 @@ function SmartNudge({ type, context, userBehavior }) {
               <button
                 onClick={handleAction}
                 className={`px-3 py-1 rounded text-xs font-medium text-white transition-colors ${
-                  nudge.color === 'blue' ? 'bg-blue-500 hover:bg-blue-600' :
-                  nudge.color === 'green' ? 'bg-green-500 hover:bg-green-600' :
+                  nudge.color === 'blue' ? 'bg-[#708090] hover:bg-[#708090]' :
+                  nudge.color === 'green' ? 'bg-[#708090] hover:bg-[#5a6a78]' :
                   nudge.color === 'purple' ? 'bg-purple-500 hover:bg-purple-600' :
                   nudge.color === 'orange' ? 'bg-orange-500 hover:bg-orange-600' :
-                  nudge.color === 'red' ? 'bg-red-500 hover:bg-red-600' :
+                  nudge.color === 'red' ? 'bg-[#708090] hover:bg-red-600' :
                   'bg-gray-500 hover:bg-gray-600'
                 }`}
               >

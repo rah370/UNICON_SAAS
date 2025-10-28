@@ -16,6 +16,7 @@ require_once 'auth.php';
 require_once 'file_upload.php';
 require_once 'stripe_payment.php';
 require_once 'email_verification.php';
+require_once 'enhanced_endpoints.php';
 
 // Simple routing
 $request_uri = $_SERVER['REQUEST_URI'];
@@ -39,6 +40,7 @@ $fileUpload = new FileUpload();
 $stripePayment = new StripePayment();
 $emailVerification = new EmailVerification();
 $db = Database::getInstance();
+$enhanced = new EnhancedEndpoints($db);
 
 // Helper function to get current user
 function getCurrentUser($token, $auth) {
@@ -183,6 +185,13 @@ switch ($path) {
             $postId = $db->lastInsertId();
             
             echo json_encode(['success' => true, 'post_id' => $postId]);
+        } elseif ($method === 'PUT') {
+            $result = $enhanced->updatePost($input['post_id'], $user['id'], $input);
+            echo json_encode($result);
+        } elseif ($method === 'DELETE') {
+            $postId = $_GET['id'] ?? '';
+            $result = $enhanced->deletePost($postId, $user['id'], $user['role']);
+            echo json_encode($result);
         }
         break;
         
@@ -194,9 +203,9 @@ switch ($path) {
                 "SELECT e.*, u.first_name, u.last_name 
                  FROM events e 
                  JOIN users u ON e.created_by = u.id 
-                 WHERE e.school_id = ? AND e.event_date > NOW() 
+                 WHERE e.school_id = ? 
                  ORDER BY e.event_date ASC 
-                 LIMIT 20",
+                 LIMIT 50",
                 [$user['school_id']]
             );
             echo json_encode(['events' => $events]);
@@ -214,6 +223,13 @@ switch ($path) {
             $eventId = $db->lastInsertId();
             
             echo json_encode(['success' => true, 'event_id' => $eventId]);
+        } elseif ($method === 'PUT') {
+            $result = $enhanced->updateEvent($input['event_id'], $user['id'], $input);
+            echo json_encode($result);
+        } elseif ($method === 'DELETE') {
+            $eventId = $_GET['id'] ?? '';
+            $result = $enhanced->deleteEvent($eventId, $user['id'], $user['role']);
+            echo json_encode($result);
         }
         break;
         
@@ -331,6 +347,176 @@ switch ($path) {
         
         $result = $stripePayment->handleWebhook($payload, $signature);
         echo json_encode($result);
+        break;
+        
+    case 'profile':
+        $user = requireAuth($token, $auth);
+        
+        if ($method === 'GET') {
+            $result = $enhanced->getProfile($user['id']);
+            echo json_encode($result);
+        } elseif ($method === 'PUT') {
+            $result = $enhanced->updateProfile($user['id'], $input);
+            echo json_encode($result);
+        }
+        break;
+        
+    case 'comments':
+        $user = requireAuth($token, $auth);
+        
+        if ($method === 'POST') {
+            $result = $enhanced->createComment($input['post_id'], $user['id'], $input['content'], $input['parent_id'] ?? null);
+            echo json_encode($result);
+        } elseif ($method === 'PUT') {
+            $result = $enhanced->updateComment($input['comment_id'], $user['id'], $input['content']);
+            echo json_encode($result);
+        } elseif ($method === 'DELETE') {
+            $commentId = $_GET['id'] ?? '';
+            $result = $enhanced->deleteComment($commentId, $user['id'], $user['role']);
+            echo json_encode($result);
+        }
+        break;
+        
+    case 'reactions':
+        $user = requireAuth($token, $auth);
+        
+        if ($method === 'POST') {
+            $result = $enhanced->toggleReaction($user['id'], $input['target_type'], $input['target_id'], $input['reaction_type'] ?? 'like');
+            echo json_encode($result);
+        }
+        break;
+        
+    case 'tasks':
+        $user = requireAuth($token, $auth);
+        
+        if ($method === 'GET') {
+            $result = $enhanced->getTasks($user['id'], $user['school_id']);
+            echo json_encode($result);
+        } elseif ($method === 'POST') {
+            $result = $enhanced->createTask($user['id'], $user['school_id'], $input);
+            echo json_encode($result);
+        } elseif ($method === 'PUT') {
+            $result = $enhanced->updateTask($input['task_id'], $user['id'], $input);
+            echo json_encode($result);
+        } elseif ($method === 'DELETE') {
+            $taskId = $_GET['id'] ?? '';
+            $result = $enhanced->deleteTask($taskId, $user['id']);
+            echo json_encode($result);
+        }
+        break;
+        
+    case 'notifications':
+        $user = requireAuth($token, $auth);
+        
+        if ($method === 'GET') {
+            $result = $enhanced->getNotifications($user['id']);
+            echo json_encode($result);
+        } elseif ($method === 'PUT') {
+            if (isset($input['mark_all_read'])) {
+                $result = $enhanced->markAllNotificationsRead($user['id']);
+            } else {
+                $result = $enhanced->markNotificationRead($input['notification_id'], $user['id']);
+            }
+            echo json_encode($result);
+        }
+        break;
+        
+    case 'search':
+        $user = requireAuth($token, $auth);
+        
+        if ($method === 'GET') {
+            $query = $_GET['q'] ?? '';
+            $type = $_GET['type'] ?? 'all';
+            
+            $result = [];
+            if ($type === 'users' || $type === 'all') {
+                $result['users'] = $enhanced->searchUsers($user['school_id'], $query)['users'];
+            }
+            if ($type === 'posts' || $type === 'all') {
+                $result['posts'] = $enhanced->searchPosts($user['school_id'], $query)['posts'];
+            }
+            if ($type === 'events' || $type === 'all') {
+                $result['events'] = $enhanced->searchEvents($user['school_id'], $query)['events'];
+            }
+            if ($type === 'marketplace' || $type === 'all') {
+                $result['marketplace'] = $enhanced->searchMarketplace($user['school_id'], $query)['items'];
+            }
+            
+            echo json_encode($result);
+        }
+        break;
+        
+    case 'admin/analytics':
+        $user = requireAuth($token, $auth);
+        
+        if ($user['role'] !== 'admin' && $user['role'] !== 'super_admin') {
+            http_response_code(403);
+            echo json_encode(['error' => 'Forbidden']);
+            break;
+        }
+        
+        $result = $enhanced->getSchoolAnalytics($user['school_id']);
+        echo json_encode($result);
+        break;
+        
+    case 'admin/users':
+        $user = requireAuth($token, $auth);
+        
+        if ($user['role'] !== 'admin' && $user['role'] !== 'super_admin') {
+            http_response_code(403);
+            echo json_encode(['error' => 'Forbidden']);
+            break;
+        }
+        
+        if ($method === 'GET') {
+            $result = $enhanced->getUsers($user['school_id']);
+            echo json_encode($result);
+        } elseif ($method === 'PUT') {
+            $result = $enhanced->updateUserStatus($input['user_id'], $input['status']);
+            echo json_encode($result);
+        } elseif ($method === 'DELETE') {
+            $result = $enhanced->deleteUser($input['user_id']);
+            echo json_encode($result);
+        }
+        break;
+        
+    case 'channels':
+        $user = requireAuth($token, $auth);
+        
+        if ($method === 'GET') {
+            $result = $enhanced->getChannels($user['school_id']);
+            echo json_encode($result);
+        } elseif ($method === 'POST') {
+            $result = $enhanced->createChannel($user['school_id'], $user['id'], $input);
+            echo json_encode($result);
+        } elseif ($method === 'PUT') {
+            $result = $enhanced->joinChannel($input['channel_id'], $user['id']);
+            echo json_encode($result);
+        }
+        break;
+        
+    case 'polls':
+        $user = requireAuth($token, $auth);
+        
+        if ($method === 'GET') {
+            $result = $enhanced->getPolls($user['school_id']);
+            echo json_encode($result);
+        } elseif ($method === 'POST') {
+            $result = $enhanced->createPoll($user['school_id'], $user['id'], $input);
+            echo json_encode($result);
+        } elseif ($method === 'PUT') {
+            $result = $enhanced->votePoll($input['poll_id'], $input['option_id'], $user['id']);
+            echo json_encode($result);
+        }
+        break;
+        
+    case 'sync':
+        $user = requireAuth($token, $auth);
+        
+        if ($method === 'POST') {
+            $result = $enhanced->syncPending($user['id']);
+            echo json_encode($result);
+        }
         break;
         
     default:

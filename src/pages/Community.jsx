@@ -62,9 +62,17 @@ const sidebarNav = [
   { id: "collab", label: "Collaboration Corner", emoji: "🤝" },
 ];
 
+const headerMetrics = [
+  { label: "Students online", value: "892", meta: "+32 vs yesterday" },
+  { label: "Posts today", value: "48", meta: "12 announcements" },
+  { label: "Active clubs", value: "26", meta: "5 new this week" },
+];
+
+const quickFilters = ["All", "Pinned", "Clubs", "Staff", "Opportunities"];
+
 function Badge({ children }) {
   return (
-    <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-100">
+    <span className="inline-flex items-center rounded-full bg-[#708090]/10 px-2 py-0.5 text-xs font-medium text-[#3c4b58] ring-1 ring-inset ring-blue-100">
       {children}
     </span>
   );
@@ -93,7 +101,7 @@ function PostCard({ post }) {
           className="h-9 w-9 rounded-full object-cover ring-2 ring-slate-100 group-hover:ring-blue-200 transition-all duration-300"
         />
         {isLive && (
-          <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-green-500 border-2 border-white"></div>
+          <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-[#708090] border-2 border-white"></div>
         )}
       </div>
 
@@ -116,7 +124,7 @@ function PostCard({ post }) {
 
         {/* Comment Actions */}
         <div className="flex items-center gap-6">
-          <button className="flex items-center gap-2 text-xs text-slate-500 hover:text-blue-600 transition-colors group">
+          <button className="flex items-center gap-2 text-xs text-slate-500 hover:text-[#4a5a68] transition-colors group">
             <svg
               className="w-4 h-4 group-hover:scale-110 transition-transform"
               fill="none"
@@ -241,7 +249,7 @@ export default function Community() {
             }}
           />
           <div
-            className="w-96 h-96 rounded-full bg-gradient-to-br from-blue-500/10 to-indigo-600/10 flex items-center justify-center text-blue-500/20 text-9xl font-bold"
+            className="w-96 h-96 rounded-full bg-gradient-to-br from-blue-500/10 to-indigo-600/10 flex items-center justify-center text-[#4a5a68]/20 text-9xl font-bold"
             style={{ display: "none" }}
           >
             U
@@ -258,7 +266,7 @@ export default function Community() {
             }}
           />
           <div
-            className="w-full h-full rounded-full bg-gradient-to-br from-blue-500/5 to-indigo-600/5 flex items-center justify-center text-blue-500/10 text-6xl font-bold"
+            className="w-full h-full rounded-full bg-gradient-to-br from-blue-500/5 to-indigo-600/5 flex items-center justify-center text-[#4a5a68]/10 text-6xl font-bold"
             style={{ display: "none" }}
           >
             U
@@ -275,7 +283,7 @@ export default function Community() {
             }}
           />
           <div
-            className="w-full h-full rounded-full bg-gradient-to-br from-blue-500/5 to-indigo-600/5 flex items-center justify-center text-blue-500/10 text-4xl font-bold"
+            className="w-full h-full rounded-full bg-gradient-to-br from-blue-500/5 to-indigo-600/5 flex items-center justify-center text-[#4a5a68]/10 text-4xl font-bold"
             style={{ display: "none" }}
           >
             U
@@ -284,41 +292,48 @@ export default function Community() {
       </div>
 
       {/* Clean Header */}
-      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-xl border-b border-slate-200/50">
-        <div className="mx-auto max-w-6xl px-4 py-4">
-          {/* Main Header */}
-          <div className="flex items-center justify-between mb-6">
+      <header className="sticky top-0 z-30 border-b border-white/20 bg-gradient-to-br from-white/95 via-white/90 to-[#edf4fa]/95 backdrop-blur-xl">
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute inset-y-0 right-0 w-1/3 bg-gradient-to-l from-white/80 to-transparent" />
+        </div>
+        <div className="relative mx-auto max-w-6xl px-4 py-5 space-y-5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-center gap-4">
-              <img
-                src="/UNICON.png"
-                alt="UNICON"
-                className="h-10 w-10 object-contain"
-                onError={(e) => {
-                  e.target.style.display = "none";
-                  e.target.nextSibling.style.display = "flex";
-                }}
-              />
-              <div
-                className="h-10 w-10 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm"
-                style={{ display: "none" }}
-              >
-                U
+              <div className="relative">
+                <img
+                  src="/UNICON.png"
+                  alt="UNICON"
+                  className="h-11 w-11 rounded-2xl border border-white bg-white object-contain shadow-sm"
+                  onError={(e) => {
+                    e.target.style.display = "none";
+                    e.target.nextSibling.style.display = "flex";
+                  }}
+                />
+                <div
+                  className="hidden h-11 w-11 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold items-center justify-center"
+                >
+                  U
+                </div>
               </div>
-              <h1 className="text-2xl font-bold text-slate-900">
-                UNICON Community
-              </h1>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.45em] text-slate-500">
+                  Campus community
+                </p>
+                <h1 className="text-2xl font-bold text-slate-900">
+                  UNICON Community
+                </h1>
+              </div>
             </div>
 
-            {/* Search Bar */}
-            <div className="hidden md:flex flex-1 max-w-md mx-8">
-              <div className="relative w-full">
+            <div className="flex flex-1 flex-col gap-3 lg:flex-row lg:items-center lg:justify-end">
+              <div className="relative w-full lg:max-w-sm">
                 <input
                   type="text"
                   placeholder="Search posts, users, topics..."
-                  className="w-full rounded-xl border border-slate-200 bg-white/80 px-4 py-3 pl-12 text-sm placeholder-slate-500 hover:border-slate-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all backdrop-blur-sm"
+                  className="w-full rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 pl-12 text-sm placeholder-slate-500 shadow-sm transition-all hover:border-slate-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/15"
                 />
                 <svg
-                  className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+                  className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -331,54 +346,69 @@ export default function Community() {
                   />
                 </svg>
               </div>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setShowClubs(true)}
+                  className="flex items-center gap-2 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
+                >
+                  <svg
+                    className="h-4 w-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
+                    />
+                  </svg>
+                  Browse clubs
+                </button>
+                <button
+                  onClick={() => setShowComposer(true)}
+                  className="rounded-2xl px-5 py-3 text-sm font-semibold text-white shadow-lg transition hover:-translate-y-0.5"
+                  style={{
+                    background: "linear-gradient(135deg, #2563eb, #1d4ed8)",
+                  }}
+                >
+                  + New post
+                </button>
+              </div>
             </div>
+          </div>
 
-            {/* Desktop Actions */}
-            <div className="hidden md:flex items-center gap-3">
-              <button
-                onClick={() => setShowClubs(true)}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-50 rounded-xl transition-all"
-              >
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
+          <div className="grid gap-3 rounded-3xl border border-white/60 bg-white/80 p-4 shadow-sm sm:grid-cols-2 lg:grid-cols-4">
+            <div className="flex flex-wrap items-center gap-2 sm:col-span-2 lg:col-span-1">
+              {quickFilters.map((chip) => (
+                <button
+                  key={chip}
+                  className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
-                  />
-                </svg>
-                Browse Clubs
-              </button>
-              <button
-                onClick={() => setShowComposer(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 transition-all shadow-sm"
-              >
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 4v16m8-8H4"
-                  />
-                </svg>
-                New Post
-              </button>
+                  {chip}
+                </button>
+              ))}
             </div>
+            {headerMetrics.map((metric) => (
+              <div
+                key={metric.label}
+                className="rounded-2xl border border-slate-100 bg-white/90 px-4 py-3"
+              >
+                <p className="text-xs uppercase tracking-[0.35em] text-slate-500">
+                  {metric.label}
+                </p>
+                <p className="text-2xl font-semibold text-slate-900">
+                  {metric.value}
+                </p>
+                <p className="text-xs text-slate-500">{metric.meta}</p>
+              </div>
+            ))}
           </div>
 
           {/* Mobile Tab Navigation */}
           <div className="lg:hidden">
-            <div className="flex overflow-x-auto space-x-2 pb-2">
+            <div className="flex overflow-x-auto space-x-2 pb-1">
               {sidebarNav.map((item) => (
                 <button
                   key={item.id}
@@ -386,16 +416,16 @@ export default function Community() {
                     setActivePage(item.id);
                     setSelectedClub(null);
                   }}
-                  className={`flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all whitespace-nowrap ${
+                  className={`flex-shrink-0 flex items-center gap-2 rounded-2xl px-4 py-2 text-sm font-semibold transition ${
                     activePage === item.id
-                      ? "bg-blue-100 text-blue-700 shadow-sm"
-                      : "text-slate-600 hover:text-slate-800 hover:bg-slate-50"
+                      ? "bg-[#708090]/10 text-[#3c4b58]"
+                      : "text-slate-600 hover:bg-[#d0d7df]"
                   }`}
                 >
                   <span className="text-base">{item.emoji}</span>
                   <span>{item.label}</span>
                   {item.badge && (
-                    <span className="px-2 py-0.5 bg-blue-600 text-white text-xs rounded-full min-w-[20px] text-center">
+                    <span className="rounded-full bg-[#708090] px-2 py-0.5 text-xs text-white">
                       {item.badge}
                     </span>
                   )}
@@ -441,7 +471,7 @@ export default function Community() {
                       <span className="text-slate-800">{item.label}</span>
                     </span>
                     {item.badge ? (
-                      <span className="grid h-6 w-6 place-items-center rounded-full bg-blue-600 text-xs font-semibold text-white">
+                      <span className="grid h-6 w-6 place-items-center rounded-full bg-[#708090] text-xs font-semibold text-white">
                         {item.badge}
                       </span>
                     ) : null}
@@ -492,7 +522,7 @@ export default function Community() {
                       setComposerChannel("Announcements");
                       setShowComposer(true);
                     }}
-                    className="fixed bottom-28 right-6 inline-flex h-12 w-12 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg hover:bg-blue-700 z-40"
+                    className="fixed bottom-28 right-6 inline-flex h-12 w-12 items-center justify-center rounded-full bg-[#708090] text-white shadow-lg hover:bg-[#5a6a78] z-40"
                     aria-label="Create announcement"
                   >
                     +
@@ -516,7 +546,7 @@ export default function Community() {
                       setComposerChannel("Events");
                       setShowComposer(true);
                     }}
-                    className="fixed bottom-28 right-6 inline-flex h-12 w-12 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg hover:bg-blue-700 z-40"
+                    className="fixed bottom-28 right-6 inline-flex h-12 w-12 items-center justify-center rounded-full bg-[#708090] text-white shadow-lg hover:bg-[#5a6a78] z-40"
                     aria-label="Create event"
                   >
                     +
@@ -552,7 +582,7 @@ export default function Community() {
                       setComposerChannel("Introductions");
                       setShowComposer(true);
                     }}
-                    className="fixed bottom-28 right-6 inline-flex h-12 w-12 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg hover:bg-blue-700 z-40"
+                    className="fixed bottom-28 right-6 inline-flex h-12 w-12 items-center justify-center rounded-full bg-[#708090] text-white shadow-lg hover:bg-[#5a6a78] z-40"
                     aria-label="Create introduction"
                   >
                     +
@@ -576,7 +606,7 @@ export default function Community() {
                       setComposerChannel("Collaboration Corner");
                       setShowComposer(true);
                     }}
-                    className="fixed bottom-28 right-6 inline-flex h-12 w-12 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg hover:bg-blue-700 z-40"
+                    className="fixed bottom-28 right-6 inline-flex h-12 w-12 items-center justify-center rounded-full bg-[#708090] text-white shadow-lg hover:bg-[#5a6a78] z-40"
                     aria-label="Create collaboration post"
                   >
                     +
@@ -589,7 +619,7 @@ export default function Community() {
                 <div className="flex items-center justify-between pb-4 border-b border-slate-200">
                   <div className="flex items-center gap-3">
                     <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                      <div className="w-2 h-2 bg-[#708090] rounded-full animate-pulse"></div>
                       <h2 className="text-2xl font-bold text-slate-900">
                         Live Lounge
                       </h2>
@@ -645,7 +675,7 @@ export default function Community() {
                       <input type="hidden" name="channel" value="Live Lounge" />
                       <button
                         type="submit"
-                        className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-full transition-all active:scale-95"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-[#4a5a68] hover:text-[#3c4b58] hover:bg-[#708090]/10 rounded-full transition-all active:scale-95"
                       >
                         <svg
                           className="w-5 h-5"
@@ -774,7 +804,7 @@ export default function Community() {
                     Channel:
                   </label>
                   {composerChannel ? (
-                    <span className="rounded-lg bg-blue-50 px-3 py-1 text-sm font-medium text-blue-700">
+                    <span className="rounded-lg bg-[#708090]/10 px-3 py-1 text-sm font-medium text-[#3c4b58]">
                       {composerChannel}
                     </span>
                   ) : (
@@ -818,7 +848,7 @@ export default function Community() {
               </button>
               <button
                 type="submit"
-                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                className="rounded-lg bg-[#708090] px-4 py-2 text-sm font-semibold text-white hover:bg-[#5a6a78]"
               >
                 Post
               </button>

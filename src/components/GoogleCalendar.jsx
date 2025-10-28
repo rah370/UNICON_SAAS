@@ -71,9 +71,9 @@ function GoogleCalendar({ onEventSelect, googleCalSynced, adminEvents = [] }) {
 
   const getEventColor = (event) => {
     const colorMap = {
-      exam: "bg-red-500",
-      holiday: "bg-green-500",
-      enrollment: "bg-blue-500",
+      exam: "bg-[#708090]",
+      holiday: "bg-[#708090]",
+      enrollment: "bg-[#708090]",
       academic: "bg-purple-500",
       assignment: "bg-orange-500",
       personal: "bg-indigo-500",
@@ -109,7 +109,7 @@ function GoogleCalendar({ onEventSelect, googleCalSynced, adminEvents = [] }) {
           <div className="flex items-center gap-2">
             <button
               onClick={() => navigateMonth("prev")}
-              className="p-2 hover:bg-slate-100 rounded-lg"
+              className="p-2 hover:bg-[#d0d7df] rounded-lg"
             >
               <svg
                 className="w-5 h-5"
@@ -127,7 +127,7 @@ function GoogleCalendar({ onEventSelect, googleCalSynced, adminEvents = [] }) {
             </button>
             <button
               onClick={() => navigateMonth("next")}
-              className="p-2 hover:bg-slate-100 rounded-lg"
+              className="p-2 hover:bg-[#d0d7df] rounded-lg"
             >
               <svg
                 className="w-5 h-5"
@@ -212,13 +212,13 @@ function GoogleCalendar({ onEventSelect, googleCalSynced, adminEvents = [] }) {
             <div
               key={day}
               className={`bg-white min-h-[96px] p-1 cursor-pointer hover:bg-slate-50 transition-colors ${
-                isToday ? "bg-blue-50" : ""
+                isToday ? "bg-[#708090]/10" : ""
               } ${isSelected ? "ring-2 ring-blue-500" : ""}`}
               onClick={() => setSelectedDate(date)}
             >
               <div
                 className={`text-sm font-medium mb-1 ${
-                  isToday ? "text-blue-600" : "text-slate-900"
+                  isToday ? "text-[#4a5a68]" : "text-slate-900"
                 }`}
               >
                 {day}
@@ -301,7 +301,7 @@ function GoogleCalendar({ onEventSelect, googleCalSynced, adminEvents = [] }) {
                   setShowEventModal(true);
                   setSelectedDate(null);
                 }}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
+                className="flex-1 px-4 py-2 bg-[#708090] text-white rounded-lg hover:bg-[#5a6a78] text-sm font-medium"
               >
                 Add Event
               </button>

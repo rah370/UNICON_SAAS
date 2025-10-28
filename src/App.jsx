@@ -16,6 +16,12 @@ import Marketplace from "./pages/Marketplace";
 import Calendar from "./pages/Calendar";
 import Settings from "./pages/Settings";
 import AdminDashboard from "./pages/AdminDashboard";
+import AdminUsers from "./pages/admin/AdminUsers";
+import AdminAnnouncements from "./pages/admin/AdminAnnouncements";
+import AdminEvents from "./pages/admin/AdminEvents";
+import AdminAnalytics from "./pages/admin/AdminAnalytics";
+import AdminMarketplace from "./pages/admin/AdminMarketplace";
+import AdminSettings from "./pages/admin/AdminSettings";
 import Profile from "./pages/Profile";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { BrandingProvider } from "./contexts/BrandingContext";
@@ -30,7 +36,14 @@ function ProtectedRoute({
   requireAuth = true,
   requireAdmin = false,
 }) {
-  const { user, isAuthenticated, isAdmin } = useAuth();
+  const { isAuthenticated } = useAuth();
+  const path = typeof window !== "undefined" ? window.location.pathname : "";
+  const isAdminRoute = path.startsWith("/admin");
+  const isCommunity = path.startsWith("/community");
+
+  const showGlobalHeader = isAuthenticated && !isAdminRoute && !isCommunity;
+  const location =
+    typeof window !== "undefined" ? window.location.pathname : "";
 
   if (requireAuth && !isAuthenticated) {
     return <Navigate to="/student-login" replace />;
@@ -46,12 +59,11 @@ function ProtectedRoute({
 // Main App Layout
 function AppLayout({ children }) {
   const { isAuthenticated } = useAuth();
-  const location = window.location.pathname;
+  const path = typeof window !== "undefined" ? window.location.pathname : "";
+  const isAdminRoute = path.startsWith("/admin");
+  const isCommunity = path.startsWith("/community");
 
-  // Hide global header on Community page since it has its own header
-  const showGlobalHeader =
-    isAuthenticated && !location.startsWith("/community");
-
+  const showGlobalHeader = isAuthenticated && !isAdminRoute && !isCommunity;
   return (
     <div
       className="min-h-screen relative overflow-hidden"
@@ -89,10 +101,14 @@ function AppLayout({ children }) {
       {/* Main Content */}
       <div className="relative z-10">
         {showGlobalHeader && <Header />}
-        <main className={`${isAuthenticated ? "pb-20" : ""} animate-fadeIn`}>
+        <main
+          className={`${
+            isAuthenticated && !isAdminRoute ? "pb-20" : ""
+          } animate-fadeIn`}
+        >
           {children}
         </main>
-        {isAuthenticated && <BottomNav />}
+        {isAuthenticated && !isAdminRoute && <BottomNav />}
         <OfflineManager />
       </div>
     </div>
@@ -214,6 +230,54 @@ function App() {
               element={
                 <ProtectedRoute requireAdmin>
                   <AdminDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/users"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminUsers />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/announcements"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminAnnouncements />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/events"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminEvents />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/analytics"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminAnalytics />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/marketplace"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminMarketplace />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/settings"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminSettings />
                 </ProtectedRoute>
               }
             />

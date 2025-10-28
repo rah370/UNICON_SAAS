@@ -337,7 +337,7 @@ function Marketplace() {
               onClick={() => setActiveTab("schoolStore")}
               className={`px-6 py-3 rounded-lg font-medium transition-colors whitespace-nowrap ${
                 activeTab === "schoolStore"
-                  ? "bg-blue-100 text-blue-700 border border-blue-200"
+                  ? "bg-[#e1e6ed] text-[#3c4b58] border border-blue-200"
                   : "bg-slate-100 text-slate-600 hover:bg-slate-200"
               }`}
             >
@@ -347,7 +347,7 @@ function Marketplace() {
               onClick={() => setActiveTab("studentListings")}
               className={`px-6 py-3 rounded-lg font-medium transition-colors whitespace-nowrap ${
                 activeTab === "studentListings"
-                  ? "bg-blue-100 text-blue-700 border border-blue-200"
+                  ? "bg-[#e1e6ed] text-[#3c4b58] border border-blue-200"
                   : "bg-slate-100 text-slate-600 hover:bg-slate-200"
               }`}
             >
@@ -357,7 +357,7 @@ function Marketplace() {
               onClick={() => setActiveTab("tutoring")}
               className={`px-6 py-3 rounded-lg font-medium transition-colors whitespace-nowrap ${
                 activeTab === "tutoring"
-                  ? "bg-blue-100 text-blue-700 border border-blue-200"
+                  ? "bg-[#e1e6ed] text-[#3c4b58] border border-blue-200"
                   : "bg-slate-100 text-slate-600 hover:bg-slate-200"
               }`}
             >
@@ -367,7 +367,7 @@ function Marketplace() {
               onClick={() => setActiveTab("rentals")}
               className={`px-6 py-3 rounded-lg font-medium transition-colors whitespace-nowrap ${
                 activeTab === "rentals"
-                  ? "bg-blue-100 text-blue-700 border border-blue-200"
+                  ? "bg-[#e1e6ed] text-[#3c4b58] border border-blue-200"
                   : "bg-slate-100 text-slate-600 hover:bg-slate-200"
               }`}
             >
@@ -383,7 +383,7 @@ function Marketplace() {
                 onClick={() => setSelectedCategory(category)}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                   selectedCategory === category
-                    ? "bg-blue-100 text-blue-700 border border-blue-200"
+                    ? "bg-[#e1e6ed] text-[#3c4b58] border border-blue-200"
                     : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                 }`}
               >
@@ -401,9 +401,9 @@ function Marketplace() {
                 <div className="text-4xl mb-4 text-center">{item.image}</div>
                 <div className="flex items-start justify-between mb-2">
                   <h3 className="font-semibold text-slate-900 text-sm">{item.title}</h3>
-                  {item.verified && <span className="text-blue-500 text-xs">✓ Verified</span>}
+                  {item.verified && <span className="text-[#4a5a68] text-xs">✓ Verified</span>}
                 </div>
-                <p className="text-lg font-bold text-blue-600 mb-2">${item.price}</p>
+                <p className="text-lg font-bold text-[#4a5a68] mb-2">${item.price}</p>
                 <p className="text-sm text-slate-600 mb-3">{item.description}</p>
                 <div className="flex items-center justify-between text-xs text-slate-500 mb-3">
                   <span>{item.condition}</span>
@@ -414,7 +414,7 @@ function Marketplace() {
                     <span className="text-sm text-slate-600">by {item.seller}</span>
                     {item.sellerVerified && <span className="text-green-500 text-xs">✓</span>}
                   </div>
-                  <button className="px-4 py-2 rounded-lg bg-blue-500 text-white text-sm hover:bg-blue-600 transition-colors">
+                  <button className="px-4 py-2 rounded-lg bg-[#708090] text-white text-sm hover:bg-[#708090] transition-colors">
                     Buy Now
                   </button>
                 </div>
@@ -435,9 +435,9 @@ function Marketplace() {
                 <div className="text-4xl mb-4 text-center">{item.image}</div>
                 <div className="flex items-start justify-between mb-2">
                   <h3 className="font-semibold text-slate-900 text-sm">{item.title}</h3>
-                  {item.verified && <span className="text-blue-500 text-xs">✓ Verified</span>}
+                  {item.verified && <span className="text-[#4a5a68] text-xs">✓ Verified</span>}
                 </div>
-                <p className="text-lg font-bold text-blue-600 mb-2">${item.price}</p>
+                <p className="text-lg font-bold text-[#4a5a68] mb-2">${item.price}</p>
                 <p className="text-sm text-slate-600 mb-3">{item.description}</p>
                 <div className="flex items-center justify-between text-xs text-slate-500 mb-3">
                   <span>{item.condition}</span>
@@ -455,7 +455,7 @@ function Marketplace() {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-slate-600">by {item.seller}</span>
-                  <button className="px-4 py-2 rounded-lg bg-blue-500 text-white text-sm hover:bg-blue-600 transition-colors">
+                  <button className="px-4 py-2 rounded-lg bg-[#708090] text-white text-sm hover:bg-[#708090] transition-colors">
                     Contact
                   </button>
                 </div>
@@ -480,7 +480,7 @@ function Marketplace() {
                     </div>
                   </div>
                 </div>
-                <p className="text-lg font-bold text-blue-600 mb-2">${tutor.rate}/hour</p>
+                <p className="text-lg font-bold text-[#4a5a68] mb-2">${tutor.rate}/hour</p>
                 <p className="text-sm text-slate-600 mb-3">{tutor.description}</p>
                 <div className="mb-3">
                   <div className="text-xs text-slate-500 mb-1">
@@ -501,12 +501,12 @@ function Marketplace() {
                 </div>
                 <div className="flex flex-wrap gap-1 mb-3">
                   {tutor.specialties.map((specialty, index) => (
-                    <span key={index} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                    <span key={index} className="px-2 py-1 bg-[#e1e6ed] text-blue-800 text-xs rounded-full">
                       {specialty}
                     </span>
                   ))}
                 </div>
-                <button className="w-full px-4 py-2 rounded-lg bg-green-500 text-white text-sm hover:bg-green-600 transition-colors">
+                <button className="w-full px-4 py-2 rounded-lg bg-[#708090] text-white text-sm hover:bg-[#5a6a78] transition-colors">
                   Book Session
                 </button>
               </div>
@@ -541,7 +541,7 @@ function Marketplace() {
                   <button 
                     className={`px-4 py-2 rounded-lg text-white text-sm transition-colors ${
                       book.available 
-                        ? "bg-blue-500 hover:bg-blue-600" 
+                        ? "bg-[#708090] hover:bg-[#708090]" 
                         : "bg-gray-400 cursor-not-allowed"
                     }`}
                     disabled={!book.available}
@@ -561,7 +561,7 @@ function Marketplace() {
             <p className="mb-4 text-blue-100 text-sm">List your items and connect with fellow students</p>
             <button 
               onClick={() => setShowListingModal(true)}
-              className="px-4 py-2 rounded-lg font-medium transition-colors bg-white text-blue-600 hover:bg-blue-50"
+              className="px-4 py-2 rounded-lg font-medium transition-colors bg-white text-[#4a5a68] hover:bg-[#708090]/10"
             >
               Post Listing
             </button>
@@ -707,7 +707,7 @@ function Marketplace() {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  className="flex-1 px-4 py-2 bg-[#708090] text-white rounded-lg hover:bg-[#5a6a78] transition-colors"
                 >
                   Create Listing
                 </button>

@@ -70,7 +70,7 @@ export function EngagementStreaks() {
         </h2>
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="flex items-center gap-2 px-3 py-1 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+          className="flex items-center gap-2 px-3 py-1 text-sm text-slate-600 hover:text-slate-900 hover:bg-[#d0d7df] rounded-lg transition-colors"
         >
           <span>{isCollapsed ? "Show" : "Hide"}</span>
           <svg
@@ -130,11 +130,11 @@ export function EngagementStreaks() {
                 <span className="text-slate-600">
                   Next milestone: 10-day login streak
                 </span>
-                <span className="text-blue-600 font-medium">3 days to go!</span>
+                <span className="text-[#4a5a68] font-medium">3 days to go!</span>
               </div>
               <div className="w-full bg-slate-200 rounded-full h-2">
                 <div
-                  className="bg-blue-500 h-2 rounded-full"
+                  className="bg-[#708090] h-2 rounded-full"
                   style={{ width: "70%" }}
                 ></div>
               </div>
@@ -211,7 +211,7 @@ export function SpotlightCards() {
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
                   <h3 className="font-semibold text-slate-900">{user.name}</h3>
-                  <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
+                  <span className="px-2 py-1 bg-[#e1e6ed] text-blue-800 text-xs font-medium rounded-full">
                     {user.achievement}
                   </span>
                 </div>
@@ -226,7 +226,7 @@ export function SpotlightCards() {
                   ))}
                 </div>
               </div>
-              <button className="px-3 py-1 bg-blue-500 text-white text-xs rounded-lg hover:bg-blue-600 transition-colors">
+              <button className="px-3 py-1 bg-[#708090] text-white text-xs rounded-lg hover:bg-[#708090] transition-colors">
                 Follow
               </button>
             </div>
@@ -385,7 +385,7 @@ export function StudentPolls() {
         </h2>
         <button
           onClick={() => setShowCreatePoll(true)}
-          className="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors"
+          className="px-4 py-2 bg-[#708090] text-white rounded-lg text-sm font-medium hover:bg-[#708090] transition-colors"
         >
           Create Poll
         </button>
@@ -416,8 +416,8 @@ export function StudentPolls() {
                   disabled={poll.userVoted}
                   className={`w-full p-3 rounded-lg text-left transition-colors ${
                     poll.userVoted
-                      ? "bg-blue-50 border border-blue-200"
-                      : "bg-slate-50 hover:bg-slate-100"
+                      ? "bg-[#708090]/10 border border-blue-200"
+                      : "bg-slate-50 hover:bg-[#d0d7df]"
                   }`}
                 >
                   <div className="flex justify-between items-center mb-1">
@@ -431,7 +431,7 @@ export function StudentPolls() {
                   {poll.userVoted && (
                     <div className="bg-slate-200 rounded-full h-2">
                       <div
-                        className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                        className="bg-[#708090] h-2 rounded-full transition-all duration-300"
                         style={{ width: `${option.percentage}%` }}
                       ></div>
                     </div>
@@ -499,7 +499,7 @@ export function StudentPolls() {
                       options: [...newPoll.options, ""],
                     })
                   }
-                  className="text-sm text-blue-600 hover:text-blue-700"
+                  className="text-sm text-[#4a5a68] hover:text-[#3c4b58]"
                 >
                   + Add Option
                 </button>
@@ -553,7 +553,7 @@ export function StudentPolls() {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  className="flex-1 px-4 py-2 bg-[#708090] text-white rounded-lg hover:bg-[#5a6a78] transition-colors"
                 >
                   Create Poll
                 </button>

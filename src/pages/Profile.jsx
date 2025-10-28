@@ -1,10 +1,63 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useRef } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useBranding } from "../contexts/BrandingContext";
+
+const quickStats = [
+  { label: "Engagement score", value: "92", meta: "+8 vs last week" },
+  { label: "Communities", value: "7", meta: "Active memberships" },
+  { label: "Service hours", value: "48h", meta: "This semester" },
+];
+
+const journeyMilestones = [
+  {
+    title: "CS Club Officer",
+    period: "2023 – Present",
+    detail: "Lead sprints for 120+ members, shipping weekly micro-projects.",
+  },
+  {
+    title: "Hackathon Finalist",
+    period: "Aug 2024",
+    detail: "Built a campus marketplace prototype that won the community choice vote.",
+  },
+  {
+    title: "Student Success Fellow",
+    period: "Jan 2024",
+    detail: "Mentored freshmen on productivity systems and onboarding to UNICON.",
+  },
+];
+
+const focusAreas = [
+  {
+    title: "Product Studio",
+    detail: "Designing a verified vendor portal for campus marketplace.",
+    meta: "CS315 · Team lead",
+  },
+  {
+    title: "Community Ops",
+    detail: "Automating club attendance + service hours via UNICON workflows.",
+    meta: "Student Affairs · Internship",
+  },
+  {
+    title: "Wellness Pulse",
+    detail: "Piloting sentiment dashboards for guidance counselors.",
+    meta: "Research · 2 credits",
+  },
+];
+
+const badgeShowcase = [
+  { icon: "🏅", title: "Dean's Lister", detail: "3 consecutive terms", tone: "from-sky-500/20" },
+  { icon: "🧠", title: "Hackathon Finalist", detail: "Top 5 / 60 teams", tone: "from-indigo-500/20" },
+  { icon: "🤝", title: "Service Leader", detail: "48 verified hours", tone: "from-emerald-500/20" },
+  { icon: "🚀", title: "Startup Bootcamp", detail: "Cohort 03", tone: "from-orange-500/20" },
+];
+
+const toolkit = ["Figma", "Next.js", "Python", "Notion", "Firebase", "Miro"];
 
 function Profile() {
   const { user, logout } = useAuth();
   const { branding } = useBranding();
+  const brandColor = branding?.color || "#365b6d";
+
   const [activeTab, setActiveTab] = useState("posts");
   const [isEditing, setIsEditing] = useState(false);
   const [profileData, setProfileData] = useState({
@@ -18,19 +71,19 @@ function Profile() {
   const [posts, setPosts] = useState([
     {
       id: 1,
-      content: "Finished our app pitch today! 🚀",
+      content: "Shipped the vendor verification flow for our campus marketplace pilot. 🎯",
       imageUrl:
         "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400&h=200&fit=crop",
-      likes: 23,
-      comments: 5,
+      likes: 48,
+      comments: 9,
       timestamp: "2 hours ago",
       canDelete: true,
     },
     {
       id: 2,
-      content: "Joined CS315 Study Group",
-      likes: 12,
-      comments: 3,
+      content: "Hosted our CS club design critique — 5 teams demoed shipping updates!",
+      likes: 32,
+      comments: 6,
       timestamp: "1 day ago",
       canDelete: true,
     },
@@ -82,7 +135,6 @@ function Profile() {
   };
 
   const handleSaveProfile = () => {
-    // Here you would typically save to backend
     console.log("Saving profile:", profileData);
     setIsEditing(false);
   };
@@ -108,184 +160,68 @@ function Profile() {
   };
 
   const tabs = [
-    { id: "posts", label: "Posts" },
+    { id: "posts", label: "Feed" },
+    { id: "journey", label: "Journey" },
     { id: "about", label: "About" },
-    { id: "clubs", label: "Clubs" },
     { id: "badges", label: "Badges" },
   ];
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* Mobile Header */}
-      <div className="lg:hidden bg-white border-b border-slate-200 px-4 py-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-sm font-bold">
-              U
-            </div>
-            <span className="font-semibold text-slate-900">
-              UNICON School Platform
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center">
-              <svg
-                className="h-4 w-4 text-slate-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
-            </div>
-            <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-sm font-semibold">
-              {initials(user?.name)}
-            </div>
-          </div>
-        </div>
+    <div className="min-h-screen bg-[#f3f6fb] pb-16">
+      <div className="relative h-60 w-full overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+        {backgroundPic && (
+          <img
+            src={backgroundPic}
+            alt="Profile cover"
+            className="absolute inset-0 h-full w-full object-cover opacity-70"
+          />
+        )}
+        <div
+          className="absolute inset-0"
+          style={{
+            backgroundImage: `radial-gradient(circle at top, ${brandColor}30, transparent 55%)`,
+          }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-slate-900/40 to-slate-950" />
       </div>
 
-      {/* Profile Header */}
-      <div className="relative bg-white px-4 py-6 lg:px-0 lg:py-8">
-        {/* Background Image */}
-        {backgroundPic && (
-          <div className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-10">
-            <img
-              src={backgroundPic}
-              alt="Background"
-              className="w-full h-full object-cover"
-            />
-          </div>
-        )}
-
-        <div className="relative max-w-4xl mx-auto">
-          <div className="flex items-start gap-4 lg:gap-6">
-            {/* Profile Picture */}
-            <div className="relative">
-              <div className="h-20 w-20 lg:h-24 lg:w-24 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-2xl lg:text-3xl font-bold flex-shrink-0 overflow-hidden">
-                {profilePic ? (
-                  <img
-                    src={profilePic}
-                    alt="Profile"
-                    className="w-full h-full object-cover"
+      <section className="relative -mt-24 px-4">
+        <div className="mx-auto max-w-5xl space-y-6">
+          <div className="rounded-3xl border border-white/80 bg-white/95 p-6 shadow-2xl backdrop-blur">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-center">
+              <div className="flex items-center gap-4 lg:flex-col lg:items-start">
+                <div className="relative">
+                  <div className="h-24 w-24 rounded-3xl bg-[#708090] text-white shadow-2xl ring-4 ring-white flex items-center justify-center text-3xl font-bold overflow-hidden">
+                    {profilePic ? (
+                      <img
+                        src={profilePic}
+                        alt="Profile"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      initials(profileData.name)
+                    )}
+                  </div>
+                  <button
+                    onClick={() => profilePicRef.current?.click()}
+                    className="absolute -bottom-1 -right-1 h-8 w-8 rounded-2xl bg-[#708090] text-white shadow-lg"
+                    title="Change avatar"
+                  >
+                    📷
+                  </button>
+                  <input
+                    ref={profilePicRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleProfilePicUpload}
+                    className="hidden"
                   />
-                ) : (
-                  initials(profileData.name)
-                )}
-              </div>
-              {/* Profile Pic Upload Button */}
-              <button
-                onClick={() => profilePicRef.current?.click()}
-                className="absolute -bottom-1 -right-1 h-6 w-6 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs hover:bg-blue-600 transition-colors"
-                title="Change profile picture"
-              >
-                📷
-              </button>
-              <input
-                ref={profilePicRef}
-                type="file"
-                accept="image/*"
-                onChange={handleProfilePicUpload}
-                className="hidden"
-              />
-            </div>
-
-            {/* Profile Info */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1 lg:mb-2">
-                <h1 className="text-xl lg:text-3xl font-bold text-slate-900 truncate">
-                  {profileData.name}
-                </h1>
-                <div className="h-5 w-5 lg:h-6 lg:w-6 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0">
-                  <svg
-                    className="h-3 w-3 lg:h-4 lg:w-4 text-white"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
                 </div>
-                <button
-                  onClick={() => setIsEditing(!isEditing)}
-                  className="hidden lg:block px-4 py-2 border border-blue-500 text-blue-500 rounded-lg hover:bg-blue-50 transition-colors text-sm"
-                >
-                  {isEditing ? "Cancel" : "Edit Profile"}
-                </button>
-              </div>
-
-              <p className="text-sm lg:text-lg text-slate-600 mb-1 lg:mb-2">
-                @{user?.email?.split("@")[0] || "username"}
-              </p>
-              <p className="text-sm lg:text-base text-slate-500 mb-2 lg:mb-2">
-                {profileData.major}, {profileData.year} •{" "}
-                {branding?.name || "UNICON University"}
-              </p>
-
-              <div className="flex items-center gap-4 text-xs lg:text-sm text-slate-500 mb-3 lg:mb-4">
-                <div className="flex items-center gap-1">
-                  <svg
-                    className="h-3 w-3 lg:h-4 lg:w-4"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                  <span>{profileData.location}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <svg
-                    className="h-3 w-3 lg:h-4 lg:w-4"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                  <span>{formatDate(user?.joinDate)}</span>
-                </div>
-              </div>
-
-              {/* Status */}
-              <p className="text-sm lg:text-base text-slate-700 italic mb-3 lg:mb-4">
-                "{profileData.bio}"
-              </p>
-
-              {/* Badges */}
-              <div className="flex flex-wrap gap-2 mb-4 lg:mb-6">
-                <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
-                  Dean's Lister
-                </span>
-                <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
-                  CS Club Officer
-                </span>
-                <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
-                  Volunteer
-                </span>
-              </div>
-
-              {/* Background Image Upload */}
-              <div className="mb-4">
                 <button
                   onClick={() => backgroundPicRef.current?.click()}
-                  className="px-3 py-1 text-xs bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition-colors"
+                  className="rounded-full border border-slate-200 px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50"
                 >
-                  {backgroundPic ? "Change Background" : "Add Background"}
+                  {backgroundPic ? "Change cover" : "Add cover"}
                 </button>
                 <input
                   ref={backgroundPicRef}
@@ -296,139 +232,200 @@ function Profile() {
                 />
               </div>
 
-              {/* Mobile Edit Button */}
-              <button
-                onClick={() => setIsEditing(!isEditing)}
-                className="lg:hidden w-full px-4 py-2 border border-blue-500 text-blue-500 rounded-lg hover:bg-blue-50 transition-colors text-sm mb-4"
-              >
-                {isEditing ? "Cancel" : "Edit Profile"}
-              </button>
-
-              {/* Stats */}
-              <div className="grid grid-cols-3 gap-4 lg:gap-6">
-                <div className="text-center">
-                  <div className="text-lg lg:text-2xl font-bold text-slate-900">
-                    24
-                  </div>
-                  <div className="text-xs lg:text-sm text-slate-500">Posts</div>
+              <div className="flex-1">
+                <div className="flex flex-wrap items-center gap-3">
+                  <h1 className="text-3xl font-bold text-slate-900">
+                    {profileData.name}
+                  </h1>
+                  <span className="rounded-full border border-slate-200 px-3 py-1 text-xs font-medium uppercase tracking-[0.3em] text-slate-500">
+                    {profileData.major}
+                  </span>
                 </div>
-                <div className="text-center">
-                  <div className="text-lg lg:text-2xl font-bold text-slate-900">
-                    156
+                <p className="mt-1 text-slate-500">@{user?.email?.split("@")[0] || "username"}</p>
+                <p className="mt-3 text-base text-slate-700 max-w-2xl">
+                  {profileData.bio}
+                </p>
+                <div className="mt-4 flex flex-wrap items-center gap-4 text-sm text-slate-500">
+                  <div className="flex items-center gap-2">
+                    <span role="img" aria-label="location">
+                      📍
+                    </span>
+                    {profileData.location}
                   </div>
-                  <div className="text-xs lg:text-sm text-slate-500">
-                    Followers
+                  <div className="flex items-center gap-2">
+                    <span role="img" aria-label="calendar">
+                      📅
+                    </span>
+                    {formatDate(user?.joinDate)}
                   </div>
-                </div>
-                <div className="text-center">
-                  <div className="text-lg lg:text-2xl font-bold text-slate-900">
-                    89
-                  </div>
-                  <div className="text-xs lg:text-sm text-slate-500">
-                    Following
+                  <div className="flex items-center gap-2">
+                    <span role="img" aria-label="school">
+                      🎓
+                    </span>
+                    {profileData.year} • {branding?.name || "UNICON University"}
                   </div>
                 </div>
               </div>
+
+              <div className="flex flex-col gap-3 lg:w-56">
+                <button
+                  onClick={() => setIsEditing(true)}
+                  className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 hover:border-slate-300"
+                >
+                  Edit profile
+                </button>
+                <button
+                  className="rounded-2xl px-4 py-3 text-sm font-semibold text-white shadow-lg"
+                  style={{ background: `linear-gradient(135deg, ${brandColor}, #0f1c24)` }}
+                >
+                  Share profile
+                </button>
+                <button
+                  onClick={logout}
+                  className="rounded-2xl border border-red-200 px-4 py-3 text-sm font-semibold text-red-500 hover:bg-red-50"
+                >
+                  Log out
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-6 grid gap-4 sm:grid-cols-3">
+              {[
+                { label: "Posts", value: 24 },
+                { label: "Followers", value: 156 },
+                { label: "Following", value: 89 },
+              ].map((stat) => (
+                <div key={stat.label} className="rounded-2xl border border-slate-100 px-4 py-3 shadow-sm">
+                  <p className="text-sm text-slate-500">{stat.label}</p>
+                  <p className="text-2xl font-bold text-slate-900">{stat.value}</p>
+                </div>
+              ))}
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* Navigation Tabs */}
-      <div className="bg-white border-b border-slate-200">
-        <div className="max-w-4xl mx-auto px-4 lg:px-0">
-          <div className="flex overflow-x-auto">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`px-4 lg:px-6 py-3 lg:py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                  activeTab === tab.id
-                    ? "text-blue-600 border-blue-600"
-                    : "text-slate-600 border-transparent hover:text-slate-900 hover:border-slate-300"
-                }`}
+          <div className="grid gap-4 md:grid-cols-3">
+            {quickStats.map((stat) => (
+              <div
+                key={stat.label}
+                className="rounded-2xl border border-white/70 bg-white p-4 shadow-sm"
               >
-                {tab.label}
-              </button>
+                <p className="text-xs font-semibold uppercase tracking-[0.4em] text-slate-500">
+                  {stat.label}
+                </p>
+                <p className="mt-3 text-3xl font-bold text-slate-900">{stat.value}</p>
+                <p className="text-xs text-slate-500">{stat.meta}</p>
+              </div>
             ))}
-            <div className="ml-auto flex items-center px-2">
-              <button className="px-3 lg:px-4 py-2 bg-blue-500 text-white text-sm font-medium rounded-lg hover:bg-blue-600 transition-colors">
-                New +
-              </button>
-            </div>
+          </div>
+        </div>
+      </section>
+
+      <div className="mt-10 border-b border-slate-200 bg-white/80 backdrop-blur">
+        <div className="mx-auto flex max-w-5xl overflow-x-auto px-4">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-5 py-4 text-sm font-semibold transition ${
+                activeTab === tab.id
+                  ? "text-slate-900"
+                  : "text-slate-500 hover:text-slate-800"
+              }`}
+              style={
+                activeTab === tab.id
+                  ? { borderBottom: `3px solid ${brandColor}` }
+                  : { borderBottom: "3px solid transparent" }
+              }
+            >
+              {tab.label}
+            </button>
+          ))}
+          <div className="ml-auto flex items-center gap-2 py-3">
+            <button className="rounded-full border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">
+              New post
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Content Area */}
-      <div className="max-w-4xl mx-auto px-4 lg:px-0 py-4 lg:py-6">
+      <div className="mx-auto mt-6 max-w-5xl px-4 space-y-6">
         {activeTab === "posts" && (
-          <div className="space-y-4 lg:space-y-6">
-            {/* Recent Posts */}
-            <div className="bg-white rounded-xl border border-slate-200 p-4 lg:p-6">
-              <h2 className="text-lg lg:text-xl font-semibold text-slate-900 mb-4">
-                Recent Posts
-              </h2>
-              <div className="space-y-4">
+          <div className="space-y-6">
+            <div className="rounded-3xl border border-dashed border-slate-200 bg-white p-5">
+              <div className="flex items-center gap-3">
+                <div className="h-12 w-12 rounded-2xl bg-[#708090] text-white flex items-center justify-center font-semibold">
+                  {profilePic ? (
+                    <img
+                      src={profilePic}
+                      alt="Profile"
+                      className="h-full w-full rounded-2xl object-cover"
+                    />
+                  ) : (
+                    initials(profileData.name)
+                  )}
+                </div>
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    placeholder="Share an update with your campus..."
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm focus:border-slate-400 focus:outline-none"
+                  />
+                </div>
+                <button
+                  className="rounded-2xl px-4 py-3 text-sm font-semibold text-white shadow-lg"
+                  style={{ background: `linear-gradient(135deg, ${brandColor}, #0f1c24)` }}
+                >
+                  Post
+                </button>
+              </div>
+            </div>
+
+            <div className="rounded-3xl border border-white/80 bg-white p-6 shadow-sm">
+              <h2 className="text-lg font-semibold text-slate-900">Recent posts</h2>
+              <div className="mt-4 space-y-6">
                 {posts.map((post) => (
-                  <div
-                    key={post.id}
-                    className="border-b border-slate-100 pb-4 last:border-none last:pb-0"
-                  >
+                  <div key={post.id} className="rounded-2xl border border-slate-100 p-4">
                     <div className="flex items-start gap-3">
-                      <div className="h-8 w-8 lg:h-10 lg:w-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-xs lg:text-sm font-bold overflow-hidden">
+                      <div className="h-10 w-10 rounded-2xl bg-[#708090] text-white flex items-center justify-center font-semibold">
                         {profilePic ? (
                           <img
                             src={profilePic}
                             alt="Profile"
-                            className="w-full h-full object-cover"
+                            className="h-full w-full rounded-2xl object-cover"
                           />
                         ) : (
                           initials(profileData.name)
                         )}
                       </div>
                       <div className="flex-1">
-                        <div className="flex items-center justify-between mb-1">
-                          <div className="flex items-center gap-2">
-                            <span className="font-semibold text-slate-900 text-sm lg:text-base">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-semibold text-slate-900">
                               {profileData.name}
-                            </span>
-                            <span className="text-xs lg:text-sm text-slate-500">
-                              {post.timestamp}
-                            </span>
+                            </p>
+                            <p className="text-xs text-slate-500">{post.timestamp}</p>
                           </div>
                           {post.canDelete && (
                             <button
                               onClick={() => handleDeletePost(post.id)}
-                              className="text-slate-400 hover:text-red-500 transition-colors"
-                              title="Delete post"
+                              className="text-slate-400 hover:text-red-500"
                             >
                               🗑️
                             </button>
                           )}
                         </div>
-                        <p className="text-sm lg:text-base text-slate-800 mb-2">
-                          {post.content}
-                        </p>
+                        <p className="mt-3 text-sm text-slate-700">{post.content}</p>
                         {post.imageUrl && (
-                          <div className="bg-slate-50 rounded-lg p-3 lg:p-4">
-                            <img
-                              src={post.imageUrl}
-                              alt="Post"
-                              className="w-full h-24 lg:h-32 object-cover rounded-lg"
-                            />
-                          </div>
+                          <img
+                            src={post.imageUrl}
+                            alt="Post"
+                            className="mt-4 h-48 w-full rounded-2xl object-cover"
+                          />
                         )}
-                        <div className="flex items-center gap-4 mt-3 text-xs lg:text-sm text-slate-500">
-                          <button className="hover:text-red-500 flex items-center gap-1">
-                            ♥ {post.likes}
-                          </button>
-                          <button className="hover:text-blue-500 flex items-center gap-1">
-                            💬 {post.comments}
-                          </button>
-                          <button className="hover:text-green-500 flex items-center gap-1">
-                            🔄 Share
-                          </button>
+                        <div className="mt-4 flex items-center gap-4 text-sm text-slate-500">
+                          <button className="hover:text-red-500">♥ {post.likes}</button>
+                          <button className="hover:text-[#4a5a68]">💬 {post.comments}</button>
+                          <button className="hover:text-green-500">🔄 Share</button>
                         </div>
                       </div>
                     </div>
@@ -439,162 +436,172 @@ function Profile() {
           </div>
         )}
 
-        {activeTab === "about" && (
-          <div className="bg-white rounded-xl border border-slate-200 p-4 lg:p-6">
-            <h2 className="text-lg lg:text-xl font-semibold text-slate-900 mb-4">
-              About
-            </h2>
-            <div className="space-y-4">
-              <div>
-                <h3 className="font-semibold text-slate-900 mb-2 text-sm lg:text-base">
-                  Bio
-                </h3>
-                <p className="text-sm lg:text-base text-slate-600">
-                  {profileData.bio}
-                </p>
+        {activeTab === "journey" && (
+          <div className="grid gap-6 lg:grid-cols-[1.1fr,0.9fr]">
+            <div className="space-y-5">
+              <div className="rounded-3xl border border-white/80 bg-white p-6 shadow-sm">
+                <h2 className="text-lg font-semibold text-slate-900">Milestones</h2>
+                <div className="mt-4 space-y-6">
+                  {journeyMilestones.map((item) => (
+                    <div key={item.title} className="relative pl-6">
+                      <div className="absolute left-0 top-1 h-4 w-4 rounded-full border-2 border-white" style={{ backgroundColor: brandColor }} />
+                      <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
+                        <p className="text-sm font-semibold text-slate-900">{item.title}</p>
+                        <p className="text-xs uppercase tracking-[0.35em] text-slate-500">{item.period}</p>
+                        <p className="mt-2 text-sm text-slate-600">{item.detail}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div>
-                <h3 className="font-semibold text-slate-900 mb-2 text-sm lg:text-base">
-                  Interests
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  {profileData.interests.map((interest, index) => (
+
+              <div className="rounded-3xl border border-white/80 bg-white p-6 shadow-sm">
+                <h2 className="text-lg font-semibold text-slate-900">Focus areas</h2>
+                <div className="mt-4 grid gap-4 lg:grid-cols-3">
+                  {focusAreas.map((area) => (
+                    <div key={area.title} className="rounded-2xl border border-slate-100 p-4">
+                      <p className="text-sm font-semibold text-slate-900">{area.title}</p>
+                      <p className="mt-1 text-xs uppercase tracking-[0.35em] text-slate-500">{area.meta}</p>
+                      <p className="mt-2 text-sm text-slate-600">{area.detail}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-5">
+              <div className="rounded-3xl border border-white/80 bg-white p-6 shadow-sm">
+                <h3 className="text-base font-semibold text-slate-900">Toolkit</h3>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {toolkit.map((tool) => (
                     <span
-                      key={index}
-                      className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs"
+                      key={tool}
+                      className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600"
+                    >
+                      {tool}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-3xl border border-white/80 bg-white p-6 shadow-sm">
+                <h3 className="text-base font-semibold text-slate-900">Snapshot</h3>
+                <ul className="mt-3 space-y-3 text-sm text-slate-600">
+                  <li>• Mentoring 6 freshmen on UNICON onboarding.</li>
+                  <li>• Partnering with Student Affairs on service tracking.</li>
+                  <li>• Building a vendor dashboard for campus marketplace.</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "about" && (
+          <div className="grid gap-5 lg:grid-cols-[1.1fr,0.9fr]">
+            <div className="space-y-5">
+              <div className="rounded-3xl border border-white/80 bg-white p-6 shadow-sm">
+                <h2 className="text-lg font-semibold text-slate-900">Profile</h2>
+                <p className="mt-2 text-sm text-slate-600">{profileData.bio}</p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {profileData.interests.map((interest) => (
+                    <span
+                      key={interest}
+                      className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700"
                     >
                       {interest}
                     </span>
                   ))}
                 </div>
               </div>
-              <div>
-                <h3 className="font-semibold text-slate-900 mb-2 text-sm lg:text-base">
-                  Contact
-                </h3>
-                <p className="text-sm lg:text-base text-slate-600">
-                  {user?.email}
-                </p>
+
+              <div className="rounded-3xl border border-white/80 bg-white p-6 shadow-sm">
+                <h2 className="text-lg font-semibold text-slate-900">Focus</h2>
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                  <div className="rounded-2xl border border-slate-100 p-4">
+                    <p className="text-xs uppercase tracking-[0.35em] text-slate-500">Academic</p>
+                    <p className="mt-2 text-sm font-semibold text-slate-900">{profileData.major}</p>
+                    <p className="text-xs text-slate-500">{profileData.year}</p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-100 p-4">
+                    <p className="text-xs uppercase tracking-[0.35em] text-slate-500">School</p>
+                    <p className="mt-2 text-sm font-semibold text-slate-900">
+                      {branding?.name || "UNICON University"}
+                    </p>
+                    <p className="text-xs text-slate-500">{profileData.location}</p>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-        )}
 
-        {activeTab === "clubs" && (
-          <div className="bg-white rounded-xl border border-slate-200 p-4 lg:p-6">
-            <h2 className="text-lg lg:text-xl font-semibold text-slate-900 mb-4">
-              Clubs & Organizations
-            </h2>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="border border-slate-200 rounded-lg p-4">
-                <h3 className="font-semibold text-slate-900 mb-2 text-sm lg:text-base">
-                  Computer Science Club
-                </h3>
-                <p className="text-xs lg:text-sm text-slate-600 mb-2">
-                  Officer
-                </p>
-                <p className="text-xs text-slate-500">
-                  Active member since 2023
-                </p>
+            <div className="space-y-5">
+              <div className="rounded-3xl border border-white/80 bg-white p-6 shadow-sm">
+                <h3 className="text-base font-semibold text-slate-900">Contact</h3>
+                <p className="mt-2 text-sm text-slate-600">{user?.email}</p>
+                <p className="text-xs text-slate-500">Usually replies within a day.</p>
               </div>
-              <div className="border border-slate-200 rounded-lg p-4">
-                <h3 className="font-semibold text-slate-900 mb-2 text-sm lg:text-base">
-                  Debate Society
-                </h3>
-                <p className="text-xs lg:text-sm text-slate-600 mb-2">Member</p>
-                <p className="text-xs text-slate-500">
-                  Active member since 2023
-                </p>
+              <div className="rounded-3xl border border-white/80 bg-white p-6 shadow-sm">
+                <h3 className="text-base font-semibold text-slate-900">Availability</h3>
+                <ul className="mt-3 space-y-2 text-sm text-slate-600">
+                  <li>• Office hours: Tue & Thu, 3-5PM</li>
+                  <li>• Mentorship slots: 2 remaining</li>
+                  <li>• Open to: Product design, student success, research collabs</li>
+                </ul>
               </div>
             </div>
           </div>
         )}
 
         {activeTab === "badges" && (
-          <div className="bg-white rounded-xl border border-slate-200 p-4 lg:p-6">
-            <h2 className="text-lg lg:text-xl font-semibold text-slate-900 mb-4">
-              Achievements & Badges
-            </h2>
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="text-center p-4 border border-slate-200 rounded-lg">
-                <div className="text-2xl lg:text-3xl mb-2">🏆</div>
-                <h3 className="font-semibold text-slate-900 text-sm lg:text-base">
-                  Dean's Lister
-                </h3>
-                <p className="text-xs lg:text-sm text-slate-600">
-                  Academic Excellence
-                </p>
-              </div>
-              <div className="text-center p-4 border border-slate-200 rounded-lg">
-                <div className="text-2xl lg:text-3xl mb-2">👨‍💻</div>
-                <h3 className="font-semibold text-slate-900 text-sm lg:text-base">
-                  CS Club Officer
-                </h3>
-                <p className="text-xs lg:text-sm text-slate-600">Leadership</p>
-              </div>
-              <div className="text-center p-4 border border-slate-200 rounded-lg">
-                <div className="text-2xl lg:text-3xl mb-2">🤝</div>
-                <h3 className="font-semibold text-slate-900 text-sm lg:text-base">
-                  Volunteer
-                </h3>
-                <p className="text-xs lg:text-sm text-slate-600">
-                  Community Service
-                </p>
-              </div>
+          <div className="rounded-3xl border border-white/80 bg-white p-6 shadow-sm">
+            <h2 className="text-lg font-semibold text-slate-900">Badge wall</h2>
+            <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {badgeShowcase.map((badge) => (
+                <div
+                  key={badge.title}
+                  className={`rounded-3xl border border-white/80 bg-gradient-to-br ${badge.tone} via-white/70 to-white p-4 shadow-sm`}
+                >
+                  <div className="text-3xl">{badge.icon}</div>
+                  <p className="mt-3 text-sm font-semibold text-slate-900">{badge.title}</p>
+                  <p className="text-xs text-slate-600">{badge.detail}</p>
+                </div>
+              ))}
             </div>
           </div>
         )}
       </div>
 
-      {/* Profile Editing Modal */}
       {isEditing && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
-          <div className="bg-white rounded-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-slate-900">
-                  Edit Profile
-                </h2>
-                <button
-                  onClick={() => setIsEditing(false)}
-                  className="text-slate-400 hover:text-slate-600"
-                >
-                  ✕
-                </button>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[#708090]/60 px-4">
+          <div className="w-full max-w-2xl rounded-3xl bg-white p-6 shadow-2xl">
+            <h2 className="text-2xl font-semibold text-slate-900">Edit profile</h2>
+            <p className="text-sm text-slate-500">Refresh how your classmates see you.</p>
+
+            <div className="mt-6 grid gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Name
+                </label>
+                <input
+                  type="text"
+                  value={profileData.name}
+                  onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
+                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 focus:border-slate-500 focus:outline-none"
+                />
               </div>
 
-              <div className="space-y-4">
-                {/* Name */}
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Name
-                  </label>
-                  <input
-                    type="text"
-                    value={profileData.name}
-                    onChange={(e) =>
-                      setProfileData({ ...profileData, name: e.target.value })
-                    }
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Bio
+                </label>
+                <textarea
+                  rows="3"
+                  value={profileData.bio}
+                  onChange={(e) => setProfileData({ ...profileData, bio: e.target.value })}
+                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 focus:border-slate-500 focus:outline-none"
+                />
+              </div>
 
-                {/* Bio */}
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Bio
-                  </label>
-                  <textarea
-                    rows={3}
-                    value={profileData.bio}
-                    onChange={(e) =>
-                      setProfileData({ ...profileData, bio: e.target.value })
-                    }
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                {/* Location */}
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
                     Location
@@ -603,16 +610,11 @@ function Profile() {
                     type="text"
                     value={profileData.location}
                     onChange={(e) =>
-                      setProfileData({
-                        ...profileData,
-                        location: e.target.value,
-                      })
+                      setProfileData({ ...profileData, location: e.target.value })
                     }
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full rounded-2xl border border-slate-300 px-4 py-3 focus:border-slate-500 focus:outline-none"
                   />
                 </div>
-
-                {/* Major */}
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
                     Major
@@ -623,21 +625,20 @@ function Profile() {
                     onChange={(e) =>
                       setProfileData({ ...profileData, major: e.target.value })
                     }
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full rounded-2xl border border-slate-300 px-4 py-3 focus:border-slate-500 focus:outline-none"
                   />
                 </div>
+              </div>
 
-                {/* Year */}
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Year
-                  </label>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Year
+                </label>
+                <div className="relative">
                   <select
                     value={profileData.year}
-                    onChange={(e) =>
-                      setProfileData({ ...profileData, year: e.target.value })
-                    }
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    onChange={(e) => setProfileData({ ...profileData, year: e.target.value })}
+                    className="w-full appearance-none rounded-2xl border border-slate-300 px-4 py-3 pr-10 text-slate-700 focus:border-slate-500 focus:outline-none"
                   >
                     <option value="Freshman">Freshman</option>
                     <option value="Sophomore">Sophomore</option>
@@ -645,69 +646,78 @@ function Profile() {
                     <option value="Senior">Senior</option>
                     <option value="Graduate">Graduate</option>
                   </select>
+                  <svg
+                    className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                  </svg>
                 </div>
+              </div>
 
-                {/* Interests */}
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Interests
-                  </label>
-                  <div className="flex flex-wrap gap-2 mb-2">
-                    {profileData.interests.map((interest, index) => (
-                      <span
-                        key={index}
-                        className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs flex items-center gap-1"
-                      >
-                        {interest}
-                        <button
-                          onClick={() => handleRemoveInterest(interest)}
-                          className="text-blue-500 hover:text-blue-700"
-                        >
-                          ✕
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      placeholder="Add interest..."
-                      onKeyPress={(e) => {
-                        if (e.key === "Enter") {
-                          handleAddInterest(e.target.value);
-                          e.target.value = "";
-                        }
-                      }}
-                      className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <button
-                      onClick={(e) => {
-                        const input = e.target.previousElementSibling;
-                        handleAddInterest(input.value);
-                        input.value = "";
-                      }}
-                      className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Interests
+                </label>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {profileData.interests.map((interest) => (
+                    <span
+                      key={interest}
+                      className="flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700"
                     >
-                      Add
-                    </button>
-                  </div>
+                      {interest}
+                      <button
+                        onClick={() => handleRemoveInterest(interest)}
+                        className="text-slate-500"
+                      >
+                        ✕
+                      </button>
+                    </span>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Add interest"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleAddInterest(e.target.value);
+                        e.target.value = "";
+                      }
+                    }}
+                    className="flex-1 rounded-2xl border border-slate-300 px-4 py-3 focus:border-slate-500 focus:outline-none"
+                  />
+                  <button
+                    onClick={(e) => {
+                      const input = e.currentTarget.previousElementSibling;
+                      handleAddInterest(input.value || "");
+                      input.value = "";
+                    }}
+                    className="rounded-2xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700"
+                  >
+                    Add
+                  </button>
                 </div>
               </div>
+            </div>
 
-              <div className="flex gap-3 mt-6">
-                <button
-                  onClick={() => setIsEditing(false)}
-                  className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSaveProfile}
-                  className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-                >
-                  Save Changes
-                </button>
-              </div>
+            <div className="mt-6 flex gap-3">
+              <button
+                onClick={() => setIsEditing(false)}
+                className="flex-1 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveProfile}
+                className="flex-1 rounded-2xl px-4 py-3 text-sm font-semibold text-white"
+                style={{ background: `linear-gradient(135deg, ${brandColor}, #0f1c24)` }}
+              >
+                Save changes
+              </button>
             </div>
           </div>
         </div>

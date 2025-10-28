@@ -296,7 +296,7 @@ function Register() {
             <div className="flex items-center justify-between mb-6">
               <Link
                 to="/"
-                className="flex items-center gap-2 px-4 py-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-all"
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-[#d0d7df] transition-all"
               >
                 <svg
                   className="w-5 h-5"

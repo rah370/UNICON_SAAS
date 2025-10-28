@@ -121,7 +121,7 @@ function OfflineManager() {
 
       {/* Offline Actions Indicator */}
       {!isOnline && offlineActions.length > 0 && (
-        <div className="fixed bottom-20 right-4 z-50 bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg">
+        <div className="fixed bottom-20 right-4 z-50 bg-[#708090] text-white px-4 py-2 rounded-lg shadow-lg">
           <div className="flex items-center gap-2">
             <span>💾</span>
             <span className="text-sm">
@@ -286,7 +286,7 @@ export function OfflinePostComposer({ onSubmit }) {
         <button
           type="submit"
           disabled={!content.trim() || isSubmitting}
-          className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-4 py-2 bg-[#708090] text-white rounded-lg hover:bg-[#708090] disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isSubmitting ? 'Posting...' : isOnline ? 'Post' : 'Save Draft'}
         </button>
@@ -347,7 +347,7 @@ export function OfflineMessageComposer({ onSend }) {
       <button
         type="submit"
         disabled={!message.trim() || isSending}
-        className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="px-4 py-2 bg-[#708090] text-white rounded-lg hover:bg-[#708090] disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {isSending ? 'Sending...' : isOnline ? 'Send' : 'Save'}
       </button>
