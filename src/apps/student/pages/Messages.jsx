@@ -5,7 +5,9 @@ import React, {
   useState,
   useCallback,
 } from "react";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../../shared/contexts/AuthContext";
+import { messagesApi } from "../../shared/utils/messagesApi";
+import { useToast } from "../../shared/components/Toast";
 
 // --- small helpers ---
 const classNames = (...a) => a.filter(Boolean).join(" ");
@@ -781,6 +783,7 @@ function ChatWindow({
 // --- main page with enhanced safety features ---
 export default function Messages() {
   const { user, isAdmin } = useAuth();
+  const { success, error: showError } = useToast();
   const [loading, setLoading] = useState(true);
   const [conversations, setConversations] = useState([]);
   const [selected, setSelected] = useState(null);
@@ -789,44 +792,83 @@ export default function Messages() {
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportedContent, setReportedContent] = useState("");
   const [conversationFilter, setConversationFilter] = useState("all");
+  const [showNewChatModal, setShowNewChatModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [searching, setSearching] = useState(false);
 
+  // Fetch conversations on mount
   useEffect(() => {
-    // initial load
-    const t = setTimeout(() => {
+    const fetchConversations = async () => {
+      try {
+        setLoading(true);
+        const result = await messagesApi.getConversations();
+        const formatted = (result.conversations || []).map((conv) => ({
+          id: `conv-${conv.other_user_id}`,
+          name: `${conv.first_name} ${conv.last_name}`.trim() || conv.email,
+          avatar: conv.avatar_url || "",
+          lastMessage: conv.last_message || "",
+          timestamp: conv.last_message_time || new Date().toISOString(),
+          unread: conv.unread_count || 0,
+          online: false, // TODO: Implement online status
+          verified: true,
+          role: conv.role || "student",
+          blocked: false,
+          reported: false,
+          otherUserId: conv.other_user_id,
+        }));
+        setConversations(formatted);
+      } catch (err) {
+        console.error("Failed to fetch conversations:", err);
+        showError("Failed to load conversations. Using demo data.");
       setConversations(fakeConversations);
+      } finally {
       setLoading(false);
-    }, 600);
-    return () => clearTimeout(t);
-  }, []);
+      }
+    };
+
+    if (user) {
+      fetchConversations();
+    }
+  }, [user, showError]);
 
   // when selecting a conversation
-  const openConversation = useCallback((c) => {
+  const openConversation = useCallback(async (c) => {
     setSelected(c);
-    // mark read
+    // mark read locally
     setConversations((prev) =>
       prev.map((x) => (x.id === c.id ? { ...x, unread: 0 } : x))
     );
-    // fetch thread
-    setMessages(
-      c.id === "conv1"
-        ? fakeThread
-        : [
-            {
-              id: "mA",
-              senderId: "me",
-              sender: "You",
-              content: "Hello!",
-              ts: timeNow(),
+    
+    // fetch messages from API
+    try {
+      const otherUserId = c.otherUserId || c.id.replace("conv-", "");
+      const result = await messagesApi.getMessages(otherUserId);
+      const formatted = (result.messages || []).map((msg) => ({
+        id: msg.id.toString(),
+        senderId: msg.sender_id === user.id ? "me" : msg.sender_id.toString(),
+        sender: msg.sender_id === user.id ? "You" : `${msg.first_name} ${msg.last_name}`.trim(),
+        content: msg.content,
+        ts: msg.created_at,
               status: "sent",
               verified: true,
               flagged: false,
-            },
-          ]
-    );
-  }, []);
+      }));
+      setMessages(formatted);
+    } catch (err) {
+      console.error("Failed to fetch messages:", err);
+      showError("Failed to load messages.");
+      setMessages([]);
+    }
+  }, [user, showError]);
 
   // optimistic send with safety checks
-  const send = useCallback((text) => {
+  const send = useCallback(async (text) => {
+    if (!selected || !selected.otherUserId) {
+      showError("Please select a conversation first.");
+      return;
+    }
+
     const tempId = `tmp-${Date.now()}`;
     const optimistic = {
       id: tempId,
@@ -840,16 +882,64 @@ export default function Messages() {
     };
     setMessages((prev) => [...prev, optimistic]);
 
-    // simulate network with safety checks
-    setTimeout(() => {
-      const ok = Math.random() > 0.05; // small chance to fail
+    try {
+      const otherUserId = selected.otherUserId || selected.id.replace("conv-", "");
+      const result = await messagesApi.sendMessage(otherUserId, text);
+      
+      // Replace optimistic message with real one
+      if (result.message) {
       setMessages((prev) =>
         prev.map((m) =>
-          m.id === tempId ? { ...m, status: ok ? "sent" : "failed" } : m
+            m.id === tempId
+              ? {
+                  id: result.message.id.toString(),
+                  senderId: "me",
+                  sender: "You",
+                  content: result.message.content,
+                  ts: result.message.created_at,
+                  status: "sent",
+                  verified: true,
+                  flagged: false,
+                }
+              : m
+          )
+        );
+      } else {
+        // If no message returned, just mark as sent
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === tempId ? { ...m, status: "sent" } : m
+          )
+        );
+      }
+
+      // Refresh conversations to update last message
+      const convResult = await messagesApi.getConversations();
+      const formatted = (convResult.conversations || []).map((conv) => ({
+        id: `conv-${conv.other_user_id}`,
+        name: `${conv.first_name} ${conv.last_name}`.trim() || conv.email,
+        avatar: conv.avatar_url || "",
+        lastMessage: conv.last_message || "",
+        timestamp: conv.last_message_time || new Date().toISOString(),
+        unread: conv.unread_count || 0,
+        online: false,
+        verified: true,
+        role: conv.role || "student",
+        blocked: false,
+        reported: false,
+        otherUserId: conv.other_user_id,
+      }));
+      setConversations(formatted);
+    } catch (err) {
+      console.error("Failed to send message:", err);
+      showError("Failed to send message. Please try again.");
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === tempId ? { ...m, status: "failed" } : m
         )
       );
-    }, 700);
-  }, []);
+    }
+  }, [selected, showError]);
 
   // Safety functions
   const handleBlock = useCallback(
@@ -895,10 +985,65 @@ export default function Messages() {
     };
   }, [selected]);
 
-  const handleNewChat = useCallback(
-    () => alert("New chat creation coming soon"),
-    []
-  );
+  const handleNewChat = useCallback(() => {
+    setShowNewChatModal(true);
+    setSearchQuery("");
+    setSearchResults([]);
+  }, []);
+
+  const handleSearchUsers = useCallback(async (query) => {
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    try {
+      setSearching(true);
+      const result = await messagesApi.searchUsers(query);
+      // Filter out current user and already existing conversations
+      const existingUserIds = conversations.map((c) => c.otherUserId);
+      const filtered = (result.users || []).filter(
+        (u) => u.id !== user.id && !existingUserIds.includes(u.id.toString())
+      );
+      setSearchResults(filtered);
+    } catch (err) {
+      console.error("Failed to search users:", err);
+      showError("Failed to search users.");
+    } finally {
+      setSearching(false);
+    }
+  }, [conversations, user, showError]);
+
+  const handleStartChat = useCallback(async (otherUser) => {
+    try {
+      // Create a new conversation entry
+      const newConv = {
+        id: `conv-${otherUser.id}`,
+        name: `${otherUser.first_name} ${otherUser.last_name}`.trim() || otherUser.email,
+        avatar: otherUser.avatar_url || "",
+        lastMessage: "",
+        timestamp: new Date().toISOString(),
+        unread: 0,
+        online: false,
+        verified: true,
+        role: otherUser.role || "student",
+        blocked: false,
+        reported: false,
+        otherUserId: otherUser.id.toString(),
+      };
+      
+      setConversations((prev) => [newConv, ...prev]);
+      setSelected(newConv);
+      setMessages([]);
+      setShowNewChatModal(false);
+      setSearchQuery("");
+      setSearchResults([]);
+      success(`Started conversation with ${newConv.name}`);
+    } catch (err) {
+      console.error("Failed to start chat:", err);
+      showError("Failed to start chat.");
+    }
+  }, [success, showError]);
 
   if (loading) {
     return (
@@ -1015,6 +1160,67 @@ export default function Messages() {
       </section>
 
       {/* Report Modal */}
+      {showNewChatModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-lg max-h-[80vh] flex flex-col">
+            <h3 className="text-lg font-semibold text-slate-900 mb-4">
+              New Chat
+            </h3>
+            <div className="mb-4">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  handleSearchUsers(e.target.value);
+                }}
+                placeholder="Search for a user..."
+                className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+              />
+            </div>
+            <div className="flex-1 overflow-y-auto mb-4">
+              {searching ? (
+                <div className="text-center text-slate-500 py-4">Searching...</div>
+              ) : searchResults.length === 0 && searchQuery ? (
+                <div className="text-center text-slate-500 py-4">No users found</div>
+              ) : (
+                <div className="space-y-2">
+                  {searchResults.map((user) => (
+                    <button
+                      key={user.id}
+                      onClick={() => handleStartChat(user)}
+                      className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors text-left"
+                    >
+                      <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-700 font-semibold">
+                        {initials(`${user.first_name} ${user.last_name}`)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-slate-900 truncate">
+                          {user.first_name} {user.last_name}
+                        </p>
+                        <p className="text-sm text-slate-500 truncate">{user.email}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowNewChatModal(false);
+                  setSearchQuery("");
+                  setSearchResults([]);
+                }}
+                className="flex-1 px-4 py-2 border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showReportModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-xl p-6 w-full max-w-md mx-4">

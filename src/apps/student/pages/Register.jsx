@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../contexts/AuthContext";
-import { useBranding } from "../contexts/BrandingContext";
+import { useAuth } from "../../shared/contexts/AuthContext";
+import { useBranding } from "../../shared/contexts/BrandingContext";
 
 function Register() {
   const [currentStep, setCurrentStep] = useState(1);

@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { useAuth } from "../contexts/AuthContext";
-import { useBranding } from "../contexts/BrandingContext";
-import { EngagementDashboard } from "../components/EngagementDashboard";
+import { useAuth } from "../../shared/contexts/AuthContext";
+import { useBranding } from "../../shared/contexts/BrandingContext";
+import { studentApi } from "../../shared/utils/api";
+import { EngagementDashboard } from "../../shared/components/EngagementDashboard";
 
 const quickStats = [
   { label: "Focus tasks", value: "2", meta: "Due this week" },
@@ -10,7 +11,8 @@ const quickStats = [
   { label: "Communities", value: "7", meta: "Active" },
 ];
 
-const focusTasks = [
+// Default tasks will be replaced by API data
+const defaultFocusTasks = [
   {
     id: 1,
     title: "Complete Math Assignment",
@@ -52,7 +54,7 @@ const activityFeed = [
   {
     id: 1,
     title: "New post in CS315 channel",
-    detail: "\"Anyone want to study for midterm?\"",
+    detail: '"Anyone want to study for midterm?"',
     icon: "💬",
   },
   {
@@ -168,6 +170,95 @@ function ForYou() {
   const [selectedStory, setSelectedStory] = useState(null);
   const [currentMomentIndex, setCurrentMomentIndex] = useState(0);
   const [showStoryViewer, setShowStoryViewer] = useState(false);
+  const [focusTasks, setFocusTasks] = useState(defaultFocusTasks);
+
+  // Fetch tasks from API
+  useEffect(() => {
+    const fetchTasks = async () => {
+      if (!user) return;
+
+      try {
+        const result = await studentApi.getTasks();
+        const now = new Date();
+        const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+        const upcomingTasks = (result.tasks || [])
+          .filter((task) => {
+            if (task.is_completed) return false;
+            const dueDate = task.due_date ? new Date(task.due_date) : null;
+            return dueDate && dueDate <= weekFromNow;
+          })
+          .sort((a, b) => {
+            const dateA = a.due_date
+              ? new Date(a.due_date)
+              : new Date(9999, 12, 31);
+            const dateB = b.due_date
+              ? new Date(b.due_date)
+              : new Date(9999, 12, 31);
+            return dateA - dateB;
+          })
+          .slice(0, 3)
+          .map((task) => {
+            const dueDate = task.due_date ? new Date(task.due_date) : null;
+            const isToday =
+              dueDate && dueDate.toDateString() === now.toDateString();
+            const isTomorrow =
+              dueDate &&
+              dueDate.toDateString() ===
+                new Date(now.getTime() + 24 * 60 * 60 * 1000).toDateString();
+
+            let detail = "";
+            if (isToday) {
+              detail = `Due today${
+                task.due_date?.includes(" ")
+                  ? " at " + task.due_date.split(" ")[1]
+                  : ""
+              }`;
+            } else if (isTomorrow) {
+              detail = `Due tomorrow${
+                task.due_date?.includes(" ")
+                  ? " at " + task.due_date.split(" ")[1]
+                  : ""
+              }`;
+            } else if (dueDate) {
+              detail = `Due ${dueDate.toLocaleDateString(undefined, {
+                month: "short",
+                day: "numeric",
+              })}`;
+            } else {
+              detail = "No due date";
+            }
+
+            return {
+              id: task.id,
+              title: task.title,
+              detail,
+              tone:
+                task.priority === "high"
+                  ? "from-red-500/20 to-red-500/10"
+                  : task.priority === "medium"
+                  ? "from-sky-500/20 to-sky-500/10"
+                  : "from-emerald-500/20 to-emerald-500/10",
+              badge:
+                task.priority === "high"
+                  ? "Priority"
+                  : task.priority === "medium"
+                  ? "Normal"
+                  : "Low",
+            };
+          });
+
+        if (upcomingTasks.length > 0) {
+          setFocusTasks(upcomingTasks);
+        }
+      } catch (err) {
+        console.error("Failed to fetch tasks:", err);
+        // Keep default tasks on error
+      }
+    };
+
+    fetchTasks();
+  }, [user]);
 
   const handleStoryClick = (story) => {
     if (story.isAddButton) {
@@ -238,7 +329,9 @@ function ForYou() {
                 <Link
                   to="/calendar"
                   className="rounded-2xl px-4 py-2 text-sm font-semibold text-white shadow-lg transition hover:-translate-y-0.5"
-                  style={{ background: "linear-gradient(135deg,#2563eb,#1d4ed8)" }}
+                  style={{
+                    background: "linear-gradient(135deg,#2563eb,#1d4ed8)",
+                  }}
                 >
                   View calendar
                 </Link>
@@ -253,7 +346,9 @@ function ForYou() {
                   <p className="text-xs uppercase tracking-[0.35em] text-slate-500">
                     {stat.label}
                   </p>
-                  <p className="text-2xl font-bold text-slate-900">{stat.value}</p>
+                  <p className="text-2xl font-bold text-slate-900">
+                    {stat.value}
+                  </p>
                   <p className="text-xs text-slate-500">{stat.meta}</p>
                 </div>
               ))}
@@ -265,7 +360,9 @@ function ForYou() {
         <section className="rounded-[28px] border border-white/70 bg-white/90 p-4 shadow-lg">
           <div className="flex items-center justify-between">
             <h2 className="text-base font-semibold text-slate-800">Stories</h2>
-            <button className="text-sm font-semibold text-[#4a5a68]">View all</button>
+            <button className="text-sm font-semibold text-[#4a5a68]">
+              View all
+            </button>
           </div>
           <div className="mt-3 flex space-x-3 overflow-x-auto pb-1">
             {stories.map((story) => (
@@ -276,7 +373,9 @@ function ForYou() {
               >
                 <div className="relative">
                   <div
-                    className={`flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br ${story.color} text-white font-semibold shadow-md transition hover:scale-105 ${
+                    className={`flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br ${
+                      story.color
+                    } text-white font-semibold shadow-md transition hover:scale-105 ${
                       story.hasNewStory && !story.isAddButton
                         ? "ring-2 ring-blue-500 ring-offset-2"
                         : ""
@@ -288,7 +387,9 @@ function ForYou() {
                     <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-[#708090] border-2 border-white" />
                   )}
                 </div>
-                <p className="mt-1 text-xs font-medium text-slate-600">{story.label}</p>
+                <p className="mt-1 text-xs font-medium text-slate-600">
+                  {story.label}
+                </p>
               </button>
             ))}
           </div>
@@ -298,7 +399,9 @@ function ForYou() {
         <section className="grid gap-6 lg:grid-cols-[1.2fr,0.8fr]">
           <div className="space-y-6">
             <div className="rounded-[28px] border border-white/70 bg-white/90 p-5 shadow-lg">
-              <h3 className="text-base font-semibold text-slate-900">Today's focus</h3>
+              <h3 className="text-base font-semibold text-slate-900">
+                Today's focus
+              </h3>
               <div className="mt-4 space-y-3">
                 {focusTasks.map((task) => (
                   <div
@@ -306,7 +409,9 @@ function ForYou() {
                     className={`rounded-2xl border border-slate-100 bg-gradient-to-r ${task.tone} px-4 py-3`}
                   >
                     <div className="flex items-center justify-between">
-                      <p className="text-sm font-semibold text-slate-900">{task.title}</p>
+                      <p className="text-sm font-semibold text-slate-900">
+                        {task.title}
+                      </p>
                       <span className="rounded-full bg-white/70 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
                         {task.badge}
                       </span>
@@ -318,16 +423,25 @@ function ForYou() {
             </div>
 
             <div className="rounded-[28px] border border-white/70 bg-white/90 p-5 shadow-lg">
-              <h3 className="text-base font-semibold text-slate-900">Recent activity</h3>
+              <h3 className="text-base font-semibold text-slate-900">
+                Recent activity
+              </h3>
               <div className="mt-4 space-y-3">
                 {activityFeed.map((activity) => (
-                  <div key={activity.id} className="flex items-start gap-3 rounded-2xl border border-slate-100 bg-slate-50/70 p-3">
+                  <div
+                    key={activity.id}
+                    className="flex items-start gap-3 rounded-2xl border border-slate-100 bg-slate-50/70 p-3"
+                  >
                     <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-base">
                       {activity.icon}
                     </div>
                     <div>
-                      <p className="text-sm font-semibold text-slate-900">{activity.title}</p>
-                      <p className="text-xs text-slate-600">{activity.detail}</p>
+                      <p className="text-sm font-semibold text-slate-900">
+                        {activity.title}
+                      </p>
+                      <p className="text-xs text-slate-600">
+                        {activity.detail}
+                      </p>
                     </div>
                   </div>
                 ))}
@@ -337,11 +451,18 @@ function ForYou() {
 
           <div className="space-y-6">
             <div className="rounded-[28px] border border-white/70 bg-white/90 p-5 shadow-lg">
-              <h3 className="text-base font-semibold text-slate-900">Upcoming</h3>
+              <h3 className="text-base font-semibold text-slate-900">
+                Upcoming
+              </h3>
               <div className="mt-4 space-y-3">
                 {upcomingEvents.map((event) => (
-                  <div key={event.id} className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
-                    <p className="text-sm font-semibold text-slate-900">{event.title}</p>
+                  <div
+                    key={event.id}
+                    className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4"
+                  >
+                    <p className="text-sm font-semibold text-slate-900">
+                      {event.title}
+                    </p>
                     <p className="text-xs text-slate-600">{event.time}</p>
                     <p className="text-xs text-slate-500">{event.location}</p>
                   </div>
@@ -355,7 +476,9 @@ function ForYou() {
                   key={card.id}
                   className={`rounded-2xl border border-white/70 bg-gradient-to-br ${card.tone} p-4 shadow-lg`}
                 >
-                  <p className="text-sm font-semibold text-slate-900">{card.title}</p>
+                  <p className="text-sm font-semibold text-slate-900">
+                    {card.title}
+                  </p>
                   <p className="text-xs text-slate-600">{card.detail}</p>
                 </div>
               ))}
@@ -372,7 +495,9 @@ function ForYou() {
               className="rounded-[24px] border border-white/70 bg-white/90 p-5 text-center shadow-lg transition hover:-translate-y-1"
             >
               <div className="mb-2 text-xl">{link.emoji}</div>
-              <p className="text-sm font-semibold text-slate-900">{link.label}</p>
+              <p className="text-sm font-semibold text-slate-900">
+                {link.label}
+              </p>
             </Link>
           ))}
         </section>
