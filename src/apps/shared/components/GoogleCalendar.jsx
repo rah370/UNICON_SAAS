@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 
-function GoogleCalendar({ onEventSelect, googleCalSynced, adminEvents = [] }) {
+function GoogleCalendar({ onEventSelect, googleCalSynced, adminEvents = [], events: propEvents }) {
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const [selectedDate, setSelectedDate] = useState(null);
@@ -8,12 +8,14 @@ function GoogleCalendar({ onEventSelect, googleCalSynced, adminEvents = [] }) {
   const [showEventModal, setShowEventModal] = useState(false);
   const [events, setEvents] = useState([]);
 
-  // Simulate Google Calendar events
+  // Use propEvents if provided, otherwise use adminEvents
   useEffect(() => {
-    if (googleCalSynced) {
+    if (propEvents && propEvents.length > 0) {
+      setEvents(propEvents);
+    } else if (googleCalSynced && adminEvents.length > 0) {
       setEvents(adminEvents);
     }
-  }, [googleCalSynced, adminEvents]);
+  }, [googleCalSynced, adminEvents, propEvents]);
 
   const months = [
     "January",

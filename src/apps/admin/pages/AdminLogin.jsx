@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../contexts/AuthContext";
-import { useBranding } from "../contexts/BrandingContext";
+import { useAuth } from "../../shared/contexts/AuthContext";
+import { useBranding } from "../../shared/contexts/BrandingContext";
 
 function AdminLogin() {
   const [email, setEmail] = useState("");
@@ -19,12 +19,24 @@ function AdminLogin() {
 
     try {
       const result = await login(email, password, true);
+      console.log("Login result:", result);
       if (result.success) {
-        navigate("/admin-dashboard");
+        // Check if user is actually admin
+        const user = result.user;
+        console.log("Logged in user:", user);
+        if (user && user.role === "admin") {
+          // Small delay to ensure state is updated
+          setTimeout(() => {
+            navigate("/admin/dashboard");
+          }, 100);
+        } else {
+          setError("You do not have admin privileges");
+        }
       } else {
-        setError(result.error);
+        setError(result.error || "Invalid email or password");
       }
     } catch (err) {
+      console.error("Login error:", err);
       setError("Login failed. Please try again.");
     } finally {
       setLoading(false);

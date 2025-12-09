@@ -1,6 +1,6 @@
 import React, { useState, useRef } from "react";
-import { useAuth } from "../contexts/AuthContext";
-import { useBranding } from "../contexts/BrandingContext";
+import { useAuth } from "../../shared/contexts/AuthContext";
+import { useBranding } from "../../shared/contexts/BrandingContext";
 
 const quickStats = [
   { label: "Engagement score", value: "92", meta: "+8 vs last week" },
