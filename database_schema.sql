@@ -133,12 +133,14 @@ CREATE TABLE marketplace_items (
     image_url VARCHAR(500),
     is_sold BOOLEAN DEFAULT FALSE,
     is_verified BOOLEAN DEFAULT FALSE,
+    status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (school_id) REFERENCES schools(id) ON DELETE CASCADE,
     FOREIGN KEY (seller_id) REFERENCES users(id) ON DELETE CASCADE,
     INDEX idx_school_category (school_id, category),
-    INDEX idx_seller_created (seller_id, created_at)
+    INDEX idx_seller_created (seller_id, created_at),
+    INDEX idx_marketplace_status (school_id, status, is_sold)
 );
 
 -- Subscriptions table

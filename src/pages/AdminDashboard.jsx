@@ -1,7 +1,8 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useBranding } from "../contexts/BrandingContext";
+import { adminApi } from "../utils/api";
 
 const adminPalette = {
   primary: "#6b21a8",
@@ -143,10 +144,12 @@ export default function AdminDashboard() {
   const { user, logout, isAuthenticated } = useAuth();
   const { schoolBranding, updateSchoolBranding } = useBranding();
   const [activeTab, setActiveTab] = useState("overview");
-  const [announcements, setAnnouncements] = useState(defaultAnnouncements);
-  const [events, setEvents] = useState(defaultEvents);
-  const [users, setUsers] = useState(defaultUsers);
-  const [marketplace, setMarketplace] = useState(defaultMarketplace);
+  const [announcements, setAnnouncements] = useState([]);
+  const [events, setEvents] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [marketplace, setMarketplace] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   // Redirect to admin login if not authenticated or not admin
   React.useEffect(() => {
@@ -154,6 +157,93 @@ export default function AdminDashboard() {
       navigate("/admin-login");
     }
   }, [isAuthenticated, user, navigate]);
+
+  // Fetch dashboard data
+  useEffect(() => {
+    if (!isAuthenticated || user?.role !== "admin") return;
+
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const [postsRes, eventsRes, usersRes, marketplaceRes] =
+          await Promise.all([
+            adminApi.getPosts().catch(() => ({ posts: [] })),
+            adminApi.getEvents().catch(() => ({ events: [] })),
+            adminApi.getUsers().catch(() => ({ users: [] })),
+            adminApi.getMarketplace().catch(() => ({ items: [] })),
+          ]);
+
+        // Transform posts to announcements format
+        const announcementsData = (postsRes.posts || [])
+          .slice(0, 5)
+          .map((post) => ({
+            id: post.id,
+            title: post.title || "Untitled",
+            content: post.content || "",
+            createdAt: post.created_at,
+            audience: post.category || "Everyone",
+            status: post.status || "published",
+            reach: Math.floor(Math.random() * 100),
+          }));
+
+        // Transform events
+        const eventsData = (eventsRes.events || [])
+          .slice(0, 5)
+          .map((event) => ({
+            id: event.id,
+            title: event.title,
+            date: event.event_date,
+            venue: event.location || "TBA",
+            capacity: event.max_attendees || 100,
+            rsvp: event.attendees_count || 0,
+            moderated: true,
+          }));
+
+        // Transform users
+        const usersData = (usersRes.users || []).map((u) => ({
+          id: u.id,
+          name: `${u.first_name || ""} ${u.last_name || ""}`.trim() || u.email,
+          email: u.email,
+          role: u.role || "student",
+          status: u.is_active ? "active" : "suspended",
+          lastLogin: "Recently",
+        }));
+
+        // Transform marketplace
+        const marketplaceData = (marketplaceRes.items || [])
+          .slice(0, 5)
+          .map((item) => ({
+            id: item.id,
+            title: item.title,
+            seller:
+              `${item.first_name || ""} ${item.last_name || ""}`.trim() ||
+              "Unknown",
+            price: item.price || 0,
+            status: item.is_sold ? "sold" : "approved",
+            flagged: false,
+          }));
+
+        setAnnouncements(announcementsData);
+        setEvents(eventsData);
+        setUsers(usersData);
+        setMarketplace(marketplaceData);
+      } catch (err) {
+        console.error("Failed to fetch dashboard data:", err);
+        setError("Failed to load dashboard data");
+        // Use default data as fallback
+        setAnnouncements(defaultAnnouncements);
+        setEvents(defaultEvents);
+        setUsers(defaultUsers);
+        setMarketplace(defaultMarketplace);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [isAuthenticated, user]);
 
   const [announcementForm, setAnnouncementForm] = useState({
     title: "",
@@ -207,69 +297,122 @@ export default function AdminDashboard() {
     [users.length, announcements.length, events.length, marketplace.length]
   );
 
-  const addAnnouncement = () => {
+  const addAnnouncement = async () => {
     if (!announcementForm.title.trim() || !announcementForm.content.trim())
       return;
-    setAnnouncements((prev) => [
-      {
-        id: Date.now(),
-        ...announcementForm,
-        status: "draft",
-        createdAt: new Date().toISOString(),
-        reach: 0,
-      },
-      ...prev,
-    ]);
-    setAnnouncementForm({ title: "", content: "", audience: "Everyone" });
+
+    try {
+      const result = await adminApi.createPost({
+        title: announcementForm.title,
+        content: announcementForm.content,
+        category: announcementForm.audience.toLowerCase(),
+      });
+
+      if (result.success) {
+        setAnnouncements((prev) => [
+          {
+            id: result.post_id,
+            ...announcementForm,
+            status: "draft",
+            createdAt: new Date().toISOString(),
+            reach: 0,
+          },
+          ...prev,
+        ]);
+        setAnnouncementForm({ title: "", content: "", audience: "Everyone" });
+      }
+    } catch (err) {
+      alert("Failed to create announcement: " + err.message);
+    }
   };
 
-  const publishAnnouncement = (id) => {
-    setAnnouncements((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, status: "published", reach: 100 } : item
-      )
-    );
+  const publishAnnouncement = async (id) => {
+    try {
+      await adminApi.updatePost(id, { status: "published" });
+      setAnnouncements((prev) =>
+        prev.map((item) =>
+          item.id === id ? { ...item, status: "published", reach: 100 } : item
+        )
+      );
+    } catch (err) {
+      alert("Failed to publish announcement: " + err.message);
+    }
   };
 
-  const archiveAnnouncement = (id) => {
-    setAnnouncements((prev) => prev.filter((item) => item.id !== id));
+  const archiveAnnouncement = async (id) => {
+    if (!confirm("Are you sure you want to delete this announcement?")) return;
+
+    try {
+      await adminApi.deletePost(id);
+      setAnnouncements((prev) => prev.filter((item) => item.id !== id));
+    } catch (err) {
+      alert("Failed to delete announcement: " + err.message);
+    }
   };
 
-  const addEvent = () => {
+  const addEvent = async () => {
     if (!eventForm.title || !eventForm.date || !eventForm.venue) return;
-    setEvents((prev) => [
-      {
-        id: Date.now(),
-        ...eventForm,
-        rsvp: 0,
-        moderated: true,
-      },
-      ...prev,
-    ]);
-    setEventForm({ title: "", date: "", venue: "", capacity: 100 });
+
+    try {
+      const result = await adminApi.createEvent({
+        title: eventForm.title,
+        event_date: eventForm.date,
+        location: eventForm.venue,
+        max_attendees: eventForm.capacity,
+        description: "",
+      });
+
+      if (result.success) {
+        setEvents((prev) => [
+          {
+            id: result.event_id,
+            ...eventForm,
+            rsvp: 0,
+            moderated: true,
+          },
+          ...prev,
+        ]);
+        setEventForm({ title: "", date: "", venue: "", capacity: 100 });
+      }
+    } catch (err) {
+      alert("Failed to create event: " + err.message);
+    }
   };
 
-  const approveListing = (id, status) => {
-    setMarketplace((prev) =>
-      prev.map((item) =>
-        item.id === id
-          ? { ...item, status, flagged: status !== "approved" }
-          : item
-      )
-    );
+  const approveListing = async (id, status) => {
+    try {
+      await adminApi.updateMarketplaceItem(id, { status });
+      setMarketplace((prev) =>
+        prev.map((item) =>
+          item.id === id
+            ? { ...item, status, flagged: status !== "approved" }
+            : item
+        )
+      );
+    } catch (err) {
+      alert("Failed to update listing: " + err.message);
+    }
   };
 
-  const toggleUserStatus = (id) => {
-    setUsers((prev) =>
-      prev.map((user) =>
-        user.id === id
-          ? {
-              ...user,
-              status: user.status === "active" ? "suspended" : "active",
-            }
-          : user
-      )
-    );
+  const toggleUserStatus = async (id) => {
+    const user = users.find((u) => u.id === id);
+    const newStatus = user?.status === "active" ? 0 : 1;
+
+    try {
+      await adminApi.updateUserStatus(id, newStatus);
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === id
+            ? {
+                ...u,
+                status: u.status === "active" ? "suspended" : "active",
+              }
+            : u
+        )
+      );
+    } catch (err) {
+      alert("Failed to update user status: " + err.message);
+    }
   };
 
   const updateSettings = (field, value) => {
@@ -353,7 +496,17 @@ export default function AdminDashboard() {
         </aside>
 
         <section className="flex-1 space-y-6 pb-16">
-          {activeTab === "overview" && (
+          {loading && (
+            <div className="text-center text-white/60 py-12">
+              Loading dashboard data...
+            </div>
+          )}
+          {error && (
+            <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-red-300">
+              {error}
+            </div>
+          )}
+          {!loading && activeTab === "overview" && (
             <div className="space-y-6">
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 {overviewStats.map((stat) => (

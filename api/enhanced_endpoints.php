@@ -306,6 +306,86 @@ class EnhancedEndpoints {
         return ['success' => true];
     }
     
+    // ========== EVENT RSVP ==========
+    
+    public function rsvpEvent($eventId, $userId, $status) {
+        // Validate status
+        $allowedStatuses = ['attending', 'maybe', 'not_attending'];
+        if (!in_array($status, $allowedStatuses)) {
+            return ['error' => 'Invalid RSVP status'];
+        }
+        
+        // Check if event exists
+        $event = $this->db->fetch("SELECT id, max_attendees, attendees_count FROM events WHERE id = ?", [$eventId]);
+        if (!$event) {
+            return ['error' => 'Event not found'];
+        }
+        
+        // Check if already RSVP'd
+        $existing = $this->db->fetch(
+            "SELECT id, status FROM event_attendees WHERE event_id = ? AND user_id = ?",
+            [$eventId, $userId]
+        );
+        
+        if ($existing) {
+            // Update existing RSVP
+            $oldStatus = $existing['status'];
+            $this->db->query(
+                "UPDATE event_attendees SET status = ? WHERE event_id = ? AND user_id = ?",
+                [$status, $eventId, $userId]
+            );
+            
+            // Update attendee count
+            if ($oldStatus === 'attending' && $status !== 'attending') {
+                $this->db->query(
+                    "UPDATE events SET attendees_count = GREATEST(attendees_count - 1, 0) WHERE id = ?",
+                    [$eventId]
+                );
+            } elseif ($oldStatus !== 'attending' && $status === 'attending') {
+                $this->db->query(
+                    "UPDATE events SET attendees_count = attendees_count + 1 WHERE id = ?",
+                    [$eventId]
+                );
+            }
+        } else {
+            // Create new RSVP
+            $this->db->query(
+                "INSERT INTO event_attendees (event_id, user_id, status) VALUES (?, ?, ?)",
+                [$eventId, $userId, $status]
+            );
+            
+            // Update attendee count if attending
+            if ($status === 'attending') {
+                $this->db->query(
+                    "UPDATE events SET attendees_count = attendees_count + 1 WHERE id = ?",
+                    [$eventId]
+                );
+            }
+        }
+        
+        return ['success' => true, 'status' => $status];
+    }
+    
+    public function getEventAttendees($eventId) {
+        $attendees = $this->db->fetchAll(
+            "SELECT ea.status, ea.created_at, u.id, u.first_name, u.last_name, u.avatar_url, u.email
+             FROM event_attendees ea
+             JOIN users u ON ea.user_id = u.id
+             WHERE ea.event_id = ?
+             ORDER BY ea.created_at DESC",
+            [$eventId]
+        );
+        return ['attendees' => $attendees];
+    }
+    
+    public function getUserEventStatus($eventId, $userId) {
+        $rsvp = $this->db->fetch(
+            "SELECT status FROM event_attendees WHERE event_id = ? AND user_id = ?",
+            [$eventId, $userId]
+        );
+        return ['status' => $rsvp ? $rsvp['status'] : null];
+    }
+    
     // ========== NOTIFICATIONS ==========
     
     public function getNotifications($userId) {
@@ -423,6 +503,17 @@ class EnhancedEndpoints {
     
     public function updateUserStatus($userId, $status) {
         $this->db->query("UPDATE users SET is_active = ? WHERE id = ?", [$status, $userId]);
+        return ['success' => true];
+    }
+    
+    public function updateUserRole($userId, $role) {
+        // Validate role
+        $allowedRoles = ['student', 'teacher', 'staff', 'admin', 'super_admin'];
+        if (!in_array($role, $allowedRoles)) {
+            return ['success' => false, 'error' => 'Invalid role'];
+        }
+        
+        $this->db->query("UPDATE users SET role = ? WHERE id = ?", [$role, $userId]);
         return ['success' => true];
     }
     

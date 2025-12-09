@@ -200,13 +200,15 @@ switch ($path) {
         
         if ($method === 'GET') {
             $events = $db->fetchAll(
-                "SELECT e.*, u.first_name, u.last_name 
+                "SELECT e.*, u.first_name, u.last_name,
+                        (SELECT COUNT(*) FROM event_attendees WHERE event_id = e.id AND status = 'attending') as attending_count,
+                        (SELECT status FROM event_attendees WHERE event_id = e.id AND user_id = ?) as user_rsvp_status
                  FROM events e 
                  JOIN users u ON e.created_by = u.id 
                  WHERE e.school_id = ? 
                  ORDER BY e.event_date ASC 
                  LIMIT 50",
-                [$user['school_id']]
+                [$user['id'], $user['school_id']]
             );
             echo json_encode(['events' => $events]);
         } elseif ($method === 'POST') {
@@ -233,31 +235,82 @@ switch ($path) {
         }
         break;
         
+    case 'events/rsvp':
+        $user = requireAuth($token, $auth);
+        
+        if ($method === 'POST') {
+            $eventId = $input['event_id'] ?? '';
+            $status = $input['status'] ?? 'attending';
+            $result = $enhanced->rsvpEvent($eventId, $user['id'], $status);
+            echo json_encode($result);
+        } elseif ($method === 'GET') {
+            $eventId = $_GET['event_id'] ?? '';
+            if ($eventId) {
+                $result = $enhanced->getEventAttendees($eventId);
+                echo json_encode($result);
+            } else {
+                http_response_code(400);
+                echo json_encode(['error' => 'Missing event_id']);
+            }
+        }
+        break;
+        
     case 'messages':
         $user = requireAuth($token, $auth);
         
         if ($method === 'GET') {
-            $conversations = $db->fetchAll(
-                "SELECT DISTINCT 
-                    CASE 
-                        WHEN sender_id = ? THEN recipient_id 
-                        ELSE sender_id 
-                    END as other_user_id,
-                    u.first_name, u.last_name, u.avatar_url,
-                    m.content as last_message,
-                    m.created_at as last_message_time,
-                    COUNT(CASE WHEN recipient_id = ? AND is_read = 0 THEN 1 END) as unread_count
-                 FROM messages m
-                 JOIN users u ON (CASE WHEN sender_id = ? THEN recipient_id ELSE sender_id END) = u.id
-                 WHERE sender_id = ? OR recipient_id = ?
-                 GROUP BY other_user_id
-                 ORDER BY last_message_time DESC",
-                [$user['id'], $user['id'], $user['id'], $user['id'], $user['id']]
-            );
-            echo json_encode(['conversations' => $conversations]);
+            // Check if requesting messages for a specific conversation
+            $otherUserId = $_GET['other_user_id'] ?? null;
+            
+            if ($otherUserId) {
+                // Get messages for specific conversation
+                $messages = $db->fetchAll(
+                    "SELECT m.id, m.sender_id, m.recipient_id, m.content, m.is_read, m.created_at,
+                            u.first_name, u.last_name, u.avatar_url, u.role
+                     FROM messages m
+                     JOIN users u ON m.sender_id = u.id
+                     WHERE (m.sender_id = ? AND m.recipient_id = ?) OR (m.sender_id = ? AND m.recipient_id = ?)
+                     ORDER BY m.created_at ASC",
+                    [$user['id'], $otherUserId, $otherUserId, $user['id']]
+                );
+                
+                // Mark messages as read
+                $db->query(
+                    "UPDATE messages SET is_read = 1 WHERE recipient_id = ? AND sender_id = ? AND is_read = 0",
+                    [$user['id'], $otherUserId]
+                );
+                
+                echo json_encode(['messages' => $messages]);
+            } else {
+                // Get all conversations
+                $conversations = $db->fetchAll(
+                    "SELECT DISTINCT 
+                        CASE 
+                            WHEN sender_id = ? THEN recipient_id 
+                            ELSE sender_id 
+                        END as other_user_id,
+                        u.first_name, u.last_name, u.avatar_url, u.role,
+                        m.content as last_message,
+                        m.created_at as last_message_time,
+                        COUNT(CASE WHEN recipient_id = ? AND is_read = 0 THEN 1 END) as unread_count
+                     FROM messages m
+                     JOIN users u ON (CASE WHEN sender_id = ? THEN recipient_id ELSE sender_id END) = u.id
+                     WHERE sender_id = ? OR recipient_id = ?
+                     GROUP BY other_user_id
+                     ORDER BY last_message_time DESC",
+                    [$user['id'], $user['id'], $user['id'], $user['id'], $user['id']]
+                );
+                echo json_encode(['conversations' => $conversations]);
+            }
         } elseif ($method === 'POST') {
             $recipientId = $input['recipient_id'] ?? '';
             $content = $input['content'] ?? '';
+            
+            if (!$recipientId || !$content) {
+                http_response_code(400);
+                echo json_encode(['error' => 'Missing recipient_id or content']);
+                break;
+            }
             
             $messageId = $db->query(
                 "INSERT INTO messages (sender_id, recipient_id, content) VALUES (?, ?, ?)",
@@ -265,7 +318,17 @@ switch ($path) {
             );
             $messageId = $db->lastInsertId();
             
-            echo json_encode(['success' => true, 'message_id' => $messageId]);
+            // Get the created message with user info
+            $message = $db->fetch(
+                "SELECT m.id, m.sender_id, m.recipient_id, m.content, m.is_read, m.created_at,
+                        u.first_name, u.last_name, u.avatar_url, u.role
+                 FROM messages m
+                 JOIN users u ON m.sender_id = u.id
+                 WHERE m.id = ?",
+                [$messageId]
+            );
+            
+            echo json_encode(['success' => true, 'message' => $message]);
         }
         break;
         
@@ -273,15 +336,39 @@ switch ($path) {
         $user = requireAuth($token, $auth);
         
         if ($method === 'GET') {
-            $items = $db->fetchAll(
-                "SELECT m.*, u.first_name, u.last_name 
-                 FROM marketplace_items m 
-                 JOIN users u ON m.seller_id = u.id 
-                 WHERE m.school_id = ? AND m.is_sold = 0 
-                 ORDER BY m.created_at DESC 
-                 LIMIT 50",
-                [$user['school_id']]
-            );
+            // Students see only approved items that aren't sold
+            // Admins can see all items for moderation
+            $isAdmin = ($user['role'] === 'admin' || $user['role'] === 'super_admin');
+            
+            if ($isAdmin) {
+                // Admins see all items regardless of status
+                $items = $db->fetchAll(
+                    "SELECT m.*, u.first_name, u.last_name,
+                     CONCAT(u.first_name, ' ', u.last_name) as seller,
+                     COALESCE(m.status, 'pending') as status
+                     FROM marketplace_items m 
+                     JOIN users u ON m.seller_id = u.id 
+                     WHERE m.school_id = ? 
+                     ORDER BY m.created_at DESC 
+                     LIMIT 100",
+                    [$user['school_id']]
+                );
+            } else {
+                // Students see only approved items that aren't sold
+                $items = $db->fetchAll(
+                    "SELECT m.*, u.first_name, u.last_name,
+                     CONCAT(u.first_name, ' ', u.last_name) as seller,
+                     COALESCE(m.status, 'approved') as status
+                     FROM marketplace_items m 
+                     JOIN users u ON m.seller_id = u.id 
+                     WHERE m.school_id = ? 
+                     AND (m.status = 'approved' OR m.status IS NULL)
+                     AND m.is_sold = 0 
+                     ORDER BY m.created_at DESC 
+                     LIMIT 50",
+                    [$user['school_id']]
+                );
+            }
             echo json_encode(['items' => $items]);
         } elseif ($method === 'POST') {
             $title = $input['title'] ?? '';
@@ -291,13 +378,44 @@ switch ($path) {
             $condition = $input['condition'] ?? '';
             $imageUrl = $input['image_url'] ?? null;
             
+            // New items start with 'pending' status for admin approval
             $itemId = $db->query(
-                "INSERT INTO marketplace_items (school_id, seller_id, title, description, price, category, condition, image_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO marketplace_items (school_id, seller_id, title, description, price, category, item_condition, image_url, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')",
                 [$user['school_id'], $user['id'], $title, $description, $price, $category, $condition, $imageUrl]
             );
             $itemId = $db->lastInsertId();
             
             echo json_encode(['success' => true, 'item_id' => $itemId]);
+        } elseif ($method === 'PUT') {
+            // Admin can update marketplace item status
+            if ($user['role'] !== 'admin' && $user['role'] !== 'super_admin') {
+                http_response_code(403);
+                echo json_encode(['error' => 'Forbidden']);
+                break;
+            }
+            
+            $itemId = $input['item_id'] ?? '';
+            $status = $input['status'] ?? '';
+            
+            if ($status === 'approved' || $status === 'rejected') {
+                // Use status field for approval/rejection tracking
+                // is_sold should only be set when item is actually sold, not when rejected
+                $db->query(
+                    "UPDATE marketplace_items SET status = ? WHERE id = ?",
+                    [$status, $itemId]
+                );
+                echo json_encode(['success' => true]);
+            } elseif ($status === 'sold') {
+                // Handle actual sale separately - set both status and is_sold
+                $db->query(
+                    "UPDATE marketplace_items SET is_sold = 1, status = 'approved' WHERE id = ?",
+                    [$itemId]
+                );
+                echo json_encode(['success' => true]);
+            } else {
+                http_response_code(400);
+                echo json_encode(['error' => 'Invalid status']);
+            }
         }
         break;
         
@@ -472,7 +590,16 @@ switch ($path) {
             $result = $enhanced->getUsers($user['school_id']);
             echo json_encode($result);
         } elseif ($method === 'PUT') {
-            $result = $enhanced->updateUserStatus($input['user_id'], $input['status']);
+            // Handle both status and role updates
+            if (isset($input['status'])) {
+                $result = $enhanced->updateUserStatus($input['user_id'], $input['status']);
+            } elseif (isset($input['role'])) {
+                $result = $enhanced->updateUserRole($input['user_id'], $input['role']);
+            } else {
+                http_response_code(400);
+                echo json_encode(['error' => 'Missing status or role parameter']);
+                break;
+            }
             echo json_encode($result);
         } elseif ($method === 'DELETE') {
             $result = $enhanced->deleteUser($input['user_id']);
