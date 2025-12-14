@@ -424,14 +424,35 @@ class EnhancedEndpoints {
     // ========== SEARCH ==========
     
     public function searchUsers($schoolId, $query, $limit = 20) {
-        $results = $this->db->fetchAll(
-            "SELECT id, first_name, last_name, email, avatar_url, role, bio 
-             FROM users 
-             WHERE school_id = ? AND (first_name LIKE ? OR last_name LIKE ? OR email LIKE ?)
-             LIMIT ?",
-            [$schoolId, "%$query%", "%$query%", "%$query%", $limit]
-        );
-        return ['users' => $results];
+        $query = trim($query);
+        if (empty($query)) {
+            return ['users' => []];
+        }
+        
+        $searchTerm = "%$query%";
+        try {
+            $results = $this->db->fetchAll(
+                "SELECT id, first_name, last_name, email, avatar_url, role, bio, is_active, is_verified
+                 FROM users 
+                 WHERE school_id = ? 
+                 AND is_active = 1
+                 AND (LOWER(first_name) LIKE LOWER(?) OR LOWER(last_name) LIKE LOWER(?) OR LOWER(email) LIKE LOWER(?) OR LOWER(CONCAT(first_name, ' ', last_name)) LIKE LOWER(?))
+                 ORDER BY 
+                     CASE 
+                         WHEN LOWER(first_name) LIKE LOWER(?) THEN 1
+                         WHEN LOWER(last_name) LIKE LOWER(?) THEN 2
+                         WHEN LOWER(CONCAT(first_name, ' ', last_name)) LIKE LOWER(?) THEN 3
+                         ELSE 4
+                     END,
+                     first_name, last_name
+                 LIMIT ?",
+                [$schoolId, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm, $limit]
+            );
+            return ['users' => $results ? $results : []];
+        } catch (Exception $e) {
+            error_log("Search users error: " . $e->getMessage());
+            return ['users' => []];
+        }
     }
     
     public function searchPosts($schoolId, $query, $limit = 20) {

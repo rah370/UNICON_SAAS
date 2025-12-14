@@ -5,6 +5,7 @@ import React, {
   useState,
   useCallback,
 } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../../shared/contexts/AuthContext";
 import { messagesApi } from "../../shared/utils/messagesApi";
 import { useToast } from "../../shared/components/Toast";
@@ -61,6 +62,8 @@ const fakeConversations = [
     role: "student",
     blocked: false,
     reported: false,
+    otherUserId: 1,
+    isGroup: false,
   },
   {
     id: "conv2",
@@ -74,6 +77,8 @@ const fakeConversations = [
     role: "student",
     blocked: false,
     reported: false,
+    otherUserId: 2,
+    isGroup: false,
   },
   {
     id: "conv3",
@@ -85,9 +90,10 @@ const fakeConversations = [
     online: false,
     isGroup: false,
     verified: true,
-    role: "professor",
+    role: "teacher", // Changed from "professor" to "teacher" for consistency
     blocked: false,
     reported: false,
+    otherUserId: 3,
   },
   {
     id: "conv6",
@@ -102,6 +108,7 @@ const fakeConversations = [
     role: "admin",
     blocked: false,
     reported: false,
+    otherUserId: 4,
   },
   {
     id: "conv4",
@@ -117,20 +124,7 @@ const fakeConversations = [
     blocked: false,
     reported: false,
     moderated: true,
-  },
-  {
-    id: "conv5",
-    name: "Unknown User",
-    avatar: "",
-    lastMessage: "Hey, want to meet up?",
-    timestamp: timeNow(),
-    unread: 1,
-    online: true,
-    verified: false,
-    role: "unknown",
-    blocked: false,
-    reported: true,
-    flagged: true,
+    otherUserId: null,
   },
 ];
 
@@ -144,6 +138,7 @@ const fakeThread = [
     status: "sent",
     verified: true,
     flagged: false,
+    senderRole: "student", // Added role for role-based ticks
   },
   {
     id: "m2",
@@ -154,6 +149,7 @@ const fakeThread = [
     status: "sent",
     verified: true,
     flagged: false,
+    senderRole: "student", // Added role for role-based ticks
   },
   {
     id: "m3",
@@ -164,14 +160,13 @@ const fakeThread = [
     status: "sent",
     verified: true,
     flagged: false,
+    senderRole: "student", // Added role for role-based ticks
   },
 ];
 
 const quickFilters = [
   { id: "all", label: "All" },
-  { id: "unread", label: "Unread" },
-  { id: "verified", label: "Verified" },
-  { id: "flagged", label: "Flagged" },
+  { id: "group", label: "Group Chat" },
 ];
 
 const quickReplies = [
@@ -194,15 +189,38 @@ const safetySettings = {
 
 // --- reusable UI bits ---
 function Avatar({ name, online, verified, role, flagged }) {
+  // Determine tick color based on role
+  const getTickColor = () => {
+    if (!role) return null;
+
+    const roleLower = String(role).toLowerCase();
+    if (roleLower === "group") return null; // No tick for groups
+
+    if (roleLower === "admin" || roleLower === "super_admin") {
+      return "bg-purple-500"; // Purple for admin
+    } else if (
+      roleLower === "teacher" ||
+      roleLower === "staff" ||
+      roleLower === "professor"
+    ) {
+      return "bg-green-500"; // Green for teachers/professors
+    } else if (roleLower === "student") {
+      return "bg-blue-500"; // Blue for students
+    }
+    return null; // No tick for unknown roles
+  };
+
+  const tickColor = getTickColor();
+
   return (
     <div className="relative">
       <div
         className={`w-10 h-10 rounded-full text-slate-700 grid place-items-center font-semibold ${
           flagged
             ? "bg-red-100 border-2 border-red-300"
-            : verified
-            ? "bg-slate-200"
-            : "bg-yellow-100 border-2 border-yellow-300"
+            : role === "group"
+            ? "bg-indigo-100 border-2 border-indigo-300"
+            : "bg-slate-200"
         }`}
       >
         {initials(name)}
@@ -210,8 +228,10 @@ function Avatar({ name, online, verified, role, flagged }) {
       {online && (
         <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-green-400 ring-2 ring-white" />
       )}
-      {verified && (
-        <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-blue-400 flex items-center justify-center">
+      {tickColor && (
+        <span
+          className={`absolute -top-1 -right-1 h-4 w-4 rounded-full ${tickColor} flex items-center justify-center`}
+        >
           <span className="text-white text-xs">✓</span>
         </span>
       )}
@@ -280,12 +300,8 @@ function ConversationList({
   const passesFilter = useCallback(
     (conversation) => {
       switch (filterKey) {
-        case "unread":
-          return (conversation.unread || 0) > 0;
-        case "verified":
-          return conversation.verified;
-        case "flagged":
-          return conversation.flagged || conversation.reported;
+        case "group":
+          return conversation.isGroup === true || conversation.role === "group";
         default:
           return true;
       }
@@ -343,27 +359,13 @@ function ConversationList({
             >
               <div className="flex items-start gap-3">
                 <div className="relative flex-shrink-0">
-                  <div className="w-12 h-12 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 font-semibold text-sm">
-                    {initials(c.name)}
-                  </div>
-                  {c.online && (
-                    <div className="absolute bottom-0.5 right-0.5 w-3.5 h-3.5 bg-green-400 rounded-full border-2 border-white"></div>
-                  )}
-                  {c.verified && (
-                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-blue-400 rounded-full flex items-center justify-center">
-                      <svg
-                        className="w-2.5 h-2.5 text-white"
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    </div>
-                  )}
+                  <Avatar
+                    name={c.name}
+                    online={c.online}
+                    verified={c.verified}
+                    role={c.role}
+                    flagged={c.flagged}
+                  />
                 </div>
                 <div className="flex-1 min-w-0 pt-1">
                   <div className="flex items-center justify-between gap-2 mb-1">
@@ -465,7 +467,16 @@ function ConversationList({
 }
 
 // --- Enhanced message bubble with safety features ---
-function MessageBubble({ own, text, ts, status, verified, flagged, onReport }) {
+function MessageBubble({
+  own,
+  text,
+  ts,
+  status,
+  verified,
+  flagged,
+  onReport,
+  senderRole,
+}) {
   const [showReportMenu, setShowReportMenu] = useState(false);
 
   const handleReport = () => {
@@ -473,12 +484,43 @@ function MessageBubble({ own, text, ts, status, verified, flagged, onReport }) {
     setShowReportMenu(false);
   };
 
+  // Get tick color based on sender role
+  const getRoleTick = () => {
+    if (!senderRole || own) return null;
+
+    const roleLower = String(senderRole || "").toLowerCase();
+    if (roleLower === "admin" || roleLower === "super_admin") {
+      return (
+        <span className="text-purple-500 font-bold text-sm" title="Admin">
+          ✓
+        </span>
+      );
+    } else if (
+      roleLower === "teacher" ||
+      roleLower === "staff" ||
+      roleLower === "professor"
+    ) {
+      return (
+        <span className="text-green-500 font-bold text-sm" title="Teacher">
+          ✓
+        </span>
+      );
+    } else if (roleLower === "student") {
+      return (
+        <span className="text-blue-500 font-bold text-sm" title="Student">
+          ✓
+        </span>
+      );
+    }
+    return null;
+  };
+
   return (
     <div className={classNames("flex", own ? "justify-end" : "justify-start")}>
-      <div className="relative group">
+      <div className="relative group" style={{ maxWidth: "75%" }}>
         <div
           className={classNames(
-            "max-w-[75%] rounded-2xl px-4 py-2",
+            "rounded-full px-4 py-2 inline-block",
             own
               ? "bg-gradient-to-br from-[var(--brand-color)] to-[var(--brand-color-700)] text-white shadow-md"
               : "bg-white text-slate-900 border border-slate-200",
@@ -486,7 +528,7 @@ function MessageBubble({ own, text, ts, status, verified, flagged, onReport }) {
           )}
           role="text"
         >
-          <p className="text-sm whitespace-pre-wrap">{text}</p>
+          <p className="text-sm">{text}</p>
           <div
             className={classNames(
               "flex items-center gap-1 mt-1 text-[11px]",
@@ -494,7 +536,7 @@ function MessageBubble({ own, text, ts, status, verified, flagged, onReport }) {
             )}
           >
             <span>{formatClock(ts)}</span>
-            {!own && verified && <span className="text-[#4a5a68]">✓</span>}
+            {!own && getRoleTick()}
             {own && (
               <span
                 aria-label={
@@ -705,6 +747,7 @@ function ChatWindow({
               verified={row.verified}
               flagged={row.flagged}
               onReport={onReport}
+              senderRole={row.senderRole}
             />
           )
         )}
@@ -782,6 +825,8 @@ function ChatWindow({
 
 // --- main page with enhanced safety features ---
 export default function Messages() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const { user, isAdmin } = useAuth();
   const { success, error: showError } = useToast();
   const [loading, setLoading] = useState(true);
@@ -796,150 +841,235 @@ export default function Messages() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
 
-  // Fetch conversations on mount
+  // Check for user parameter in URL to open conversation
+  const userIdFromUrl = searchParams.get("user");
+
+  // Helper function to format conversations
+  const formatConversations = useCallback((conversations) => {
+    if (!conversations || !Array.isArray(conversations)) {
+      return [];
+    }
+
+    return conversations.map((conv) => {
+      // Check if it's a group chat
+      const isGroup = conv.is_group || conv.role === "group" || false;
+      const otherUserId = conv.other_user_id || conv.id || null;
+
+      return {
+        id: isGroup
+          ? `group-${otherUserId || Date.now()}`
+          : `conv-${otherUserId || Date.now()}`,
+        name: isGroup
+          ? conv.name ||
+            `${conv.first_name || ""} ${conv.last_name || ""}`.trim() ||
+            "Group Chat"
+          : `${conv.first_name || ""} ${conv.last_name || ""}`.trim() ||
+            conv.email ||
+            "User",
+        avatar: conv.avatar_url || "",
+        lastMessage: conv.last_message || "",
+        timestamp:
+          conv.last_message_time || conv.timestamp || new Date().toISOString(),
+        unread: conv.unread_count || conv.unread || 0,
+        online: false, // TODO: Implement online status
+        verified: true,
+        role: conv.role || "student",
+        isGroup: isGroup,
+        blocked: false,
+        reported: false,
+        otherUserId: isGroup ? null : otherUserId,
+      };
+    });
+  }, []);
+
+  // Fetch conversations on mount and set up polling
   useEffect(() => {
     const fetchConversations = async () => {
       try {
-        setLoading(true);
         const result = await messagesApi.getConversations();
-        const formatted = (result.conversations || []).map((conv) => ({
-          id: `conv-${conv.other_user_id}`,
-          name: `${conv.first_name} ${conv.last_name}`.trim() || conv.email,
-          avatar: conv.avatar_url || "",
-          lastMessage: conv.last_message || "",
-          timestamp: conv.last_message_time || new Date().toISOString(),
-          unread: conv.unread_count || 0,
-          online: false, // TODO: Implement online status
-          verified: true,
-          role: conv.role || "student",
-          blocked: false,
-          reported: false,
-          otherUserId: conv.other_user_id,
-        }));
+        const formatted = formatConversations(result.conversations);
         setConversations(formatted);
       } catch (err) {
         console.error("Failed to fetch conversations:", err);
-        showError("Failed to load conversations. Using demo data.");
-      setConversations(fakeConversations);
-      } finally {
-      setLoading(false);
+        if (conversations.length === 0) {
+          showError("Failed to load conversations. Using demo data.");
+          try {
+            setConversations(fakeConversations);
+          } catch (demoErr) {
+            console.error("Error setting demo data:", demoErr);
+            setConversations([]);
+          }
+        }
       }
     };
 
     if (user) {
-      fetchConversations();
-    }
-  }, [user, showError]);
+      setLoading(true);
+      fetchConversations().finally(() => setLoading(false));
 
-  // when selecting a conversation
-  const openConversation = useCallback(async (c) => {
-    setSelected(c);
-    // mark read locally
-    setConversations((prev) =>
-      prev.map((x) => (x.id === c.id ? { ...x, unread: 0 } : x))
-    );
-    
-    // fetch messages from API
-    try {
-      const otherUserId = c.otherUserId || c.id.replace("conv-", "");
-      const result = await messagesApi.getMessages(otherUserId);
-      const formatted = (result.messages || []).map((msg) => ({
-        id: msg.id.toString(),
-        senderId: msg.sender_id === user.id ? "me" : msg.sender_id.toString(),
-        sender: msg.sender_id === user.id ? "You" : `${msg.first_name} ${msg.last_name}`.trim(),
-        content: msg.content,
-        ts: msg.created_at,
+      // Poll for new conversations every 5 seconds
+      const pollInterval = setInterval(() => {
+        fetchConversations();
+      }, 5000);
+
+      return () => clearInterval(pollInterval);
+    }
+  }, [user, showError, formatConversations, conversations]);
+
+  // Fetch messages for a conversation
+  const fetchMessages = useCallback(
+    async (otherUserId) => {
+      if (!otherUserId) {
+        console.warn("No otherUserId provided to fetchMessages");
+        return;
+      }
+
+      try {
+        const result = await messagesApi.getMessages(otherUserId);
+        if (!result || !result.messages) {
+          console.warn("No messages in API response");
+          return;
+        }
+
+        const formatted = (result.messages || [])
+          .map((msg) => {
+            if (!msg) return null;
+            return {
+              id: (msg.id || Date.now()).toString(),
+              senderId:
+                msg.sender_id === user?.id
+                  ? "me"
+                  : (msg.sender_id || "").toString(),
+              sender:
+                msg.sender_id === user?.id
+                  ? "You"
+                  : `${msg.first_name || ""} ${msg.last_name || ""}`.trim() ||
+                    msg.email ||
+                    "User",
+              content: msg.content || "",
+              ts: msg.created_at || new Date().toISOString(),
               status: "sent",
               verified: true,
               flagged: false,
-      }));
-      setMessages(formatted);
-    } catch (err) {
-      console.error("Failed to fetch messages:", err);
-      showError("Failed to load messages.");
-      setMessages([]);
-    }
-  }, [user, showError]);
+              senderRole: msg.role || "student", // Include role from API
+            };
+          })
+          .filter(Boolean); // Remove any null entries
+
+        setMessages(formatted);
+      } catch (err) {
+        console.error("Failed to fetch messages:", err);
+        if (messages.length === 0) {
+          showError("Failed to load messages.");
+          setMessages([]); // Set empty array instead of crashing
+        }
+      }
+    },
+    [user, showError, messages.length]
+  );
+
+  // when selecting a conversation
+  const openConversation = useCallback(
+    async (c) => {
+      setSelected(c);
+      // mark read locally
+      setConversations((prev) =>
+        prev.map((x) => (x.id === c.id ? { ...x, unread: 0 } : x))
+      );
+
+      const otherUserId = c.otherUserId || c.id.replace("conv-", "");
+      await fetchMessages(otherUserId);
+    },
+    [fetchMessages, setConversations]
+  );
+
+  // Poll for new messages in the current conversation
+  useEffect(() => {
+    if (!selected || !selected.otherUserId) return;
+
+    const otherUserId =
+      selected.otherUserId || selected.id.replace("conv-", "");
+
+    // Poll for new messages every 3 seconds
+    const pollInterval = setInterval(() => {
+      fetchMessages(otherUserId);
+    }, 3000);
+
+    return () => clearInterval(pollInterval);
+  }, [selected, fetchMessages]);
 
   // optimistic send with safety checks
-  const send = useCallback(async (text) => {
-    if (!selected || !selected.otherUserId) {
-      showError("Please select a conversation first.");
-      return;
-    }
-
-    const tempId = `tmp-${Date.now()}`;
-    const optimistic = {
-      id: tempId,
-      senderId: "me",
-      sender: "You",
-      content: text,
-      ts: timeNow(),
-      status: "sending",
-      verified: true,
-      flagged: false,
-    };
-    setMessages((prev) => [...prev, optimistic]);
-
-    try {
-      const otherUserId = selected.otherUserId || selected.id.replace("conv-", "");
-      const result = await messagesApi.sendMessage(otherUserId, text);
-      
-      // Replace optimistic message with real one
-      if (result.message) {
-      setMessages((prev) =>
-        prev.map((m) =>
-            m.id === tempId
-              ? {
-                  id: result.message.id.toString(),
-                  senderId: "me",
-                  sender: "You",
-                  content: result.message.content,
-                  ts: result.message.created_at,
-                  status: "sent",
-                  verified: true,
-                  flagged: false,
-                }
-              : m
-          )
-        );
-      } else {
-        // If no message returned, just mark as sent
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === tempId ? { ...m, status: "sent" } : m
-          )
-        );
+  const send = useCallback(
+    async (text) => {
+      if (!selected || !selected.otherUserId) {
+        showError("Please select a conversation first.");
+        return;
       }
 
-      // Refresh conversations to update last message
-      const convResult = await messagesApi.getConversations();
-      const formatted = (convResult.conversations || []).map((conv) => ({
-        id: `conv-${conv.other_user_id}`,
-        name: `${conv.first_name} ${conv.last_name}`.trim() || conv.email,
-        avatar: conv.avatar_url || "",
-        lastMessage: conv.last_message || "",
-        timestamp: conv.last_message_time || new Date().toISOString(),
-        unread: conv.unread_count || 0,
-        online: false,
+      const tempId = `tmp-${Date.now()}`;
+      const optimistic = {
+        id: tempId,
+        senderId: "me",
+        sender: "You",
+        content: text,
+        ts: timeNow(),
+        status: "sending",
         verified: true,
-        role: conv.role || "student",
-        blocked: false,
-        reported: false,
-        otherUserId: conv.other_user_id,
-      }));
-      setConversations(formatted);
-    } catch (err) {
-      console.error("Failed to send message:", err);
-      showError("Failed to send message. Please try again.");
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === tempId ? { ...m, status: "failed" } : m
-        )
-      );
-    }
-  }, [selected, showError]);
+        flagged: false,
+      };
+      setMessages((prev) => [...prev, optimistic]);
+
+      try {
+        const otherUserId =
+          selected.otherUserId || selected.id.replace("conv-", "");
+        const result = await messagesApi.sendMessage(otherUserId, text);
+
+        // Replace optimistic message with real one
+        if (result.message) {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === tempId
+                ? {
+                    id: result.message.id.toString(),
+                    senderId: "me",
+                    sender: "You",
+                    content: result.message.content,
+                    ts: result.message.created_at,
+                    status: "sent",
+                    verified: true,
+                    flagged: false,
+                    senderRole: user?.role || "student", // Include current user's role
+                  }
+                : m
+            )
+          );
+        } else {
+          // If no message returned, just mark as sent
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === tempId
+                ? { ...m, status: "sent", senderRole: user?.role || "student" }
+                : m
+            )
+          );
+        }
+
+        // Refresh conversations to update last message
+        const convResult = await messagesApi.getConversations();
+        const formatted = formatConversations(convResult.conversations);
+        setConversations(formatted);
+      } catch (err) {
+        console.error("Failed to send message:", err);
+        showError("Failed to send message. Please try again.");
+        setMessages((prev) =>
+          prev.map((m) => (m.id === tempId ? { ...m, status: "failed" } : m))
+        );
+      }
+    },
+    [selected, showError]
+  );
 
   // Safety functions
   const handleBlock = useCallback(
@@ -991,59 +1121,123 @@ export default function Messages() {
     setSearchResults([]);
   }, []);
 
-  const handleSearchUsers = useCallback(async (query) => {
-    if (!query.trim()) {
-      setSearchResults([]);
-      return;
-    }
+  // Debounce search query for real-time search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery.trim());
+    }, 300); // 300ms debounce delay
 
-    try {
-      setSearching(true);
-      const result = await messagesApi.searchUsers(query);
-      // Filter out current user and already existing conversations
-      const existingUserIds = conversations.map((c) => c.otherUserId);
-      const filtered = (result.users || []).filter(
-        (u) => u.id !== user.id && !existingUserIds.includes(u.id.toString())
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Perform search when debounced query changes
+  useEffect(() => {
+    const performSearch = async () => {
+      if (!debouncedSearchQuery) {
+        setSearchResults([]);
+        setSearching(false);
+        return;
+      }
+
+      try {
+        setSearching(true);
+        const result = await messagesApi.searchUsers(debouncedSearchQuery);
+        // Filter out current user and already existing conversations
+        const existingUserIds = conversations
+          .map((c) => c.otherUserId)
+          .filter(Boolean);
+        const filtered = (result.users || []).filter(
+          (u) =>
+            u.id !== user?.id &&
+            !existingUserIds.includes(u.id.toString()) &&
+            u.is_active !== false
+        );
+        setSearchResults(filtered);
+      } catch (err) {
+        console.error("Failed to search users:", err);
+        showError("Failed to search users.");
+        setSearchResults([]);
+      } finally {
+        setSearching(false);
+      }
+    };
+
+    performSearch();
+  }, [debouncedSearchQuery, conversations, user, showError]);
+
+  const handleStartChat = useCallback(
+    async (otherUser) => {
+      try {
+        // Create a new conversation entry
+        const newConv = {
+          id: `conv-${otherUser.id}`,
+          name:
+            `${otherUser.first_name} ${otherUser.last_name}`.trim() ||
+            otherUser.email,
+          avatar: otherUser.avatar_url || "",
+          lastMessage: "",
+          timestamp: new Date().toISOString(),
+          unread: 0,
+          online: false,
+          verified: true,
+          role: otherUser.role || "student",
+          blocked: false,
+          reported: false,
+          otherUserId: otherUser.id.toString(),
+        };
+
+        setConversations((prev) => [newConv, ...prev]);
+        setSelected(newConv);
+        setMessages([]);
+        setShowNewChatModal(false);
+        setSearchQuery("");
+        setSearchResults([]);
+        success(`Started conversation with ${newConv.name}`);
+      } catch (err) {
+        console.error("Failed to start chat:", err);
+        showError("Failed to start chat.");
+      }
+    },
+    [success, showError, setSearchParams]
+  );
+
+  // Handle opening conversation from URL parameter
+  useEffect(() => {
+    if (userIdFromUrl && conversations.length > 0 && !selected) {
+      // Find existing conversation
+      const existingConv = conversations.find(
+        (c) => c.otherUserId === userIdFromUrl
       );
-      setSearchResults(filtered);
-    } catch (err) {
-      console.error("Failed to search users:", err);
-      showError("Failed to search users.");
-    } finally {
-      setSearching(false);
-    }
-  }, [conversations, user, showError]);
 
-  const handleStartChat = useCallback(async (otherUser) => {
-    try {
-      // Create a new conversation entry
-      const newConv = {
-        id: `conv-${otherUser.id}`,
-        name: `${otherUser.first_name} ${otherUser.last_name}`.trim() || otherUser.email,
-        avatar: otherUser.avatar_url || "",
-        lastMessage: "",
-        timestamp: new Date().toISOString(),
-        unread: 0,
-        online: false,
-        verified: true,
-        role: otherUser.role || "student",
-        blocked: false,
-        reported: false,
-        otherUserId: otherUser.id.toString(),
-      };
-      
-      setConversations((prev) => [newConv, ...prev]);
-      setSelected(newConv);
-      setMessages([]);
-      setShowNewChatModal(false);
-      setSearchQuery("");
-      setSearchResults([]);
-      success(`Started conversation with ${newConv.name}`);
-    } catch (err) {
-      console.error("Failed to start chat:", err);
-      showError("Failed to start chat.");
+      if (existingConv) {
+        openConversation(existingConv);
+        setSearchParams({}); // Clear URL param after opening
+      } else {
+        // Try to find user and start chat
+        messagesApi
+          .searchUsers(userIdFromUrl)
+          .then((result) => {
+            const foundUser = result.users?.find(
+              (u) => u.id.toString() === userIdFromUrl
+            );
+            if (foundUser) {
+              handleStartChat(foundUser);
+            }
+          })
+          .catch(() => {
+            // If search fails, just open new chat modal
+            setShowNewChatModal(true);
+          });
+      }
     }
-  }, [success, showError]);
+  }, [
+    userIdFromUrl,
+    conversations,
+    selected,
+    openConversation,
+    handleStartChat,
+    setSearchParams,
+  ]);
 
   if (loading) {
     return (
@@ -1172,17 +1366,20 @@ export default function Messages() {
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
-                  handleSearchUsers(e.target.value);
                 }}
-                placeholder="Search for a user..."
+                placeholder="Search by name or email (e.g., 'ken' or 'kenshee')..."
                 className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
               />
             </div>
             <div className="flex-1 overflow-y-auto mb-4">
               {searching ? (
-                <div className="text-center text-slate-500 py-4">Searching...</div>
+                <div className="text-center text-slate-500 py-4">
+                  Searching...
+                </div>
               ) : searchResults.length === 0 && searchQuery ? (
-                <div className="text-center text-slate-500 py-4">No users found</div>
+                <div className="text-center text-slate-500 py-4">
+                  No users found
+                </div>
               ) : (
                 <div className="space-y-2">
                   {searchResults.map((user) => (
@@ -1198,7 +1395,9 @@ export default function Messages() {
                         <p className="font-medium text-slate-900 truncate">
                           {user.first_name} {user.last_name}
                         </p>
-                        <p className="text-sm text-slate-500 truncate">{user.email}</p>
+                        <p className="text-sm text-slate-500 truncate">
+                          {user.email}
+                        </p>
                       </div>
                     </button>
                   ))}

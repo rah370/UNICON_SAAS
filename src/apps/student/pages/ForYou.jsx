@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../shared/contexts/AuthContext";
 import { useBranding } from "../../shared/contexts/BrandingContext";
-import { studentApi } from "../../shared/utils/api";
+import { studentApi, apiRequest } from "../../shared/utils/api";
 import { EngagementDashboard } from "../../shared/components/EngagementDashboard";
 
 const quickStats = [
@@ -50,20 +50,24 @@ const quickLinks = [
   { label: "Marketplace", href: "/marketplace", emoji: "🛍️" },
 ];
 
-const activityFeed = [
-  {
-    id: 1,
-    title: "New post in CS315 channel",
-    detail: '"Anyone want to study for midterm?"',
-    icon: "💬",
-  },
-  {
-    id: 2,
-    title: "Spring Festival RSVP",
-    detail: "You've RSVP'd for the event",
-    icon: "🎉",
-  },
-];
+// Activity feed will be populated from API notifications
+const getNotificationIcon = (type) => {
+  switch (type) {
+    case "post":
+    case "comment":
+      return "💬";
+    case "event":
+      return "🎉";
+    case "message":
+      return "📩";
+    case "marketplace":
+      return "🛒";
+    case "task":
+      return "📋";
+    default:
+      return "🔔";
+  }
+};
 
 const resourceCards = [
   {
@@ -171,6 +175,7 @@ function ForYou() {
   const [currentMomentIndex, setCurrentMomentIndex] = useState(0);
   const [showStoryViewer, setShowStoryViewer] = useState(false);
   const [focusTasks, setFocusTasks] = useState(defaultFocusTasks);
+  const [activityFeed, setActivityFeed] = useState([]);
 
   // Fetch tasks from API
   useEffect(() => {
@@ -258,6 +263,35 @@ function ForYou() {
     };
 
     fetchTasks();
+  }, [user]);
+
+  // Fetch notifications for activity feed
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      if (!user) return;
+
+      try {
+        const result = await apiRequest("/notifications");
+        // Convert notifications to activity feed format
+        const activities = (result.notifications || [])
+          .slice(0, 5) // Show only latest 5
+          .map((notif) => ({
+            id: notif.id,
+            title: notif.title || "Notification",
+            detail: notif.message || "",
+            icon: getNotificationIcon(notif.type),
+            link: notif.link,
+            timestamp: notif.created_at,
+          }));
+        setActivityFeed(activities);
+      } catch (err) {
+        console.error("Failed to fetch notifications:", err);
+        // Keep empty array on error
+        setActivityFeed([]);
+      }
+    };
+
+    fetchNotifications();
   }, [user]);
 
   const handleStoryClick = (story) => {
@@ -427,24 +461,37 @@ function ForYou() {
                 Recent activity
               </h3>
               <div className="mt-4 space-y-3">
-                {activityFeed.map((activity) => (
-                  <div
-                    key={activity.id}
-                    className="flex items-start gap-3 rounded-2xl border border-slate-100 bg-slate-50/70 p-3"
-                  >
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-base">
-                      {activity.icon}
+                {activityFeed.length > 0 ? (
+                  activityFeed.map((activity) => (
+                    <div
+                      key={activity.id}
+                      className="flex items-start gap-3 rounded-2xl border border-slate-100 bg-slate-50/70 p-3"
+                    >
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-base flex-shrink-0">
+                        {activity.icon}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-slate-900">
+                          {activity.title}
+                        </p>
+                        {activity.detail && (
+                          <p className="text-xs text-slate-600 truncate">
+                            {activity.detail}
+                          </p>
+                        )}
+                        {activity.timestamp && (
+                          <p className="text-xs text-slate-400 mt-1">
+                            {new Date(activity.timestamp).toLocaleDateString()}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-semibold text-slate-900">
-                        {activity.title}
-                      </p>
-                      <p className="text-xs text-slate-600">
-                        {activity.detail}
-                      </p>
-                    </div>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <p className="text-sm text-slate-500 text-center py-4">
+                    No recent activity
+                  </p>
+                )}
               </div>
             </div>
           </div>

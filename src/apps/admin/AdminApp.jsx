@@ -15,7 +15,16 @@ import { ToastProvider } from "../shared/components/Toast";
 
 // Protected Route Component for Admin
 function ProtectedAdminRoute({ children }) {
-  const { isAuthenticated, isAdmin, user } = useAuth();
+  const { isAuthenticated, isAdmin, user, loading } = useAuth();
+
+  // Wait for auth check to complete before redirecting
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-slate-600">Loading...</div>
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/admin-login" replace />;

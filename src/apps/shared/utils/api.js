@@ -98,18 +98,7 @@ export const adminApi = {
     }),
 };
 
-// Student API functions
 export const studentApi = {
-  // Events
-  getEvents: () => apiRequest("/events"),
-  rsvpEvent: (eventId, status) =>
-    apiRequest("/events/rsvp", {
-      method: "POST",
-      body: { event_id: eventId, status },
-    }),
-  getEventAttendees: (eventId) =>
-    apiRequest(`/events/rsvp?event_id=${eventId}`),
-
   // Tasks
   getTasks: () => apiRequest("/tasks"),
   createTask: (data) =>
@@ -123,7 +112,31 @@ export const studentApi = {
       body: { task_id: taskId, ...data },
     }),
   deleteTask: (taskId) =>
-    apiRequest(`/tasks?id=${taskId}`, {
+    apiRequest("/tasks", {
       method: "DELETE",
+      body: { task_id: taskId },
     }),
+
+  // Notifications
+  getNotifications: () => apiRequest("/notifications"),
+  markNotificationRead: (notificationId) =>
+    apiRequest("/notifications", {
+      method: "PUT",
+      body: { notification_id: notificationId },
+    }),
+  markAllNotificationsRead: () =>
+    apiRequest("/notifications", {
+      method: "PUT",
+      body: { mark_all_read: true },
+    }),
+
+  // Events
+  getEvents: () => apiRequest("/events"),
+  rsvpEvent: (eventId, status) =>
+    apiRequest("/events/rsvp", {
+      method: "POST",
+      body: { event_id: eventId, status },
+    }),
+  getEventAttendees: (eventId) => apiRequest(`/events/${eventId}/attendees`),
+  getUserEventStatus: (eventId) => apiRequest(`/events/${eventId}/status`),
 };
