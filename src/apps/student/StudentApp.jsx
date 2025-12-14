@@ -1,14 +1,11 @@
 import React, { useEffect } from "react";
-import {
-  Routes,
-  Route,
-  Navigate,
-} from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import LandingPage from "./pages/LandingPage";
 import StudentLogin from "./pages/StudentLogin";
 import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
+import SearchResults from "./pages/SearchResults";
 import ForYou from "./pages/ForYou";
 import Community from "./pages/Community";
 import Messages from "./pages/Messages";
@@ -27,9 +24,18 @@ import OfflineManager from "../shared/components/OfflineManager";
 
 // Protected Route Component for Students
 function ProtectedRoute({ children, requireAuth = true }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, loading } = useAuth();
   const path = typeof window !== "undefined" ? window.location.pathname : "";
   const isCommunity = path.startsWith("/community");
+
+  // Wait for auth check to complete before redirecting
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-slate-600">Loading...</div>
+      </div>
+    );
+  }
 
   if (requireAuth && !isAuthenticated) {
     return <Navigate to="/student-login" replace />;
@@ -83,11 +89,7 @@ function StudentAppLayout({ children }) {
       {/* Main Content */}
       <div className="relative z-10">
         {showGlobalHeader && <Header />}
-        <main
-          className={`${
-            isAuthenticated ? "pb-20" : ""
-          } animate-fadeIn`}
-        >
+        <main className={`${isAuthenticated ? "pb-20" : ""} animate-fadeIn`}>
           {children}
         </main>
         {isAuthenticated && <BottomNav />}
@@ -112,20 +114,30 @@ function StudentApp() {
     }
   }, []);
 
-    return (
-      <BrandingProvider>
-        <AuthProvider>
-          <ToastProvider>
-            <Routes>
-              {/* Public Routes */}
-              <Route path="/" element={<LandingPage />} />
-              <Route path="/login" element={<StudentLogin />} />
-              <Route path="/student-login" element={<StudentLogin />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/forgot-password" element={<ForgotPassword />} />
-              <Route path="/reset-password" element={<ResetPassword />} />
+  return (
+    <BrandingProvider>
+      <AuthProvider>
+        <ToastProvider>
+          <Routes>
+            {/* Public Routes */}
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/login" element={<StudentLogin />} />
+            <Route path="/student-login" element={<StudentLogin />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
 
             {/* Protected Student Routes */}
+            <Route
+              path="/search"
+              element={
+                <ProtectedRoute>
+                  <StudentAppLayout>
+                    <SearchResults />
+                  </StudentAppLayout>
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/for-you"
               element={
@@ -207,6 +219,16 @@ function StudentApp() {
               }
             />
             <Route
+              path="/profile/:userId"
+              element={
+                <ProtectedRoute>
+                  <StudentAppLayout>
+                    <Profile />
+                  </StudentAppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/analytics"
               element={
                 <ProtectedRoute>
@@ -217,14 +239,13 @@ function StudentApp() {
               }
             />
 
-              {/* Fallback */}
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </ToastProvider>
-        </AuthProvider>
-      </BrandingProvider>
-    );
+            {/* Fallback */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </ToastProvider>
+      </AuthProvider>
+    </BrandingProvider>
+  );
 }
 
 export default StudentApp;
-
