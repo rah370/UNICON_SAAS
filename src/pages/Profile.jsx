@@ -1,6 +1,11 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
+import { useParams } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useBranding } from "../contexts/BrandingContext";
+import { studentApi } from "../apps/shared/utils/api";
+import { useToast } from "../components/Toast";
+import { CardSkeleton, PostSkeleton } from "../components/SkeletonLoader";
+import { uploadImage } from "../apps/shared/utils/fileUpload";
 
 const quickStats = [
   { label: "Engagement score", value: "92", meta: "+8 vs last week" },
@@ -17,12 +22,14 @@ const journeyMilestones = [
   {
     title: "Hackathon Finalist",
     period: "Aug 2024",
-    detail: "Built a campus marketplace prototype that won the community choice vote.",
+    detail:
+      "Built a campus marketplace prototype that won the community choice vote.",
   },
   {
     title: "Student Success Fellow",
     period: "Jan 2024",
-    detail: "Mentored freshmen on productivity systems and onboarding to UNICON.",
+    detail:
+      "Mentored freshmen on productivity systems and onboarding to UNICON.",
   },
 ];
 
@@ -45,10 +52,30 @@ const focusAreas = [
 ];
 
 const badgeShowcase = [
-  { icon: "🏅", title: "Dean's Lister", detail: "3 consecutive terms", tone: "from-sky-500/20" },
-  { icon: "🧠", title: "Hackathon Finalist", detail: "Top 5 / 60 teams", tone: "from-indigo-500/20" },
-  { icon: "🤝", title: "Service Leader", detail: "48 verified hours", tone: "from-emerald-500/20" },
-  { icon: "🚀", title: "Startup Bootcamp", detail: "Cohort 03", tone: "from-orange-500/20" },
+  {
+    icon: "🏅",
+    title: "Dean's Lister",
+    detail: "3 consecutive terms",
+    tone: "from-sky-500/20",
+  },
+  {
+    icon: "🧠",
+    title: "Hackathon Finalist",
+    detail: "Top 5 / 60 teams",
+    tone: "from-indigo-500/20",
+  },
+  {
+    icon: "🤝",
+    title: "Service Leader",
+    detail: "48 verified hours",
+    tone: "from-emerald-500/20",
+  },
+  {
+    icon: "🚀",
+    title: "Startup Bootcamp",
+    detail: "Cohort 03",
+    tone: "from-orange-500/20",
+  },
 ];
 
 const toolkit = ["Figma", "Next.js", "Python", "Notion", "Firebase", "Miro"];
@@ -56,42 +83,101 @@ const toolkit = ["Figma", "Next.js", "Python", "Notion", "Firebase", "Miro"];
 function Profile() {
   const { user, logout } = useAuth();
   const { branding } = useBranding();
+  const { userId } = useParams();
+  const { showToast } = useToast();
   const brandColor = branding?.color || "#365b6d";
+  const isOwnProfile = !userId || userId === user?.id;
 
   const [activeTab, setActiveTab] = useState("posts");
   const [isEditing, setIsEditing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
   const [profileData, setProfileData] = useState({
     name: user?.name || "User Name",
-    bio: "Turning coffee into code ☕",
-    location: "Cebu City",
-    interests: ["Programming", "Web Development", "AI", "Mobile Apps"],
-    major: user?.major || "Computer Science",
-    year: user?.year || "Junior",
+    bio: "",
+    location: "",
+    interests: [],
+    major: user?.major || "",
+    year: user?.year || "",
   });
-  const [posts, setPosts] = useState([
-    {
-      id: 1,
-      content: "Shipped the vendor verification flow for our campus marketplace pilot. 🎯",
-      imageUrl:
-        "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400&h=200&fit=crop",
-      likes: 48,
-      comments: 9,
-      timestamp: "2 hours ago",
-      canDelete: true,
-    },
-    {
-      id: 2,
-      content: "Hosted our CS club design critique — 5 teams demoed shipping updates!",
-      likes: 32,
-      comments: 6,
-      timestamp: "1 day ago",
-      canDelete: true,
-    },
-  ]);
+  const [posts, setPosts] = useState([]);
   const [profilePic, setProfilePic] = useState(user?.avatarUrl || "");
   const [backgroundPic, setBackgroundPic] = useState("");
   const profilePicRef = useRef(null);
   const backgroundPicRef = useRef(null);
+
+  useEffect(() => {
+    fetchProfile();
+  }, [userId]);
+
+  const fetchProfile = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await studentApi.getProfile(userId);
+      const profile = response.profile || response.data || {};
+
+      setProfileData({
+        name:
+          profile.name ||
+          `${profile.first_name || ""} ${profile.last_name || ""}`.trim() ||
+          "User Name",
+        bio: profile.bio || profile.biography || "",
+        location: profile.location || "",
+        interests: profile.interests || [],
+        major: profile.major || user?.major || "",
+        year: profile.year || profile.year_level || user?.year || "",
+      });
+
+      setProfilePic(
+        profile.avatar_url || profile.avatar || user?.avatarUrl || ""
+      );
+      setBackgroundPic(
+        profile.background_image_url || profile.background_image || ""
+      );
+
+      // Fetch user posts if viewing own profile
+      if (isOwnProfile || !userId) {
+        try {
+          const postsResponse = await studentApi.getPosts({
+            user_id: userId || user?.id,
+          });
+          const postsData = postsResponse.posts || postsResponse.data || [];
+          setPosts(
+            postsData.map((post) => ({
+              id: post.id,
+              content: post.content || post.body || "",
+              imageUrl: post.image_url || post.image || "",
+              likes: post.likes_count || post.reactions?.like || 0,
+              comments: post.comments_count || post.comments || 0,
+              timestamp: formatTimeAgo(post.created_at || post.createdAt),
+              canDelete: isOwnProfile,
+            }))
+          );
+        } catch (err) {
+          console.error("Failed to fetch posts:", err);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch profile:", err);
+      setError(err.message || "Failed to load profile");
+      showToast("Failed to load profile", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatTimeAgo = (dateString) => {
+    if (!dateString) return "Recently";
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now - date) / 1000);
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+    if (diffInSeconds < 86400)
+      return `${Math.floor(diffInSeconds / 3600)}h ago`;
+    return date.toLocaleDateString();
+  };
 
   const initials = (name) => {
     if (!name) return "U";
@@ -112,31 +198,90 @@ function Profile() {
     })}`;
   };
 
-  const handleProfilePicUpload = (event) => {
+  const handleProfilePicUpload = async (event) => {
     const file = event.target.files[0];
-    if (file) {
+    if (!file) return;
+
+    // Validate file type and size
+    if (!file.type.startsWith("image/")) {
+      showToast("Please select an image file", "error");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      showToast("Image size must be less than 5MB", "error");
+      return;
+    }
+
+    try {
+      // Show preview immediately
       const reader = new FileReader();
       reader.onload = (e) => {
         setProfilePic(e.target.result);
       };
       reader.readAsDataURL(file);
+
+      // Upload to server
+      const imageUrl = await uploadImage(file, "profile");
+      setProfilePic(imageUrl);
+
+      // Update profile with new avatar
+      await studentApi.updateProfile({ avatar_url: imageUrl });
+      showToast("Profile picture updated!", "success");
+    } catch (err) {
+      console.error("Failed to upload profile picture:", err);
+      showToast("Failed to upload profile picture", "error");
     }
   };
 
-  const handleBackgroundPicUpload = (event) => {
+  const handleBackgroundPicUpload = async (event) => {
     const file = event.target.files[0];
-    if (file) {
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      showToast("Please select an image file", "error");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      showToast("Image size must be less than 5MB", "error");
+      return;
+    }
+
+    try {
       const reader = new FileReader();
       reader.onload = (e) => {
         setBackgroundPic(e.target.result);
       };
       reader.readAsDataURL(file);
+
+      const imageUrl = await uploadImage(file, "background");
+      setBackgroundPic(imageUrl);
+
+      await studentApi.updateProfile({ background_image_url: imageUrl });
+      showToast("Background image updated!", "success");
+    } catch (err) {
+      console.error("Failed to upload background image:", err);
+      showToast("Failed to upload background image", "error");
     }
   };
 
-  const handleSaveProfile = () => {
-    console.log("Saving profile:", profileData);
-    setIsEditing(false);
+  const handleSaveProfile = async () => {
+    try {
+      setSaving(true);
+      await studentApi.updateProfile({
+        bio: profileData.bio,
+        location: profileData.location,
+        interests: profileData.interests,
+        major: profileData.major,
+        year: profileData.year,
+      });
+      showToast("Profile updated successfully!", "success");
+      setIsEditing(false);
+    } catch (err) {
+      console.error("Failed to save profile:", err);
+      showToast("Failed to save profile", "error");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleDeletePost = (postId) => {
@@ -165,6 +310,29 @@ function Profile() {
     { id: "about", label: "About" },
     { id: "badges", label: "Badges" },
   ];
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#f3f6fb] pb-16">
+        <div className="relative h-60 w-full bg-slate-200 animate-pulse"></div>
+        <div className="max-w-4xl mx-auto px-4 -mt-20 relative z-10">
+          <div className="bg-white rounded-2xl shadow-lg p-6">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="w-24 h-24 bg-slate-200 rounded-full animate-pulse"></div>
+              <div className="flex-1">
+                <div className="h-6 bg-slate-200 rounded w-48 mb-2 animate-pulse"></div>
+                <div className="h-4 bg-slate-200 rounded w-32 animate-pulse"></div>
+              </div>
+            </div>
+            <div className="space-y-4">
+              <PostSkeleton />
+              <PostSkeleton />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#f3f6fb] pb-16">
@@ -241,7 +409,9 @@ function Profile() {
                     {profileData.major}
                   </span>
                 </div>
-                <p className="mt-1 text-slate-500">@{user?.email?.split("@")[0] || "username"}</p>
+                <p className="mt-1 text-slate-500">
+                  @{user?.email?.split("@")[0] || "username"}
+                </p>
                 <p className="mt-3 text-base text-slate-700 max-w-2xl">
                   {profileData.bio}
                 </p>
@@ -276,7 +446,9 @@ function Profile() {
                 </button>
                 <button
                   className="rounded-2xl px-4 py-3 text-sm font-semibold text-white shadow-lg"
-                  style={{ background: `linear-gradient(135deg, ${brandColor}, #0f1c24)` }}
+                  style={{
+                    background: `linear-gradient(135deg, ${brandColor}, #0f1c24)`,
+                  }}
                 >
                   Share profile
                 </button>
@@ -295,9 +467,14 @@ function Profile() {
                 { label: "Followers", value: 156 },
                 { label: "Following", value: 89 },
               ].map((stat) => (
-                <div key={stat.label} className="rounded-2xl border border-slate-100 px-4 py-3 shadow-sm">
+                <div
+                  key={stat.label}
+                  className="rounded-2xl border border-slate-100 px-4 py-3 shadow-sm"
+                >
                   <p className="text-sm text-slate-500">{stat.label}</p>
-                  <p className="text-2xl font-bold text-slate-900">{stat.value}</p>
+                  <p className="text-2xl font-bold text-slate-900">
+                    {stat.value}
+                  </p>
                 </div>
               ))}
             </div>
@@ -312,7 +489,9 @@ function Profile() {
                 <p className="text-xs font-semibold uppercase tracking-[0.4em] text-slate-500">
                   {stat.label}
                 </p>
-                <p className="mt-3 text-3xl font-bold text-slate-900">{stat.value}</p>
+                <p className="mt-3 text-3xl font-bold text-slate-900">
+                  {stat.value}
+                </p>
                 <p className="text-xs text-slate-500">{stat.meta}</p>
               </div>
             ))}
@@ -373,7 +552,9 @@ function Profile() {
                 </div>
                 <button
                   className="rounded-2xl px-4 py-3 text-sm font-semibold text-white shadow-lg"
-                  style={{ background: `linear-gradient(135deg, ${brandColor}, #0f1c24)` }}
+                  style={{
+                    background: `linear-gradient(135deg, ${brandColor}, #0f1c24)`,
+                  }}
                 >
                   Post
                 </button>
@@ -381,10 +562,15 @@ function Profile() {
             </div>
 
             <div className="rounded-3xl border border-white/80 bg-white p-6 shadow-sm">
-              <h2 className="text-lg font-semibold text-slate-900">Recent posts</h2>
+              <h2 className="text-lg font-semibold text-slate-900">
+                Recent posts
+              </h2>
               <div className="mt-4 space-y-6">
                 {posts.map((post) => (
-                  <div key={post.id} className="rounded-2xl border border-slate-100 p-4">
+                  <div
+                    key={post.id}
+                    className="rounded-2xl border border-slate-100 p-4"
+                  >
                     <div className="flex items-start gap-3">
                       <div className="h-10 w-10 rounded-2xl bg-[#708090] text-white flex items-center justify-center font-semibold">
                         {profilePic ? (
@@ -403,7 +589,9 @@ function Profile() {
                             <p className="font-semibold text-slate-900">
                               {profileData.name}
                             </p>
-                            <p className="text-xs text-slate-500">{post.timestamp}</p>
+                            <p className="text-xs text-slate-500">
+                              {post.timestamp}
+                            </p>
                           </div>
                           {post.canDelete && (
                             <button
@@ -414,7 +602,9 @@ function Profile() {
                             </button>
                           )}
                         </div>
-                        <p className="mt-3 text-sm text-slate-700">{post.content}</p>
+                        <p className="mt-3 text-sm text-slate-700">
+                          {post.content}
+                        </p>
                         {post.imageUrl && (
                           <img
                             src={post.imageUrl}
@@ -423,9 +613,15 @@ function Profile() {
                           />
                         )}
                         <div className="mt-4 flex items-center gap-4 text-sm text-slate-500">
-                          <button className="hover:text-red-500">♥ {post.likes}</button>
-                          <button className="hover:text-[#4a5a68]">💬 {post.comments}</button>
-                          <button className="hover:text-green-500">🔄 Share</button>
+                          <button className="hover:text-red-500">
+                            ♥ {post.likes}
+                          </button>
+                          <button className="hover:text-[#4a5a68]">
+                            💬 {post.comments}
+                          </button>
+                          <button className="hover:text-green-500">
+                            🔄 Share
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -440,15 +636,26 @@ function Profile() {
           <div className="grid gap-6 lg:grid-cols-[1.1fr,0.9fr]">
             <div className="space-y-5">
               <div className="rounded-3xl border border-white/80 bg-white p-6 shadow-sm">
-                <h2 className="text-lg font-semibold text-slate-900">Milestones</h2>
+                <h2 className="text-lg font-semibold text-slate-900">
+                  Milestones
+                </h2>
                 <div className="mt-4 space-y-6">
                   {journeyMilestones.map((item) => (
                     <div key={item.title} className="relative pl-6">
-                      <div className="absolute left-0 top-1 h-4 w-4 rounded-full border-2 border-white" style={{ backgroundColor: brandColor }} />
+                      <div
+                        className="absolute left-0 top-1 h-4 w-4 rounded-full border-2 border-white"
+                        style={{ backgroundColor: brandColor }}
+                      />
                       <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
-                        <p className="text-sm font-semibold text-slate-900">{item.title}</p>
-                        <p className="text-xs uppercase tracking-[0.35em] text-slate-500">{item.period}</p>
-                        <p className="mt-2 text-sm text-slate-600">{item.detail}</p>
+                        <p className="text-sm font-semibold text-slate-900">
+                          {item.title}
+                        </p>
+                        <p className="text-xs uppercase tracking-[0.35em] text-slate-500">
+                          {item.period}
+                        </p>
+                        <p className="mt-2 text-sm text-slate-600">
+                          {item.detail}
+                        </p>
                       </div>
                     </div>
                   ))}
@@ -456,13 +663,24 @@ function Profile() {
               </div>
 
               <div className="rounded-3xl border border-white/80 bg-white p-6 shadow-sm">
-                <h2 className="text-lg font-semibold text-slate-900">Focus areas</h2>
+                <h2 className="text-lg font-semibold text-slate-900">
+                  Focus areas
+                </h2>
                 <div className="mt-4 grid gap-4 lg:grid-cols-3">
                   {focusAreas.map((area) => (
-                    <div key={area.title} className="rounded-2xl border border-slate-100 p-4">
-                      <p className="text-sm font-semibold text-slate-900">{area.title}</p>
-                      <p className="mt-1 text-xs uppercase tracking-[0.35em] text-slate-500">{area.meta}</p>
-                      <p className="mt-2 text-sm text-slate-600">{area.detail}</p>
+                    <div
+                      key={area.title}
+                      className="rounded-2xl border border-slate-100 p-4"
+                    >
+                      <p className="text-sm font-semibold text-slate-900">
+                        {area.title}
+                      </p>
+                      <p className="mt-1 text-xs uppercase tracking-[0.35em] text-slate-500">
+                        {area.meta}
+                      </p>
+                      <p className="mt-2 text-sm text-slate-600">
+                        {area.detail}
+                      </p>
                     </div>
                   ))}
                 </div>
@@ -471,7 +689,9 @@ function Profile() {
 
             <div className="space-y-5">
               <div className="rounded-3xl border border-white/80 bg-white p-6 shadow-sm">
-                <h3 className="text-base font-semibold text-slate-900">Toolkit</h3>
+                <h3 className="text-base font-semibold text-slate-900">
+                  Toolkit
+                </h3>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {toolkit.map((tool) => (
                     <span
@@ -485,10 +705,14 @@ function Profile() {
               </div>
 
               <div className="rounded-3xl border border-white/80 bg-white p-6 shadow-sm">
-                <h3 className="text-base font-semibold text-slate-900">Snapshot</h3>
+                <h3 className="text-base font-semibold text-slate-900">
+                  Snapshot
+                </h3>
                 <ul className="mt-3 space-y-3 text-sm text-slate-600">
                   <li>• Mentoring 6 freshmen on UNICON onboarding.</li>
-                  <li>• Partnering with Student Affairs on service tracking.</li>
+                  <li>
+                    • Partnering with Student Affairs on service tracking.
+                  </li>
                   <li>• Building a vendor dashboard for campus marketplace.</li>
                 </ul>
               </div>
@@ -500,7 +724,9 @@ function Profile() {
           <div className="grid gap-5 lg:grid-cols-[1.1fr,0.9fr]">
             <div className="space-y-5">
               <div className="rounded-3xl border border-white/80 bg-white p-6 shadow-sm">
-                <h2 className="text-lg font-semibold text-slate-900">Profile</h2>
+                <h2 className="text-lg font-semibold text-slate-900">
+                  Profile
+                </h2>
                 <p className="mt-2 text-sm text-slate-600">{profileData.bio}</p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   {profileData.interests.map((interest) => (
@@ -518,16 +744,24 @@ function Profile() {
                 <h2 className="text-lg font-semibold text-slate-900">Focus</h2>
                 <div className="mt-4 grid gap-4 sm:grid-cols-2">
                   <div className="rounded-2xl border border-slate-100 p-4">
-                    <p className="text-xs uppercase tracking-[0.35em] text-slate-500">Academic</p>
-                    <p className="mt-2 text-sm font-semibold text-slate-900">{profileData.major}</p>
+                    <p className="text-xs uppercase tracking-[0.35em] text-slate-500">
+                      Academic
+                    </p>
+                    <p className="mt-2 text-sm font-semibold text-slate-900">
+                      {profileData.major}
+                    </p>
                     <p className="text-xs text-slate-500">{profileData.year}</p>
                   </div>
                   <div className="rounded-2xl border border-slate-100 p-4">
-                    <p className="text-xs uppercase tracking-[0.35em] text-slate-500">School</p>
+                    <p className="text-xs uppercase tracking-[0.35em] text-slate-500">
+                      School
+                    </p>
                     <p className="mt-2 text-sm font-semibold text-slate-900">
                       {branding?.name || "UNICON University"}
                     </p>
-                    <p className="text-xs text-slate-500">{profileData.location}</p>
+                    <p className="text-xs text-slate-500">
+                      {profileData.location}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -535,16 +769,24 @@ function Profile() {
 
             <div className="space-y-5">
               <div className="rounded-3xl border border-white/80 bg-white p-6 shadow-sm">
-                <h3 className="text-base font-semibold text-slate-900">Contact</h3>
+                <h3 className="text-base font-semibold text-slate-900">
+                  Contact
+                </h3>
                 <p className="mt-2 text-sm text-slate-600">{user?.email}</p>
-                <p className="text-xs text-slate-500">Usually replies within a day.</p>
+                <p className="text-xs text-slate-500">
+                  Usually replies within a day.
+                </p>
               </div>
               <div className="rounded-3xl border border-white/80 bg-white p-6 shadow-sm">
-                <h3 className="text-base font-semibold text-slate-900">Availability</h3>
+                <h3 className="text-base font-semibold text-slate-900">
+                  Availability
+                </h3>
                 <ul className="mt-3 space-y-2 text-sm text-slate-600">
                   <li>• Office hours: Tue & Thu, 3-5PM</li>
                   <li>• Mentorship slots: 2 remaining</li>
-                  <li>• Open to: Product design, student success, research collabs</li>
+                  <li>
+                    • Open to: Product design, student success, research collabs
+                  </li>
                 </ul>
               </div>
             </div>
@@ -561,7 +803,9 @@ function Profile() {
                   className={`rounded-3xl border border-white/80 bg-gradient-to-br ${badge.tone} via-white/70 to-white p-4 shadow-sm`}
                 >
                   <div className="text-3xl">{badge.icon}</div>
-                  <p className="mt-3 text-sm font-semibold text-slate-900">{badge.title}</p>
+                  <p className="mt-3 text-sm font-semibold text-slate-900">
+                    {badge.title}
+                  </p>
                   <p className="text-xs text-slate-600">{badge.detail}</p>
                 </div>
               ))}
@@ -573,8 +817,12 @@ function Profile() {
       {isEditing && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[#708090]/60 px-4">
           <div className="w-full max-w-2xl rounded-3xl bg-white p-6 shadow-2xl">
-            <h2 className="text-2xl font-semibold text-slate-900">Edit profile</h2>
-            <p className="text-sm text-slate-500">Refresh how your classmates see you.</p>
+            <h2 className="text-2xl font-semibold text-slate-900">
+              Edit profile
+            </h2>
+            <p className="text-sm text-slate-500">
+              Refresh how your classmates see you.
+            </p>
 
             <div className="mt-6 grid gap-4">
               <div>
@@ -584,7 +832,9 @@ function Profile() {
                 <input
                   type="text"
                   value={profileData.name}
-                  onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
+                  onChange={(e) =>
+                    setProfileData({ ...profileData, name: e.target.value })
+                  }
                   className="w-full rounded-2xl border border-slate-300 px-4 py-3 focus:border-slate-500 focus:outline-none"
                 />
               </div>
@@ -596,7 +846,9 @@ function Profile() {
                 <textarea
                   rows="3"
                   value={profileData.bio}
-                  onChange={(e) => setProfileData({ ...profileData, bio: e.target.value })}
+                  onChange={(e) =>
+                    setProfileData({ ...profileData, bio: e.target.value })
+                  }
                   className="w-full rounded-2xl border border-slate-300 px-4 py-3 focus:border-slate-500 focus:outline-none"
                 />
               </div>
@@ -610,7 +862,10 @@ function Profile() {
                     type="text"
                     value={profileData.location}
                     onChange={(e) =>
-                      setProfileData({ ...profileData, location: e.target.value })
+                      setProfileData({
+                        ...profileData,
+                        location: e.target.value,
+                      })
                     }
                     className="w-full rounded-2xl border border-slate-300 px-4 py-3 focus:border-slate-500 focus:outline-none"
                   />
@@ -637,7 +892,9 @@ function Profile() {
                 <div className="relative">
                   <select
                     value={profileData.year}
-                    onChange={(e) => setProfileData({ ...profileData, year: e.target.value })}
+                    onChange={(e) =>
+                      setProfileData({ ...profileData, year: e.target.value })
+                    }
                     className="w-full appearance-none rounded-2xl border border-slate-300 px-4 py-3 pr-10 text-slate-700 focus:border-slate-500 focus:outline-none"
                   >
                     <option value="Freshman">Freshman</option>
@@ -652,7 +909,12 @@ function Profile() {
                     stroke="currentColor"
                     viewBox="0 0 24 24"
                   >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M19 9l-7 7-7-7"
+                    />
                   </svg>
                 </div>
               </div>
@@ -714,7 +976,9 @@ function Profile() {
               <button
                 onClick={handleSaveProfile}
                 className="flex-1 rounded-2xl px-4 py-3 text-sm font-semibold text-white"
-                style={{ background: `linear-gradient(135deg, ${brandColor}, #0f1c24)` }}
+                style={{
+                  background: `linear-gradient(135deg, ${brandColor}, #0f1c24)`,
+                }}
               >
                 Save changes
               </button>

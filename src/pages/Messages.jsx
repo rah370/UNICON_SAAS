@@ -6,6 +6,10 @@ import React, {
   useCallback,
 } from "react";
 import { useAuth } from "../contexts/AuthContext";
+import { useWebSocket } from "../contexts/WebSocketContext";
+import { studentApi } from "../apps/shared/utils/api";
+import { useToast } from "../components/Toast";
+import { ListSkeleton } from "../components/SkeletonLoader";
 
 // --- small helpers ---
 const classNames = (...a) => a.filter(Boolean).join(" ");
@@ -45,131 +49,11 @@ const initials = (name) =>
     .join("")
     .toUpperCase();
 
-// --- Enhanced fake API with safety features ---
-const fakeConversations = [
-  {
-    id: "conv1",
-    name: "Sarah Chen",
-    avatar: "",
-    lastMessage: "See you at 3 PM?",
-    timestamp: timeNow(),
-    unread: 2,
-    online: true,
-    verified: true,
-    role: "student",
-    blocked: false,
-    reported: false,
-  },
-  {
-    id: "conv2",
-    name: "Mike Rodriguez",
-    avatar: "",
-    lastMessage: "Thanks for the notes!",
-    timestamp: timeNow(),
-    unread: 0,
-    online: false,
-    verified: true,
-    role: "student",
-    blocked: false,
-    reported: false,
-  },
-  {
-    id: "conv3",
-    name: "Professor Smith",
-    avatar: "",
-    lastMessage: "Submit by Friday.",
-    timestamp: timeNow(),
-    unread: 1,
-    online: false,
-    isGroup: false,
-    verified: true,
-    role: "professor",
-    blocked: false,
-    reported: false,
-  },
-  {
-    id: "conv6",
-    name: "Admin User",
-    avatar: "",
-    lastMessage: "System maintenance tonight",
-    timestamp: timeNow(),
-    unread: 0,
-    online: false,
-    isGroup: false,
-    verified: true,
-    role: "admin",
-    blocked: false,
-    reported: false,
-  },
-  {
-    id: "conv4",
-    name: "Study Group CS101",
-    avatar: "",
-    lastMessage: "Room 205 today.",
-    timestamp: timeNow(),
-    unread: 0,
-    online: false,
-    isGroup: true,
-    verified: true,
-    role: "group",
-    blocked: false,
-    reported: false,
-    moderated: true,
-  },
-  {
-    id: "conv5",
-    name: "Unknown User",
-    avatar: "",
-    lastMessage: "Hey, want to meet up?",
-    timestamp: timeNow(),
-    unread: 1,
-    online: true,
-    verified: false,
-    role: "unknown",
-    blocked: false,
-    reported: true,
-    flagged: true,
-  },
-];
-
-const fakeThread = [
-  {
-    id: "m1",
-    senderId: "u2",
-    sender: "Sarah Chen",
-    content: "Hey! Study group tomorrow?",
-    ts: timeNow(),
-    status: "sent",
-    verified: true,
-    flagged: false,
-  },
-  {
-    id: "m2",
-    senderId: "me",
-    sender: "You",
-    content: "Yes—what time again?",
-    ts: timeNow(),
-    status: "sent",
-    verified: true,
-    flagged: false,
-  },
-  {
-    id: "m3",
-    senderId: "u2",
-    sender: "Sarah Chen",
-    content: "3 PM in the library. 📚",
-    ts: timeNow(),
-    status: "sent",
-    verified: true,
-    flagged: false,
-  },
-];
+// --- API integration for real conversations ---
 
 const quickFilters = [
   { id: "all", label: "All" },
-  { id: "unread", label: "Unread" },
-  { id: "verified", label: "Verified" },
-  { id: "flagged", label: "Flagged" },
+  { id: "groups", label: "Group Chats" },
 ];
 
 const quickReplies = [
@@ -191,16 +75,18 @@ const safetySettings = {
 };
 
 // --- reusable UI bits ---
-function Avatar({ name, online, verified, role, flagged }) {
+function Avatar({ name, online, role }) {
   return (
     <div className="relative">
       <div
-        className={`w-10 h-10 rounded-full text-slate-700 grid place-items-center font-semibold ${
-          flagged
-            ? "bg-red-100 border-2 border-red-300"
-            : verified
-            ? "bg-slate-200"
-            : "bg-yellow-100 border-2 border-yellow-300"
+        className={`w-10 h-10 rounded-full text-white grid place-items-center font-semibold ${
+          role === "professor" || role === "teacher"
+            ? "bg-purple-500"
+            : role === "admin"
+            ? "bg-red-500"
+            : role === "group"
+            ? "bg-green-500"
+            : "bg-blue-500"
         }`}
       >
         {initials(name)}
@@ -208,32 +94,7 @@ function Avatar({ name, online, verified, role, flagged }) {
       {online && (
         <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-green-400 ring-2 ring-white" />
       )}
-      {verified && (
-        <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-blue-400 flex items-center justify-center">
-          <span className="text-white text-xs">✓</span>
-        </span>
-      )}
-      {flagged && (
-        <span className="absolute -top-1 -left-1 h-4 w-4 rounded-full bg-[#708090] flex items-center justify-center">
-          <span className="text-white text-xs">⚠</span>
-        </span>
-      )}
     </div>
-  );
-}
-
-function SafetyBadge({ type, verified, role }) {
-  if (verified) {
-    return (
-      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-[#e1e6ed] text-blue-800">
-        ✓ Verified {role}
-      </span>
-    );
-  }
-  return (
-    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-      ⚠ Unverified
-    </span>
   );
 }
 
@@ -278,14 +139,10 @@ function ConversationList({
   const passesFilter = useCallback(
     (conversation) => {
       switch (filterKey) {
-        case "unread":
-          return (conversation.unread || 0) > 0;
-        case "verified":
-          return conversation.verified;
-        case "flagged":
-          return conversation.flagged || conversation.reported;
+        case "groups":
+          return conversation.isGroup === true;
         default:
-          return true;
+          return true; // "all" shows everything
       }
     },
     [filterKey]
@@ -341,26 +198,21 @@ function ConversationList({
             >
               <div className="flex items-start gap-3">
                 <div className="relative flex-shrink-0">
-                  <div className="w-12 h-12 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 font-semibold text-sm">
+                  <div
+                    className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold text-sm ${
+                      c.role === "professor" || c.role === "teacher"
+                        ? "bg-purple-500"
+                        : c.role === "admin"
+                        ? "bg-red-500"
+                        : c.role === "group"
+                        ? "bg-green-500"
+                        : "bg-blue-500"
+                    }`}
+                  >
                     {initials(c.name)}
                   </div>
                   {c.online && (
                     <div className="absolute bottom-0.5 right-0.5 w-3.5 h-3.5 bg-green-400 rounded-full border-2 border-white"></div>
-                  )}
-                  {c.verified && (
-                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-blue-400 rounded-full flex items-center justify-center">
-                      <svg
-                        className="w-2.5 h-2.5 text-white"
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    </div>
                   )}
                 </div>
                 <div className="flex-1 min-w-0 pt-1">
@@ -371,11 +223,6 @@ function ConversationList({
                       </p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      {c.unread > 0 && (
-                        <span className="w-5 h-5 bg-gradient-to-br from-green-400 to-green-500 text-white text-xs font-semibold rounded-full flex items-center justify-center shadow-md">
-                          {c.unread}
-                        </span>
-                      )}
                       <span className="text-xs text-slate-500">
                         {formatClock(c.timestamp)}
                       </span>
@@ -401,28 +248,26 @@ function ConversationList({
                   <p className="text-sm text-slate-600 truncate mb-2">
                     {c.lastMessage}
                   </p>
-                  {c.verified && (
-                    <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 text-xs font-medium rounded-full border border-blue-200">
-                      <svg
-                        className="w-3 h-3"
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                      {c.role === "professor" || c.role === "teacher"
-                        ? "Instructor"
+                  {/* Color-coded role badge */}
+                  <div
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full border ${
+                      c.role === "professor" || c.role === "teacher"
+                        ? "bg-purple-50 text-purple-700 border-purple-200"
                         : c.role === "admin"
-                        ? "Admin"
+                        ? "bg-red-50 text-red-700 border-red-200"
                         : c.role === "group"
-                        ? "Group"
-                        : "Student"}
-                    </div>
-                  )}
+                        ? "bg-green-50 text-green-700 border-green-200"
+                        : "bg-blue-50 text-blue-700 border-blue-200"
+                    }`}
+                  >
+                    {c.role === "professor" || c.role === "teacher"
+                      ? "Instructor"
+                      : c.role === "admin"
+                      ? "Admin"
+                      : c.role === "group"
+                      ? "Group"
+                      : "Student"}
+                  </div>
                 </div>
               </div>
             </button>
@@ -462,8 +307,8 @@ function ConversationList({
   );
 }
 
-// --- Enhanced message bubble with safety features ---
-function MessageBubble({ own, text, ts, status, verified, flagged, onReport }) {
+// --- Enhanced message bubble ---
+function MessageBubble({ own, text, ts, status, onReport }) {
   const [showReportMenu, setShowReportMenu] = useState(false);
 
   const handleReport = () => {
@@ -479,8 +324,7 @@ function MessageBubble({ own, text, ts, status, verified, flagged, onReport }) {
             "max-w-[75%] rounded-2xl px-4 py-2",
             own
               ? "bg-gradient-to-br from-[var(--brand-color)] to-[var(--brand-color-700)] text-white shadow-md"
-              : "bg-white text-slate-900 border border-slate-200",
-            flagged && "border-2 border-red-400 bg-red-50 shadow-red-200"
+              : "bg-white text-slate-900 border border-slate-200"
           )}
           role="text"
         >
@@ -492,7 +336,6 @@ function MessageBubble({ own, text, ts, status, verified, flagged, onReport }) {
             )}
           >
             <span>{formatClock(ts)}</span>
-            {!own && verified && <span className="text-[#4a5a68]">✓</span>}
             {own && (
               <span
                 aria-label={
@@ -557,6 +400,7 @@ function ChatWindow({
   onSend,
   onBack,
   typing,
+  onTyping,
   onReport,
   isAdmin,
 }) {
@@ -564,12 +408,22 @@ function ChatWindow({
   const [showSafetyPanel, setShowSafetyPanel] = useState(false);
   const fileInputRef = useRef(null);
   const viewportRef = useRef(null);
+  const typingTimeoutRef = useRef(null);
 
   // auto-scroll
   useEffect(() => {
     const el = viewportRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages.length, typing]);
+
+  // Cleanup typing timeout
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const grouped = useMemo(() => {
     const out = [];
@@ -634,9 +488,7 @@ function ChatWindow({
           <Avatar
             name={conversation.name}
             online={conversation.online}
-            verified={conversation.verified}
             role={conversation.role}
-            flagged={conversation.flagged}
           />
           <div className="min-w-0">
             <p className="font-semibold text-slate-900 truncate">
@@ -700,8 +552,6 @@ function ChatWindow({
               text={row.content}
               ts={row.ts}
               status={row.status}
-              verified={row.verified}
-              flagged={row.flagged}
               onReport={onReport}
             />
           )
@@ -746,7 +596,23 @@ function ChatWindow({
         />
         <textarea
           value={draft}
-          onChange={(e) => setDraft(e.target.value)}
+          onChange={(e) => {
+            setDraft(e.target.value);
+            // Send typing indicator
+            if (onTyping && e.target.value.trim()) {
+              onTyping();
+              // Clear previous timeout
+              if (typingTimeoutRef.current) {
+                clearTimeout(typingTimeoutRef.current);
+              }
+              // Stop typing indicator after 3 seconds of no typing
+              typingTimeoutRef.current = setTimeout(() => {
+                if (onTyping) {
+                  onTyping(false); // Stop typing
+                }
+              }, 3000);
+            }
+          }}
           placeholder="Message…"
           rows={1}
           onKeyDown={(e) => {
@@ -781,6 +647,8 @@ function ChatWindow({
 // --- main page with enhanced safety features ---
 export default function Messages() {
   const { user, isAdmin } = useAuth();
+  const { showToast } = useToast();
+  const { isConnected, sendMessage, subscribe } = useWebSocket();
   const [loading, setLoading] = useState(true);
   const [conversations, setConversations] = useState([]);
   const [selected, setSelected] = useState(null);
@@ -789,67 +657,231 @@ export default function Messages() {
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportedContent, setReportedContent] = useState("");
   const [conversationFilter, setConversationFilter] = useState("all");
+  const [error, setError] = useState(null);
+  const typingTimeoutRef = useRef(null);
 
+  // Fetch conversations from API
   useEffect(() => {
-    // initial load
-    const t = setTimeout(() => {
-      setConversations(fakeConversations);
-      setLoading(false);
-    }, 600);
-    return () => clearTimeout(t);
+    fetchConversations();
   }, []);
 
-  // when selecting a conversation
-  const openConversation = useCallback((c) => {
-    setSelected(c);
-    // mark read
-    setConversations((prev) =>
-      prev.map((x) => (x.id === c.id ? { ...x, unread: 0 } : x))
-    );
-    // fetch thread
-    setMessages(
-      c.id === "conv1"
-        ? fakeThread
-        : [
-            {
-              id: "mA",
-              senderId: "me",
-              sender: "You",
-              content: "Hello!",
-              ts: timeNow(),
-              status: "sent",
-              verified: true,
-              flagged: false,
-            },
-          ]
-    );
-  }, []);
+  // Subscribe to WebSocket events
+  useEffect(() => {
+    if (!isConnected) return;
 
-  // optimistic send with safety checks
-  const send = useCallback((text) => {
-    const tempId = `tmp-${Date.now()}`;
-    const optimistic = {
-      id: tempId,
-      senderId: "me",
-      sender: "You",
-      content: text,
-      ts: timeNow(),
-      status: "sending",
-      verified: true,
-      flagged: false,
-    };
-    setMessages((prev) => [...prev, optimistic]);
-
-    // simulate network with safety checks
-    setTimeout(() => {
-      const ok = Math.random() > 0.05; // small chance to fail
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === tempId ? { ...m, status: ok ? "sent" : "failed" } : m
+    const unsubscribeNewMessage = subscribe("new_message", (data) => {
+      if (selected && selected.id === data.conversation_id) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: data.message_id,
+            senderId: data.sender_id,
+            sender: data.sender_name || "Unknown",
+            content: data.content,
+            ts: data.timestamp || timeNow(),
+            status: "sent",
+            verified: data.verified !== false,
+            flagged: data.flagged || false,
+          },
+        ]);
+      }
+      // Update conversation last message
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === data.conversation_id
+            ? {
+                ...c,
+                lastMessage: data.content,
+                timestamp: data.timestamp || timeNow(),
+                unread: c.id === selected?.id ? 0 : (c.unread || 0) + 1,
+              }
+            : c
         )
       );
-    }, 700);
-  }, []);
+    });
+
+    const unsubscribeTyping = subscribe("typing", (data) => {
+      if (selected && selected.id === data.conversation_id) {
+        setTyping(true);
+        if (typingTimeoutRef.current) {
+          clearTimeout(typingTimeoutRef.current);
+        }
+        typingTimeoutRef.current = setTimeout(() => {
+          setTyping(false);
+        }, 3000);
+      }
+    });
+
+    const unsubscribeUserOnline = subscribe("user_online", (data) => {
+      setConversations((prev) =>
+        prev.map((c) => (c.id === data.user_id ? { ...c, online: true } : c))
+      );
+    });
+
+    const unsubscribeUserOffline = subscribe("user_offline", (data) => {
+      setConversations((prev) =>
+        prev.map((c) => (c.id === data.user_id ? { ...c, online: false } : c))
+      );
+    });
+
+    return () => {
+      unsubscribeNewMessage();
+      unsubscribeTyping();
+      unsubscribeUserOnline();
+      unsubscribeUserOffline();
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+    };
+  }, [isConnected, selected, subscribe]);
+
+  const fetchConversations = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await studentApi.getConversations();
+      const convs = response.conversations || response.data || [];
+
+      setConversations(
+        convs.map((conv) => ({
+          id: conv.id || conv.conversation_id,
+          name: conv.name || conv.participant_name || "Unknown",
+          avatar: conv.avatar || conv.avatar_url || "",
+          lastMessage: conv.last_message || conv.lastMessage || "",
+          timestamp: conv.last_message_time || conv.updated_at || timeNow(),
+          unread: conv.unread_count || conv.unread || 0,
+          online: conv.is_online || false,
+          verified: conv.verified !== false,
+          role: conv.role || "student",
+          blocked: conv.blocked || false,
+          reported: conv.reported || false,
+          isGroup: conv.is_group || false,
+          moderated: conv.moderated || false,
+        }))
+      );
+    } catch (err) {
+      console.error("Failed to fetch conversations:", err);
+      setError(err.message || "Failed to load conversations");
+      showToast("Failed to load conversations", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // when selecting a conversation
+  const openConversation = useCallback(
+    async (c) => {
+      setSelected(c);
+      // mark read
+      setConversations((prev) =>
+        prev.map((x) => (x.id === c.id ? { ...x, unread: 0 } : x))
+      );
+
+      // fetch messages from API
+      try {
+        const response = await studentApi.getMessages(c.id);
+        const messagesData = response.messages || response.data || [];
+        setMessages(
+          messagesData.map((msg) => ({
+            id: msg.id || msg.message_id,
+            senderId: msg.sender_id || msg.user_id,
+            sender: msg.sender_name || msg.author_name || "Unknown",
+            content: msg.content || msg.body || "",
+            ts: msg.timestamp || msg.created_at || timeNow(),
+            status: msg.status || "sent",
+            verified: msg.verified !== false,
+            flagged: msg.flagged || false,
+          }))
+        );
+      } catch (err) {
+        console.error("Failed to fetch messages:", err);
+        showToast("Failed to load messages", "error");
+        setMessages([]);
+      }
+    },
+    [showToast]
+  );
+
+  // Send message with API and WebSocket
+  const handleTyping = useCallback(
+    (isTyping = true) => {
+      if (!selected || !isConnected) return;
+
+      sendMessage({
+        type: "typing",
+        conversation_id: selected.id,
+        is_typing: isTyping,
+      });
+    },
+    [selected, isConnected, sendMessage]
+  );
+
+  const send = useCallback(
+    async (text) => {
+      if (!selected || !text.trim()) return;
+
+      // Stop typing indicator
+      handleTyping(false);
+
+      const tempId = `tmp-${Date.now()}`;
+      const optimistic = {
+        id: tempId,
+        senderId: user?.id || "me",
+        sender: user?.name || "You",
+        content: text,
+        ts: timeNow(),
+        status: "sending",
+        verified: true,
+        flagged: false,
+      };
+      setMessages((prev) => [...prev, optimistic]);
+
+      try {
+        // Send via API
+        const response = await studentApi.sendMessage(selected.id, text);
+
+        // Update optimistic message with real data
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === tempId
+              ? {
+                  ...m,
+                  id: response.message?.id || response.id || tempId,
+                  status: "sent",
+                }
+              : m
+          )
+        );
+
+        // Update conversation last message
+        setConversations((prev) =>
+          prev.map((c) =>
+            c.id === selected.id
+              ? {
+                  ...c,
+                  lastMessage: text,
+                  timestamp: timeNow(),
+                }
+              : c
+          )
+        );
+
+        // Send via WebSocket if available
+        sendMessage({
+          type: "send_message",
+          conversation_id: selected.id,
+          content: text,
+        });
+      } catch (err) {
+        console.error("Failed to send message:", err);
+        setMessages((prev) =>
+          prev.map((m) => (m.id === tempId ? { ...m, status: "failed" } : m))
+        );
+        showToast("Failed to send message", "error");
+      }
+    },
+    [selected, user, showToast, sendMessage, handleTyping]
+  );
 
   // Safety functions
   const handleBlock = useCallback(
@@ -910,14 +942,10 @@ export default function Messages() {
         </header>
         <main className="max-w-6xl mx-auto px-4 py-6 grid gap-6 lg:grid-cols-3">
           <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
-            <SkeletonLine />
-            <SkeletonLine />
-            <SkeletonLine />
+            <ListSkeleton count={5} />
           </div>
           <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-4 space-y-3">
-            <SkeletonLine />
-            <SkeletonLine />
-            <SkeletonLine />
+            <ListSkeleton count={8} />
           </div>
         </main>
       </div>
@@ -926,6 +954,13 @@ export default function Messages() {
 
   return (
     <div className="min-h-screen bg-[#f5f7fa] pb-16">
+      {error && (
+        <div className="mx-auto max-w-6xl px-4 pt-4">
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-red-800 text-sm">
+            {error}
+          </div>
+        </div>
+      )}
       <section className="mx-auto max-w-6xl px-4 pt-6">
         <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
           <div className="flex flex-wrap gap-2">
@@ -986,6 +1021,7 @@ export default function Messages() {
                 messages={messages}
                 typing={typing}
                 onSend={send}
+                onTyping={handleTyping}
                 onBack={() => setSelected(null)}
                 onReport={handleMessageReport}
                 isAdmin={isAdmin}

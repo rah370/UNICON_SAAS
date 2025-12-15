@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useBranding } from "../contexts/BrandingContext";
+import { studentApi } from "../apps/shared/utils/api";
+import { useToast } from "../components/Toast";
+import { CardSkeleton } from "../components/SkeletonLoader";
 
 function Settings() {
   const { user, logout } = useAuth();
   const { branding, updateBranding } = useBranding();
+  const { showToast } = useToast();
   const [settings, setSettings] = useState({
     notifications: {
       email: true,
@@ -24,13 +28,35 @@ function Settings() {
     },
   });
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Simulate loading user settings
-    setTimeout(() => {
-      setLoading(false);
-    }, 1000);
+    fetchSettings();
   }, []);
+
+  const fetchSettings = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await studentApi.getSettings();
+
+      if (response.settings) {
+        setSettings({
+          notifications:
+            response.settings.notifications || settings.notifications,
+          privacy: response.settings.privacy || settings.privacy,
+          appearance: response.settings.appearance || settings.appearance,
+        });
+      }
+    } catch (err) {
+      console.error("Failed to fetch settings:", err);
+      setError(err.message || "Failed to load settings");
+      // Continue with default settings
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSettingChange = (category, key, value) => {
     setSettings((prev) => ({
@@ -42,10 +68,18 @@ function Settings() {
     }));
   };
 
-  const handleSaveSettings = () => {
-    // Simulate saving settings
-    console.log("Saving settings:", settings);
-    // Here you would typically make an API call to save settings
+  const handleSaveSettings = async () => {
+    try {
+      setSaving(true);
+      await studentApi.updateSettings(settings);
+      showToast("Settings saved successfully!", "success");
+    } catch (err) {
+      console.error("Failed to save settings:", err);
+      setError(err.message || "Failed to save settings");
+      showToast("Failed to save settings", "error");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleDeleteAccount = () => {
@@ -61,10 +95,22 @@ function Settings() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-sand-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-slate-600">Loading settings...</p>
+      <div className="min-h-screen bg-sand-50">
+        <div className="bg-white border-b border-slate-200 px-4 py-6">
+          <div className="max-w-4xl mx-auto">
+            <div className="h-8 w-48 bg-slate-200 rounded animate-pulse mb-2"></div>
+            <div className="h-4 w-64 bg-slate-200 rounded animate-pulse"></div>
+          </div>
+        </div>
+        <div className="max-w-4xl mx-auto px-4 py-6">
+          <div className="grid gap-6 lg:grid-cols-3">
+            <div className="lg:col-span-1">
+              <CardSkeleton />
+            </div>
+            <div className="lg:col-span-2">
+              <CardSkeleton />
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -83,6 +129,11 @@ function Settings() {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 py-6">
+        {error && (
+          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-red-800">
+            {error}
+          </div>
+        )}
         <div className="grid gap-6 lg:grid-cols-3">
           {/* Settings Navigation */}
           <div className="lg:col-span-1">
@@ -358,9 +409,10 @@ function Settings() {
             <div className="flex justify-end">
               <button
                 onClick={handleSaveSettings}
-                className="px-6 py-3 rounded-lg bg-[#708090] text-white font-semibold hover:bg-[#708090] transition-colors"
+                disabled={saving}
+                className="px-6 py-3 rounded-lg bg-[#708090] text-white font-semibold hover:bg-[#708090] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Save Changes
+                {saving ? "Saving..." : "Save Changes"}
               </button>
             </div>
           </div>

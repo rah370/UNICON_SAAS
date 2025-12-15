@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { useBranding } from "../../contexts/BrandingContext";
+import AdminHeader from "../../apps/admin/components/AdminHeader";
+import { useToast } from "../../components/Toast";
 
 function SectionCard({ title, children }) {
   return (
@@ -16,6 +18,7 @@ export default function AdminSettings() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { schoolBranding, updateSchoolBranding } = useBranding();
+  const { showToast } = useToast();
 
   const [settings, setSettings] = useState({
     name: schoolBranding.name || "UNICON Admin",
@@ -35,8 +38,19 @@ export default function AdminSettings() {
     }
   };
 
-  const saveSettings = () => {
-    alert("Settings saved successfully!");
+  const saveSettings = async () => {
+    try {
+      // TODO: Add API endpoint for saving admin settings
+      // await adminApi.saveSettings(settings);
+      updateSchoolBranding({
+        name: settings.name,
+        color: settings.color,
+      });
+      showToast("Settings saved successfully!", "success");
+    } catch (err) {
+      console.error("Failed to save settings:", err);
+      showToast("Failed to save settings", "error");
+    }
   };
 
   return (
@@ -157,7 +171,7 @@ export default function AdminSettings() {
 
         <div className="flex justify-end gap-3">
           <button
-            onClick={() => navigate("/admin-dashboard")}
+            onClick={() => navigate("/admin/dashboard")}
             className="rounded-xl border border-white/20 px-6 py-2 text-sm font-semibold text-white/80 hover:border-white/40 transition"
           >
             Cancel

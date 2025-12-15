@@ -1,6 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
+import AdminHeader from "../../apps/admin/components/AdminHeader";
+import { adminApi } from "../../apps/shared/utils/api";
+import { useToast } from "../../components/Toast";
 
 const defaultListings = [
   {
@@ -53,8 +56,47 @@ function SectionCard({ title, children, actions }) {
 export default function AdminMarketplace() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [listings, setListings] = useState(defaultListings);
+  const { showToast } = useToast();
+  const [listings, setListings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [filter, setFilter] = useState("all");
+
+  useEffect(() => {
+    fetchListings();
+  }, []);
+
+  const fetchListings = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await adminApi.getMarketplace();
+      const items = response.items || response.data || [];
+      setListings(
+        items.map((item) => ({
+          id: item.id,
+          title: item.title,
+          seller:
+            `${item.first_name || ""} ${item.last_name || ""}`.trim() ||
+            "Unknown",
+          sellerId: item.user_id,
+          price: item.price || 0,
+          status: item.is_sold ? "sold" : item.status || "pending",
+          flagged: item.flagged || false,
+          category: item.category || "General",
+          image: item.image_url || "",
+        }))
+      );
+    } catch (err) {
+      console.error("Failed to fetch listings:", err);
+      setError(err.message || "Failed to load listings");
+      showToast("Failed to load listings", "error");
+      // Fallback to default listings
+      setListings(defaultListings);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredListings = listings.filter((item) => {
     if (filter === "all") return true;
@@ -64,14 +106,21 @@ export default function AdminMarketplace() {
     return true;
   });
 
-  const approveListing = (id, status) => {
-    setListings((prev) =>
-      prev.map((item) =>
-        item.id === id
-          ? { ...item, status, flagged: status !== "approved" }
-          : item
-      )
-    );
+  const approveListing = async (id, status) => {
+    try {
+      await adminApi.updateMarketplaceItem(id, { status });
+      setListings((prev) =>
+        prev.map((item) =>
+          item.id === id
+            ? { ...item, status, flagged: status !== "approved" }
+            : item
+        )
+      );
+      showToast(`Listing ${status} successfully`, "success");
+    } catch (err) {
+      console.error("Failed to update listing:", err);
+      showToast("Failed to update listing", "error");
+    }
   };
 
   const stats = [
@@ -87,37 +136,39 @@ export default function AdminMarketplace() {
     },
   ];
 
+  if (loading) {
+    return (
+      <div
+        className="min-h-screen"
+        style={{ background: "linear-gradient(135deg,#05070e,#1e1140)" }}
+      >
+        <AdminHeader
+          title="Marketplace"
+          description="Review and moderate listings"
+        />
+        <div className="text-center text-white/60 py-12">
+          Loading listings...
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       className="min-h-screen"
       style={{ background: "linear-gradient(135deg,#05070e,#1e1140)" }}
     >
-      <header className="border-b border-white/10 bg-black/30 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 text-white">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => navigate("/admin-dashboard")}
-              className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm font-semibold hover:bg-white/15 transition"
-            >
-              ← Back
-            </button>
-            <div>
-              <h1 className="text-2xl font-bold">Marketplace</h1>
-              <p className="text-sm text-white/60">
-                Review and moderate listings
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <p className="text-sm font-semibold">{user?.name}</p>
-            <div className="h-8 w-8 rounded-full border border-white/20 bg-white/10 flex items-center justify-center text-xs font-bold">
-              {user?.name?.charAt(0)}
-            </div>
-          </div>
-        </div>
-      </header>
+      <AdminHeader
+        title="Marketplace"
+        description="Review and moderate listings"
+      />
 
       <main className="mx-auto max-w-7xl px-4 py-8 space-y-6 text-white">
+        {error && (
+          <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-red-300">
+            {error}
+          </div>
+        )}
         <div className="flex gap-3">
           {["all", "pending", "flagged", "approved"].map((f) => (
             <button

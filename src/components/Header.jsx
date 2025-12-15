@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useBranding } from "../contexts/BrandingContext";
 
 function Header() {
   const { user } = useAuth();
   const { branding } = useBranding();
+  const navigate = useNavigate();
   const [logoErrored, setLogoErrored] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const avatarSrc =
     user?.avatarUrl || user?.avatar_url || user?.avatar || user?.photoURL || "";
@@ -57,7 +59,17 @@ function Header() {
           </div>
 
           <div className="hidden flex-1 max-w-xl md:block">
-            <div className="flex items-center gap-3 rounded-full border border-slate-100 bg-white px-4 py-2 shadow-[inset_0_1px_0_rgba(148,163,184,0.3)]">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (searchQuery.trim()) {
+                  navigate(
+                    `/search?q=${encodeURIComponent(searchQuery.trim())}`
+                  );
+                }
+              }}
+              className="flex items-center gap-3 rounded-full border border-slate-100 bg-white px-4 py-2 shadow-[inset_0_1px_0_rgba(148,163,184,0.3)]"
+            >
               <svg
                 className="h-4 w-4 text-slate-400"
                 fill="none"
@@ -74,9 +86,11 @@ function Header() {
               <input
                 type="text"
                 placeholder="Search posts, users, updates..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className="flex-1 bg-transparent text-sm text-slate-600 placeholder-slate-400 focus:outline-none"
               />
-            </div>
+            </form>
           </div>
 
           <Link

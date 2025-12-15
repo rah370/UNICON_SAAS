@@ -1,16 +1,26 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useBranding } from "../contexts/BrandingContext";
+import { studentApi } from "../apps/shared/utils/api";
+import { useToast } from "../components/Toast";
+import { GridSkeleton } from "../components/SkeletonLoader";
+import {
+  uploadImage,
+  compressImage,
+  uploadMultipleImages,
+} from "../apps/shared/utils/fileUpload";
 
 function Marketplace() {
   const { user, isAdmin } = useAuth();
   const { branding } = useBranding();
+  const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState("schoolStore");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [items, setItems] = useState([]);
   const [tutoringServices, setTutoringServices] = useState([]);
   const [textbookRentals, setTextbookRentals] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [showListingModal, setShowListingModal] = useState(false);
   const [showTutoringModal, setShowTutoringModal] = useState(false);
   const [newListing, setNewListing] = useState({
@@ -19,232 +29,91 @@ function Marketplace() {
     price: "",
     category: "Electronics",
     condition: "Good",
-    type: "student"
+    type: "student",
+    images: [],
   });
+  const [uploadingImages, setUploadingImages] = useState(false);
   const [newTutoringService, setNewTutoringService] = useState({
     subject: "",
     level: "Undergraduate",
     rate: "",
     availability: "",
     description: "",
-    credentials: ""
+    credentials: "",
   });
 
   useEffect(() => {
-    // Simulate API call with enhanced data
-    setTimeout(() => {
-      setItems([
-        // School Store Items
-        {
-          id: "school1",
-          title: "UNICON Official Hoodie",
-          price: 25,
-          image: "👕",
-          category: "Apparel",
-          seller: "UNICON Store",
-          description: "Comfortable cotton hoodie with school logo",
-          condition: "New",
-          verified: true,
-          stock: 25,
-          type: "school",
-          sellerVerified: true,
-          sellerRating: 4.9,
-          sellerReviews: 156
-        },
-        {
-          id: "school2",
-          title: "Programming Textbook",
-          price: 15,
-          image: "📚",
-          category: "Textbooks",
-          seller: "UNICON Store",
-          description: "Introduction to Computer Science - Latest Edition",
-          condition: "New",
-          verified: true,
-          stock: 50,
-          type: "school",
-          sellerVerified: true,
-          sellerRating: 4.9,
-          sellerReviews: 156
-        },
-        {
-          id: "school3",
-          title: "UNICON Stickers Pack",
-          price: 8,
-          image: "🏷️",
-          category: "Accessories",
-          seller: "UNICON Store",
-          description: "Set of 10 vinyl stickers for laptops and notebooks",
-          condition: "New",
-          verified: true,
-          stock: 50,
-          type: "school",
-          sellerVerified: true,
-          sellerRating: 4.9,
-          sellerReviews: 156
-        },
-        // Student Listings
-        {
-          id: "student1",
-          title: "Used MacBook Pro",
-          price: 800,
-          image: "💻",
-          category: "Electronics",
-          seller: "Alex Johnson",
-          sellerEmail: "alex.johnson@unicon.edu",
-          description: "Used but in excellent condition. No highlights or markings.",
-          condition: "Good",
-          verified: false,
-          datePosted: "2025-01-20",
-          type: "student",
-          sellerVerified: true,
-          sellerRating: 4.7,
-          sellerReviews: 23,
-          images: ["macbook1.jpg", "macbook2.jpg"],
-          location: "Campus Library"
-        },
-        {
-          id: "student2",
-          title: "iPhone 12",
-          price: 400,
-          image: "📱",
-          category: "Electronics",
-          seller: "Sarah Chen",
-          sellerEmail: "sarah.chen@unicon.edu",
-          description: "Perfect for students. Battery health 95%. Includes charger.",
-          condition: "Excellent",
-          verified: false,
-          datePosted: "2025-01-18",
-          type: "student",
-          sellerVerified: true,
-          sellerRating: 4.8,
-          sellerReviews: 45,
-          images: ["iphone1.jpg"],
-          location: "Student Center"
-        },
-        {
-          id: "student3",
-          title: "Gaming Chair",
-          price: 120,
-          image: "🪑",
-          category: "Furniture",
-          seller: "Mike Rodriguez",
-          sellerEmail: "mike.rodriguez@unicon.edu",
-          description: "Comfortable gaming chair, great for long study sessions",
-          condition: "Good",
-          verified: false,
-          datePosted: "2025-01-15",
-          type: "student",
-          sellerVerified: true,
-          sellerRating: 4.5,
-          sellerReviews: 12,
-          images: ["chair1.jpg"],
-          location: "Dorm Building A"
-        }
-      ]);
+    fetchMarketplaceData();
+  }, [selectedCategory, activeTab]);
 
-      setTutoringServices([
-        {
-          id: "tutor1",
-          name: "Dr. Emily Chen",
-          subject: "Computer Science",
-          level: "Graduate",
-          rate: 50,
-          availability: "Mon-Fri 6-9 PM",
-          description: "PhD in Computer Science with 5 years teaching experience",
-          credentials: "PhD CS, Teaching Assistant",
-          rating: 4.9,
-          reviews: 89,
-          verified: true,
-          profileImage: "👩‍💼",
-          specialties: ["Data Structures", "Algorithms", "Machine Learning"],
-          responseTime: "Within 2 hours"
-        },
-        {
-          id: "tutor2",
-          name: "James Wilson",
-          subject: "Mathematics",
-          level: "Undergraduate",
-          rate: 25,
-          availability: "Weekends 10 AM-6 PM",
-          description: "Math major with excellent grades and tutoring experience",
-          credentials: "Math Major, Peer Tutor",
-          rating: 4.7,
-          reviews: 34,
-          verified: true,
-          profileImage: "👨‍🎓",
-          specialties: ["Calculus", "Linear Algebra", "Statistics"],
-          responseTime: "Within 4 hours"
-        },
-        {
-          id: "tutor3",
-          name: "Maria Rodriguez",
-          subject: "Physics",
-          level: "Undergraduate",
-          rate: 30,
-          availability: "Tue-Thu 7-10 PM",
-          description: "Physics student with passion for teaching",
-          credentials: "Physics Major, Lab Assistant",
-          rating: 4.8,
-          reviews: 56,
-          verified: true,
-          profileImage: "👩‍🔬",
-          specialties: ["Mechanics", "Thermodynamics", "Electromagnetism"],
-          responseTime: "Within 3 hours"
-        }
-      ]);
+  const fetchMarketplaceData = async () => {
+    try {
+      setLoading(true);
+      const params = {};
+      if (selectedCategory !== "all") {
+        params.category = selectedCategory;
+      }
+      if (activeTab === "schoolStore") {
+        params.type = "school";
+      } else if (activeTab === "studentListings") {
+        params.type = "student";
+      }
 
-      setTextbookRentals([
-        {
-          id: "rental1",
-          title: "Introduction to Algorithms",
-          author: "Cormen, Leiserson, Rivest",
-          edition: "4th Edition",
-          rentalPrice: 15,
-          purchasePrice: 120,
-          condition: "Good",
-          available: true,
-          renter: "UNICON Library",
-          semester: "Spring 2025",
-          course: "CS315",
-          verified: true,
-          image: "📖"
-        },
-        {
-          id: "rental2",
-          title: "Calculus: Early Transcendentals",
-          author: "Stewart",
-          edition: "8th Edition",
-          rentalPrice: 12,
-          purchasePrice: 95,
-          condition: "Excellent",
-          available: true,
-          renter: "UNICON Library",
-          semester: "Spring 2025",
-          course: "MATH201",
-          verified: true,
-          image: "📚"
-        },
-        {
-          id: "rental3",
-          title: "Physics for Scientists and Engineers",
-          author: "Serway & Jewett",
-          edition: "10th Edition",
-          rentalPrice: 18,
-          purchasePrice: 150,
-          condition: "Good",
-          available: false,
-          renter: "UNICON Library",
-          semester: "Spring 2025",
-          course: "PHYS101",
-          verified: true,
-          image: "🔬"
-        }
-      ]);
+      const response = await studentApi.getMarketplace(params);
+      const itemsData = response.items || response.data || [];
 
+      setItems(
+        itemsData.map((item) => ({
+          id: item.id,
+          title: item.title,
+          price: item.price || 0,
+          image: item.image_url || item.image || "📦",
+          category: item.category || "General",
+          seller:
+            item.seller_name ||
+            `${item.first_name || ""} ${item.last_name || ""}`.trim() ||
+            "Unknown",
+          sellerEmail: item.seller_email || item.email,
+          description: item.description || "",
+          condition: item.condition || "Good",
+          verified: item.verified || false,
+          stock: item.stock || 1,
+          type: item.type || "student",
+          sellerVerified: item.seller_verified || false,
+          sellerRating: item.seller_rating || 0,
+          sellerReviews: item.seller_reviews || 0,
+          images: item.images || [],
+          location: item.location || "",
+          datePosted: item.created_at || item.date_posted,
+        }))
+      );
+
+      // Fetch tutoring services separately if needed
+      // This would be a separate API endpoint
+      // For now, keeping the mock data structure
+    } catch (err) {
+      console.error("Failed to fetch marketplace data:", err);
+      showToast("Failed to load marketplace items", "error");
+      // Fallback to empty array
+      setItems([]);
+    } finally {
       setLoading(false);
-    }, 1000);
-  }, []);
+    }
+  };
+
+  const handleCreateListingAPI = async (listingData) => {
+    try {
+      const response = await studentApi.createListing(listingData);
+      showToast("Listing created successfully!", "success");
+      setShowListingModal(false);
+      fetchMarketplaceData(); // Refresh listings
+      return response;
+    } catch (err) {
+      console.error("Failed to create listing:", err);
+      showToast("Failed to create listing", "error");
+      throw err;
+    }
+  };
 
   const categories = [
     "all",
@@ -253,34 +122,40 @@ function Marketplace() {
     "Apparel",
     "Accessories",
     "Furniture",
-    "Services"
+    "Services",
   ];
 
   const getFilteredItems = () => {
-    const filteredByTab = items.filter((item) => item.type === activeTab);
+    // Map activeTab values to item.type values
+    const typeMap = {
+      schoolStore: "school",
+      studentListings: "student",
+    };
+    const expectedType = typeMap[activeTab] || activeTab;
+    const filteredByTab = items.filter((item) => item.type === expectedType);
     if (selectedCategory === "all") return filteredByTab;
     return filteredByTab.filter((item) => item.category === selectedCategory);
   };
 
-  const handleCreateListing = (e) => {
+  const handleCreateListing = async (e) => {
     e.preventDefault();
-    if (newListing.title && newListing.price) {
-      const listing = {
-        id: `listing-${Date.now()}`,
-        ...newListing,
-        seller: user?.name || "Anonymous",
-        sellerEmail: user?.email,
-        datePosted: new Date().toISOString().split('T')[0],
-        verified: false,
-        sellerVerified: true,
-        sellerRating: 5.0,
-        sellerReviews: 0,
-        images: [],
-        location: "Campus"
-      };
-      setItems(prev => [...prev, listing]);
-      setNewListing({ title: "", description: "", price: "", category: "Electronics", condition: "Good", type: "student" });
-      setShowListingModal(false);
+    if (!newListing.title || !newListing.price) {
+      showToast("Please fill in all required fields", "error");
+      return;
+    }
+
+    try {
+      await handleCreateListingAPI({
+        title: newListing.title,
+        description: newListing.description,
+        price: parseFloat(newListing.price),
+        category: newListing.category,
+        condition: newListing.condition,
+        type: newListing.type || "student",
+        images: newListing.images,
+      });
+    } catch (err) {
+      // Error already handled in handleCreateListingAPI
     }
   };
 
@@ -296,10 +171,17 @@ function Marketplace() {
         verified: true,
         profileImage: "👨‍🎓",
         specialties: [newTutoringService.subject],
-        responseTime: "Within 24 hours"
+        responseTime: "Within 24 hours",
       };
-      setTutoringServices(prev => [...prev, service]);
-      setNewTutoringService({ subject: "", level: "Undergraduate", rate: "", availability: "", description: "", credentials: "" });
+      setTutoringServices((prev) => [...prev, service]);
+      setNewTutoringService({
+        subject: "",
+        level: "Undergraduate",
+        rate: "",
+        availability: "",
+        description: "",
+        credentials: "",
+      });
       setShowTutoringModal(false);
     }
   };
@@ -324,7 +206,8 @@ function Marketplace() {
             Enhanced Marketplace
           </h1>
           <p className="text-slate-600">
-            Buy, sell, rent, and find tutoring services within the {branding.name || "UNICON"} community
+            Buy, sell, rent, and find tutoring services within the{" "}
+            {branding.name || "UNICON"} community
           </p>
         </div>
       </div>
@@ -396,92 +279,159 @@ function Marketplace() {
         {/* Content based on active tab */}
         {activeTab === "schoolStore" && (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
-            {getFilteredItems().map((item) => (
-              <div key={item.id} className="bg-white rounded-xl border border-slate-200 p-6 hover:shadow-md transition-all">
-                <div className="text-4xl mb-4 text-center">{item.image}</div>
-                <div className="flex items-start justify-between mb-2">
-                  <h3 className="font-semibold text-slate-900 text-sm">{item.title}</h3>
-                  {item.verified && <span className="text-[#4a5a68] text-xs">✓ Verified</span>}
-                </div>
-                <p className="text-lg font-bold text-[#4a5a68] mb-2">${item.price}</p>
-                <p className="text-sm text-slate-600 mb-3">{item.description}</p>
-                <div className="flex items-center justify-between text-xs text-slate-500 mb-3">
-                  <span>{item.condition}</span>
-                  <span>{item.category}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-slate-600">by {item.seller}</span>
-                    {item.sellerVerified && <span className="text-green-500 text-xs">✓</span>}
-                  </div>
-                  <button className="px-4 py-2 rounded-lg bg-[#708090] text-white text-sm hover:bg-[#708090] transition-colors">
-                    Buy Now
-                  </button>
-                </div>
-                {item.stock && (
-                  <div className="mt-2 text-xs text-slate-500">
-                    {item.stock} in stock
-                  </div>
-                )}
+            {loading ? (
+              <GridSkeleton count={6} columns={3} />
+            ) : error ? (
+              <div className="col-span-full text-center py-8 text-red-600">
+                {error}
               </div>
-            ))}
+            ) : getFilteredItems().length > 0 ? (
+              getFilteredItems().map((item) => (
+                <div
+                  key={item.id}
+                  className="bg-white rounded-xl border border-slate-200 p-6 hover:shadow-md transition-all"
+                >
+                  <div className="text-4xl mb-4 text-center">{item.image}</div>
+                  <div className="flex items-start justify-between mb-2">
+                    <h3 className="font-semibold text-slate-900 text-sm">
+                      {item.title}
+                    </h3>
+                    {item.verified && (
+                      <span className="text-[#4a5a68] text-xs">✓ Verified</span>
+                    )}
+                  </div>
+                  <p className="text-lg font-bold text-[#4a5a68] mb-2">
+                    ${item.price}
+                  </p>
+                  <p className="text-sm text-slate-600 mb-3">
+                    {item.description}
+                  </p>
+                  <div className="flex items-center justify-between text-xs text-slate-500 mb-3">
+                    <span>{item.condition}</span>
+                    <span>{item.category}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-slate-600">
+                        by {item.seller}
+                      </span>
+                      {item.sellerVerified && (
+                        <span className="text-green-500 text-xs">✓</span>
+                      )}
+                    </div>
+                    <button className="px-4 py-2 rounded-lg bg-[#708090] text-white text-sm hover:bg-[#708090] transition-colors">
+                      Buy Now
+                    </button>
+                  </div>
+                  {item.stock && (
+                    <div className="mt-2 text-xs text-slate-500">
+                      {item.stock} in stock
+                    </div>
+                  )}
+                </div>
+              ))
+            ) : (
+              <div className="col-span-full text-center py-8 text-slate-500">
+                No items found in this category
+              </div>
+            )}
           </div>
         )}
 
         {activeTab === "studentListings" && (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
-            {getFilteredItems().map((item) => (
-              <div key={item.id} className="bg-white rounded-xl border border-slate-200 p-6 hover:shadow-md transition-all">
-                <div className="text-4xl mb-4 text-center">{item.image}</div>
-                <div className="flex items-start justify-between mb-2">
-                  <h3 className="font-semibold text-slate-900 text-sm">{item.title}</h3>
-                  {item.verified && <span className="text-[#4a5a68] text-xs">✓ Verified</span>}
-                </div>
-                <p className="text-lg font-bold text-[#4a5a68] mb-2">${item.price}</p>
-                <p className="text-sm text-slate-600 mb-3">{item.description}</p>
-                <div className="flex items-center justify-between text-xs text-slate-500 mb-3">
-                  <span>{item.condition}</span>
-                  <span>{item.category}</span>
-                </div>
-                <div className="mb-3">
-                  <div className="flex items-center gap-2 text-xs text-slate-500">
-                    <span>⭐ {item.sellerRating}</span>
-                    <span>({item.sellerReviews} reviews)</span>
-                    {item.sellerVerified && <span className="text-green-500">✓ Verified Seller</span>}
-                  </div>
-                  <div className="text-xs text-slate-500 mt-1">
-                    📍 {item.location}
-                  </div>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600">by {item.seller}</span>
-                  <button className="px-4 py-2 rounded-lg bg-[#708090] text-white text-sm hover:bg-[#708090] transition-colors">
-                    Contact
-                  </button>
-                </div>
+            {loading ? (
+              <GridSkeleton count={6} columns={3} />
+            ) : error ? (
+              <div className="col-span-full text-center py-8 text-red-600">
+                {error}
               </div>
-            ))}
+            ) : getFilteredItems().length > 0 ? (
+              getFilteredItems().map((item) => (
+                <div
+                  key={item.id}
+                  className="bg-white rounded-xl border border-slate-200 p-6 hover:shadow-md transition-all"
+                >
+                  <div className="text-4xl mb-4 text-center">{item.image}</div>
+                  <div className="flex items-start justify-between mb-2">
+                    <h3 className="font-semibold text-slate-900 text-sm">
+                      {item.title}
+                    </h3>
+                    {item.verified && (
+                      <span className="text-[#4a5a68] text-xs">✓ Verified</span>
+                    )}
+                  </div>
+                  <p className="text-lg font-bold text-[#4a5a68] mb-2">
+                    ${item.price}
+                  </p>
+                  <p className="text-sm text-slate-600 mb-3">
+                    {item.description}
+                  </p>
+                  <div className="flex items-center justify-between text-xs text-slate-500 mb-3">
+                    <span>{item.condition}</span>
+                    <span>{item.category}</span>
+                  </div>
+                  <div className="mb-3">
+                    <div className="flex items-center gap-2 text-xs text-slate-500">
+                      <span>⭐ {item.sellerRating}</span>
+                      <span>({item.sellerReviews} reviews)</span>
+                      {item.sellerVerified && (
+                        <span className="text-green-500">
+                          ✓ Verified Seller
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs text-slate-500 mt-1">
+                      📍 {item.location}
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-slate-600">
+                      by {item.seller}
+                    </span>
+                    <button className="px-4 py-2 rounded-lg bg-[#708090] text-white text-sm hover:bg-[#708090] transition-colors">
+                      Contact
+                    </button>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="col-span-full text-center py-8 text-slate-500">
+                No student listings found
+              </div>
+            )}
           </div>
         )}
 
         {activeTab === "tutoring" && (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
             {tutoringServices.map((tutor) => (
-              <div key={tutor.id} className="bg-white rounded-xl border border-slate-200 p-6 hover:shadow-md transition-all">
+              <div
+                key={tutor.id}
+                className="bg-white rounded-xl border border-slate-200 p-6 hover:shadow-md transition-all"
+              >
                 <div className="flex items-center gap-4 mb-4">
                   <div className="text-3xl">{tutor.profileImage}</div>
                   <div className="flex-1">
-                    <h3 className="font-semibold text-slate-900">{tutor.name}</h3>
+                    <h3 className="font-semibold text-slate-900">
+                      {tutor.name}
+                    </h3>
                     <div className="flex items-center gap-2 text-sm text-slate-600">
                       <span>{tutor.subject}</span>
                       <span>•</span>
                       <span>{tutor.level}</span>
-                      {tutor.verified && <span className="text-green-500">✓ Verified</span>}
+                      {tutor.verified && (
+                        <span className="text-green-500">✓ Verified</span>
+                      )}
                     </div>
                   </div>
                 </div>
-                <p className="text-lg font-bold text-[#4a5a68] mb-2">${tutor.rate}/hour</p>
-                <p className="text-sm text-slate-600 mb-3">{tutor.description}</p>
+                <p className="text-lg font-bold text-[#4a5a68] mb-2">
+                  ${tutor.rate}/hour
+                </p>
+                <p className="text-sm text-slate-600 mb-3">
+                  {tutor.description}
+                </p>
                 <div className="mb-3">
                   <div className="text-xs text-slate-500 mb-1">
                     <strong>Availability:</strong> {tutor.availability}
@@ -501,7 +451,10 @@ function Marketplace() {
                 </div>
                 <div className="flex flex-wrap gap-1 mb-3">
                   {tutor.specialties.map((specialty, index) => (
-                    <span key={index} className="px-2 py-1 bg-[#e1e6ed] text-blue-800 text-xs rounded-full">
+                    <span
+                      key={index}
+                      className="px-2 py-1 bg-[#e1e6ed] text-blue-800 text-xs rounded-full"
+                    >
                       {specialty}
                     </span>
                   ))}
@@ -517,31 +470,50 @@ function Marketplace() {
         {activeTab === "rentals" && (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
             {textbookRentals.map((book) => (
-              <div key={book.id} className="bg-white rounded-xl border border-slate-200 p-6 hover:shadow-md transition-all">
+              <div
+                key={book.id}
+                className="bg-white rounded-xl border border-slate-200 p-6 hover:shadow-md transition-all"
+              >
                 <div className="text-4xl mb-4 text-center">{book.image}</div>
-                <h3 className="font-semibold text-slate-900 text-sm mb-2">{book.title}</h3>
+                <h3 className="font-semibold text-slate-900 text-sm mb-2">
+                  {book.title}
+                </h3>
                 <p className="text-xs text-slate-600 mb-2">by {book.author}</p>
                 <p className="text-xs text-slate-500 mb-3">{book.edition}</p>
                 <div className="mb-3">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-green-600 font-semibold">Rental: ${book.rentalPrice}</span>
-                    <span className="text-slate-500">Buy: ${book.purchasePrice}</span>
+                    <span className="text-green-600 font-semibold">
+                      Rental: ${book.rentalPrice}
+                    </span>
+                    <span className="text-slate-500">
+                      Buy: ${book.purchasePrice}
+                    </span>
                   </div>
                 </div>
                 <div className="text-xs text-slate-500 mb-3">
-                  <div><strong>Course:</strong> {book.course}</div>
-                  <div><strong>Semester:</strong> {book.semester}</div>
-                  <div><strong>Condition:</strong> {book.condition}</div>
+                  <div>
+                    <strong>Course:</strong> {book.course}
+                  </div>
+                  <div>
+                    <strong>Semester:</strong> {book.semester}
+                  </div>
+                  <div>
+                    <strong>Condition:</strong> {book.condition}
+                  </div>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-slate-600">by {book.renter}</span>
-                    {book.verified && <span className="text-green-500 text-xs">✓</span>}
+                    <span className="text-sm text-slate-600">
+                      by {book.renter}
+                    </span>
+                    {book.verified && (
+                      <span className="text-green-500 text-xs">✓</span>
+                    )}
                   </div>
-                  <button 
+                  <button
                     className={`px-4 py-2 rounded-lg text-white text-sm transition-colors ${
-                      book.available 
-                        ? "bg-[#708090] hover:bg-[#708090]" 
+                      book.available
+                        ? "bg-[#708090] hover:bg-[#708090]"
                         : "bg-gray-400 cursor-not-allowed"
                     }`}
                     disabled={!book.available}
@@ -558,8 +530,10 @@ function Marketplace() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
           <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl p-6 text-white text-center">
             <h3 className="text-lg font-semibold mb-2">Sell Items</h3>
-            <p className="mb-4 text-blue-100 text-sm">List your items and connect with fellow students</p>
-            <button 
+            <p className="mb-4 text-blue-100 text-sm">
+              List your items and connect with fellow students
+            </p>
+            <button
               onClick={() => setShowListingModal(true)}
               className="px-4 py-2 rounded-lg font-medium transition-colors bg-white text-[#4a5a68] hover:bg-[#708090]/10"
             >
@@ -568,8 +542,10 @@ function Marketplace() {
           </div>
           <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-xl p-6 text-white text-center">
             <h3 className="text-lg font-semibold mb-2">Offer Tutoring</h3>
-            <p className="mb-4 text-green-100 text-sm">Share your knowledge and earn money</p>
-            <button 
+            <p className="mb-4 text-green-100 text-sm">
+              Share your knowledge and earn money
+            </p>
+            <button
               onClick={() => setShowTutoringModal(true)}
               className="px-4 py-2 rounded-lg font-medium transition-colors bg-white text-green-600 hover:bg-green-50"
             >
@@ -578,14 +554,18 @@ function Marketplace() {
           </div>
           <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-xl p-6 text-white text-center">
             <h3 className="text-lg font-semibold mb-2">Rent Textbooks</h3>
-            <p className="mb-4 text-purple-100 text-sm">Save money on expensive textbooks</p>
+            <p className="mb-4 text-purple-100 text-sm">
+              Save money on expensive textbooks
+            </p>
             <button className="px-4 py-2 rounded-lg font-medium transition-colors bg-white text-purple-600 hover:bg-purple-50">
               Browse Rentals
             </button>
           </div>
           <div className="bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl p-6 text-white text-center">
             <h3 className="text-lg font-semibold mb-2">Find Services</h3>
-            <p className="mb-4 text-orange-100 text-sm">Get help with academics and more</p>
+            <p className="mb-4 text-orange-100 text-sm">
+              Get help with academics and more
+            </p>
             <button className="px-4 py-2 rounded-lg font-medium transition-colors bg-white text-orange-600 hover:bg-orange-50">
               Explore Services
             </button>
@@ -602,28 +582,40 @@ function Marketplace() {
               <span className="text-green-500 text-xl">✓</span>
               <div>
                 <h3 className="font-medium text-slate-900">Verified Sellers</h3>
-                <p className="text-sm text-slate-600">All sellers are verified with school email addresses</p>
+                <p className="text-sm text-slate-600">
+                  All sellers are verified with school email addresses
+                </p>
               </div>
             </div>
             <div className="flex items-start gap-3">
               <span className="text-green-500 text-xl">✓</span>
               <div>
-                <h3 className="font-medium text-slate-900">Safe Meeting Spots</h3>
-                <p className="text-sm text-slate-600">Designated campus locations for exchanges</p>
+                <h3 className="font-medium text-slate-900">
+                  Safe Meeting Spots
+                </h3>
+                <p className="text-sm text-slate-600">
+                  Designated campus locations for exchanges
+                </p>
               </div>
             </div>
             <div className="flex items-start gap-3">
               <span className="text-green-500 text-xl">✓</span>
               <div>
-                <h3 className="font-medium text-slate-900">Escrow Protection</h3>
-                <p className="text-sm text-slate-600">Secure payment processing for large transactions</p>
+                <h3 className="font-medium text-slate-900">
+                  Escrow Protection
+                </h3>
+                <p className="text-sm text-slate-600">
+                  Secure payment processing for large transactions
+                </p>
               </div>
             </div>
             <div className="flex items-start gap-3">
               <span className="text-green-500 text-xl">✓</span>
               <div>
                 <h3 className="font-medium text-slate-900">24/7 Support</h3>
-                <p className="text-sm text-slate-600">Report issues anytime to campus security</p>
+                <p className="text-sm text-slate-600">
+                  Report issues anytime to campus security
+                </p>
               </div>
             </div>
           </div>
@@ -634,24 +626,37 @@ function Marketplace() {
       {showListingModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-xl p-6 w-full max-w-md mx-4">
-            <h3 className="text-lg font-semibold text-slate-900 mb-4">Create New Listing</h3>
+            <h3 className="text-lg font-semibold text-slate-900 mb-4">
+              Create New Listing
+            </h3>
             <form onSubmit={handleCreateListing} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Title</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Title
+                </label>
                 <input
                   type="text"
                   value={newListing.title}
-                  onChange={(e) => setNewListing({ ...newListing, title: e.target.value })}
+                  onChange={(e) =>
+                    setNewListing({ ...newListing, title: e.target.value })
+                  }
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Enter item title"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Description
+                </label>
                 <textarea
                   value={newListing.description}
-                  onChange={(e) => setNewListing({ ...newListing, description: e.target.value })}
+                  onChange={(e) =>
+                    setNewListing({
+                      ...newListing,
+                      description: e.target.value,
+                    })
+                  }
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   rows={3}
                   placeholder="Describe your item"
@@ -659,21 +664,29 @@ function Marketplace() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Price ($)</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Price ($)
+                  </label>
                   <input
                     type="number"
                     value={newListing.price}
-                    onChange={(e) => setNewListing({ ...newListing, price: e.target.value })}
+                    onChange={(e) =>
+                      setNewListing({ ...newListing, price: e.target.value })
+                    }
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="0"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Category</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Category
+                  </label>
                   <select
                     value={newListing.category}
-                    onChange={(e) => setNewListing({ ...newListing, category: e.target.value })}
+                    onChange={(e) =>
+                      setNewListing({ ...newListing, category: e.target.value })
+                    }
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="Electronics">Electronics</option>
@@ -685,10 +698,14 @@ function Marketplace() {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Condition</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Condition
+                </label>
                 <select
                   value={newListing.condition}
-                  onChange={(e) => setNewListing({ ...newListing, condition: e.target.value })}
+                  onChange={(e) =>
+                    setNewListing({ ...newListing, condition: e.target.value })
+                  }
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="New">New</option>
@@ -696,6 +713,49 @@ function Marketplace() {
                   <option value="Good">Good</option>
                   <option value="Fair">Fair</option>
                 </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Images
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={(e) => handleImageUpload(e.target.files)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={uploadingImages}
+                />
+                {uploadingImages && (
+                  <p className="text-xs text-slate-500 mt-1">
+                    Uploading images...
+                  </p>
+                )}
+                {newListing.images.length > 0 && (
+                  <div className="mt-2 flex gap-2 flex-wrap">
+                    {newListing.images.map((img, idx) => (
+                      <div key={idx} className="relative">
+                        <img
+                          src={img}
+                          alt={`Preview ${idx + 1}`}
+                          className="w-16 h-16 object-cover rounded-lg"
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setNewListing((prev) => ({
+                              ...prev,
+                              images: prev.images.filter((_, i) => i !== idx),
+                            }))
+                          }
+                          className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
               <div className="flex gap-3 pt-4">
                 <button
@@ -721,14 +781,23 @@ function Marketplace() {
       {showTutoringModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-xl p-6 w-full max-w-md mx-4">
-            <h3 className="text-lg font-semibold text-slate-900 mb-4">Offer Tutoring Service</h3>
+            <h3 className="text-lg font-semibold text-slate-900 mb-4">
+              Offer Tutoring Service
+            </h3>
             <form onSubmit={handleCreateTutoringService} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Subject</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Subject
+                </label>
                 <input
                   type="text"
                   value={newTutoringService.subject}
-                  onChange={(e) => setNewTutoringService({ ...newTutoringService, subject: e.target.value })}
+                  onChange={(e) =>
+                    setNewTutoringService({
+                      ...newTutoringService,
+                      subject: e.target.value,
+                    })
+                  }
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="e.g., Computer Science, Mathematics"
                   required
@@ -736,10 +805,17 @@ function Marketplace() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Level</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Level
+                  </label>
                   <select
                     value={newTutoringService.level}
-                    onChange={(e) => setNewTutoringService({ ...newTutoringService, level: e.target.value })}
+                    onChange={(e) =>
+                      setNewTutoringService({
+                        ...newTutoringService,
+                        level: e.target.value,
+                      })
+                    }
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="High School">High School</option>
@@ -748,11 +824,18 @@ function Marketplace() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Rate ($/hour)</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Rate ($/hour)
+                  </label>
                   <input
                     type="number"
                     value={newTutoringService.rate}
-                    onChange={(e) => setNewTutoringService({ ...newTutoringService, rate: e.target.value })}
+                    onChange={(e) =>
+                      setNewTutoringService({
+                        ...newTutoringService,
+                        rate: e.target.value,
+                      })
+                    }
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="25"
                     required
@@ -760,31 +843,52 @@ function Marketplace() {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Availability</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Availability
+                </label>
                 <input
                   type="text"
                   value={newTutoringService.availability}
-                  onChange={(e) => setNewTutoringService({ ...newTutoringService, availability: e.target.value })}
+                  onChange={(e) =>
+                    setNewTutoringService({
+                      ...newTutoringService,
+                      availability: e.target.value,
+                    })
+                  }
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="e.g., Mon-Fri 6-9 PM"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Description
+                </label>
                 <textarea
                   value={newTutoringService.description}
-                  onChange={(e) => setNewTutoringService({ ...newTutoringService, description: e.target.value })}
+                  onChange={(e) =>
+                    setNewTutoringService({
+                      ...newTutoringService,
+                      description: e.target.value,
+                    })
+                  }
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   rows={3}
                   placeholder="Describe your teaching experience and approach"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Credentials</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Credentials
+                </label>
                 <input
                   type="text"
                   value={newTutoringService.credentials}
-                  onChange={(e) => setNewTutoringService({ ...newTutoringService, credentials: e.target.value })}
+                  onChange={(e) =>
+                    setNewTutoringService({
+                      ...newTutoringService,
+                      credentials: e.target.value,
+                    })
+                  }
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="e.g., Computer Science Major, Teaching Assistant"
                 />

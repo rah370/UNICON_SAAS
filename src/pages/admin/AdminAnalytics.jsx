@@ -1,6 +1,9 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
+import AdminHeader from "../../apps/admin/components/AdminHeader";
+import { adminApi } from "../../apps/shared/utils/api";
+import { useToast } from "../../components/Toast";
 
 function StatCard({ label, value, trend, suffix }) {
   return (
@@ -33,13 +36,59 @@ function SectionCard({ title, children }) {
 export default function AdminAnalytics() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { showToast } = useToast();
+  const [analytics, setAnalytics] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const overviewStats = [
-    { label: "Total users", value: 2847, trend: "4.2%" },
-    { label: "Daily active", value: "68%", trend: "2.1%" },
-    { label: "New signups", value: "+122", trend: "18 this week" },
-    { label: "Marketplace volume", value: "$12.4k", trend: "+5.3%" },
-  ];
+  useEffect(() => {
+    fetchAnalytics();
+  }, []);
+
+  const fetchAnalytics = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await adminApi.getAnalytics();
+      setAnalytics(response);
+    } catch (err) {
+      console.error("Failed to fetch analytics:", err);
+      setError(err.message || "Failed to load analytics");
+      showToast("Failed to load analytics", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const overviewStats = analytics
+    ? [
+        {
+          label: "Total users",
+          value: analytics.total_users || 0,
+          trend: "4.2%",
+        },
+        {
+          label: "Daily active",
+          value: "68%",
+          trend: "2.1%",
+        },
+        {
+          label: "New signups",
+          value: `+${analytics.new_users || 0}`,
+          trend: "18 this week",
+        },
+        {
+          label: "Marketplace volume",
+          value: "$12.4k",
+          trend: "+5.3%",
+        },
+      ]
+    : [
+        { label: "Total users", value: 0, trend: "4.2%" },
+        { label: "Daily active", value: "68%", trend: "2.1%" },
+        { label: "New signups", value: "+0", trend: "18 this week" },
+        { label: "Marketplace volume", value: "$0", trend: "+5.3%" },
+      ];
 
   const engagementData = [
     { label: "Average session", value: "12m 34s" },
@@ -55,37 +104,39 @@ export default function AdminAnalytics() {
     { label: "Marketplace listings", value: "89" },
   ];
 
+  if (loading) {
+    return (
+      <div
+        className="min-h-screen"
+        style={{ background: "linear-gradient(135deg,#05070e,#1e1140)" }}
+      >
+        <AdminHeader
+          title="Analytics"
+          description="Platform insights and metrics"
+        />
+        <div className="text-center text-white/60 py-12">
+          Loading analytics...
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       className="min-h-screen"
       style={{ background: "linear-gradient(135deg,#05070e,#1e1140)" }}
     >
-      <header className="border-b border-white/10 bg-black/30 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 text-white">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => navigate("/admin-dashboard")}
-              className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm font-semibold hover:bg-white/15 transition"
-            >
-              ← Back
-            </button>
-            <div>
-              <h1 className="text-2xl font-bold">Analytics</h1>
-              <p className="text-sm text-white/60">
-                Platform insights and metrics
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <p className="text-sm font-semibold">{user?.name}</p>
-            <div className="h-8 w-8 rounded-full border border-white/20 bg-white/10 flex items-center justify-center text-xs font-bold">
-              {user?.name?.charAt(0)}
-            </div>
-          </div>
-        </div>
-      </header>
+      <AdminHeader
+        title="Analytics"
+        description="Platform insights and metrics"
+      />
 
       <main className="mx-auto max-w-7xl px-4 py-8 space-y-6 text-white">
+        {error && (
+          <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-red-300">
+            {error}
+          </div>
+        )}
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {overviewStats.map((stat) => (
             <StatCard key={stat.label} {...stat} />
@@ -153,4 +204,3 @@ export default function AdminAnalytics() {
     </div>
   );
 }
-

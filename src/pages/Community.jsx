@@ -1,57 +1,8 @@
 import React, { useState, useEffect } from "react";
-
-const sampleClubs = [
-  {
-    id: 1,
-    name: "CS315",
-    emoji: "💻",
-    desc: "Data Structures & Algorithms",
-    members: 45,
-    posts: 12,
-  },
-  {
-    id: 2,
-    name: "Robotics Club",
-    emoji: "🤖",
-    desc: "Building the future, one robot at a time",
-    members: 23,
-    posts: 8,
-  },
-  {
-    id: 3,
-    name: "Design Society",
-    emoji: "🎨",
-    desc: "Where creativity meets technology",
-    members: 67,
-    posts: 15,
-  },
-];
-
-const samplePosts = [
-  {
-    id: 1,
-    author: { name: "Sarah Chen", avatar: "https://i.pravatar.cc/64?img=15" },
-    channel: "Live Lounge",
-    createdAt: "2 min ago",
-    content:
-      "Hey everyone! Just finished my CS315 assignment. Anyone want to study together for the midterm?",
-    reactions: { like: 8, heart: 3, laugh: 1 },
-    comments: 5,
-  },
-  {
-    id: 2,
-    author: {
-      name: "Mike Rodriguez",
-      avatar: "https://i.pravatar.cc/64?img=56",
-    },
-    channel: "Live Lounge",
-    createdAt: "15 min ago",
-    content:
-      "The library is packed today! Found a great spot in the basement though. Perfect for group study sessions.",
-    reactions: { like: 5, heart: 2, laugh: 2 },
-    comments: 3,
-  },
-];
+import { useAuth } from "../contexts/AuthContext";
+import { studentApi } from "../apps/shared/utils/api";
+import { useToast } from "../components/Toast";
+import { ListSkeleton, PostSkeleton } from "../components/SkeletonLoader";
 
 const sidebarNav = [
   { id: "announcements", label: "Announcements", emoji: "📣", badge: 4 },
@@ -87,19 +38,31 @@ function SectionTitle({ children, action }) {
   );
 }
 
-function PostCard({ post }) {
+function PostCard({ post, onReaction }) {
   const isLive =
     post.createdAt === "just now" || post.createdAt.includes("min ago");
+
+  const handleReactionClick = (reactionType) => {
+    if (onReaction) {
+      onReaction(post.id, reactionType);
+    }
+  };
 
   return (
     <div className="group flex items-start gap-3 pb-4 border-b border-slate-100 last:border-0">
       {/* Avatar */}
       <div className="relative flex-shrink-0">
-        <img
-          src={post.author.avatar}
-          alt={post.author.name}
-          className="h-9 w-9 rounded-full object-cover ring-2 ring-slate-100 group-hover:ring-blue-200 transition-all duration-300"
-        />
+        {post.author.avatar ? (
+          <img
+            src={post.author.avatar}
+            alt={post.author.name}
+            className="h-9 w-9 rounded-full object-cover ring-2 ring-slate-100 group-hover:ring-blue-200 transition-all duration-300"
+          />
+        ) : (
+          <div className="h-9 w-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-semibold text-sm ring-2 ring-slate-100">
+            {post.author.name?.[0] || "U"}
+          </div>
+        )}
         {isLive && (
           <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-[#708090] border-2 border-white"></div>
         )}
@@ -124,7 +87,10 @@ function PostCard({ post }) {
 
         {/* Comment Actions */}
         <div className="flex items-center gap-6">
-          <button className="flex items-center gap-2 text-xs text-slate-500 hover:text-[#4a5a68] transition-colors group">
+          <button
+            onClick={() => handleReactionClick("like")}
+            className="flex items-center gap-2 text-xs text-slate-500 hover:text-[#4a5a68] transition-colors group"
+          >
             <svg
               className="w-4 h-4 group-hover:scale-110 transition-transform"
               fill="none"
@@ -138,7 +104,7 @@ function PostCard({ post }) {
                 d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V18m-7-8a2 2 0 00-2-2H5a2 2 0 00-2 2v7a2 2 0 002 2h2a2 2 0 002-2v-7z"
               />
             </svg>
-            <span className="font-medium">{post.reactions.like}</span>
+            <span className="font-medium">{post.reactions?.like || 0}</span>
           </button>
           <div className="flex items-center gap-2 text-xs text-slate-400">
             <svg
@@ -154,7 +120,7 @@ function PostCard({ post }) {
                 d="M7 8h10M7 12h10M7 16h10M3 4h18M3 4v16h18V4"
               />
             </svg>
-            <span>Swipe to reply</span>
+            <span>{post.comments || 0} comments</span>
           </div>
         </div>
       </div>
@@ -178,16 +144,159 @@ function runSelfTests() {
 runSelfTests();
 
 export default function Community() {
-  const [clubs, setClubs] = useState(sampleClubs);
-  const [posts, setPosts] = useState(samplePosts);
+  const { user } = useAuth();
+  const { showToast } = useToast();
+  const [clubs, setClubs] = useState([]);
+  const [posts, setPosts] = useState([]);
   const [query, setQuery] = useState("");
   const [showComposer, setShowComposer] = useState(false);
   const [filter, setFilter] = useState("All");
-  const [activePage, setActivePage] = useState("lounge"); // which sidebar page is active
-  const [selectedClub, setSelectedClub] = useState(null); // open channel when a club is clicked
-  const [communityOpen, setCommunityOpen] = useState(true); // collapsible community group
-  const [showClubs, setShowClubs] = useState(false); // modal to browse clubs
-  const [composerChannel, setComposerChannel] = useState(""); // preselect channel when using + FAB
+  const [activePage, setActivePage] = useState("lounge");
+  const [selectedClub, setSelectedClub] = useState(null);
+  const [communityOpen, setCommunityOpen] = useState(true);
+  const [showClubs, setShowClubs] = useState(false);
+  const [composerChannel, setComposerChannel] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [loadingPosts, setLoadingPosts] = useState(false);
+  const [error, setError] = useState(null);
+  const [newPostContent, setNewPostContent] = useState("");
+
+  useEffect(() => {
+    fetchClubs();
+    fetchPosts();
+  }, [activePage]);
+
+  const fetchClubs = async () => {
+    try {
+      const response = await studentApi.getClubs();
+      const clubsData = response.clubs || response.data || [];
+      setClubs(
+        clubsData.map((club) => ({
+          id: club.id,
+          name: club.name,
+          emoji: club.emoji || "💬",
+          desc: club.description || club.desc || "",
+          members: club.members_count || club.members || 0,
+          posts: club.posts_count || club.posts || 0,
+        }))
+      );
+    } catch (err) {
+      console.error("Failed to fetch clubs:", err);
+      setError("Failed to load clubs");
+    }
+  };
+
+  const fetchPosts = async () => {
+    try {
+      setLoadingPosts(true);
+      const params = {};
+      if (activePage !== "lounge") {
+        params.channel = activePage;
+      }
+      const response = await studentApi.getPosts(params);
+      const postsData = response.posts || response.data || [];
+      setPosts(
+        postsData.map((post) => ({
+          id: post.id,
+          author: {
+            name:
+              post.author?.name ||
+              `${post.author?.first_name || ""} ${
+                post.author?.last_name || ""
+              }`.trim() ||
+              "Unknown",
+            avatar: post.author?.avatar_url || post.author?.avatar || "",
+          },
+          channel: post.channel || post.channel_name || "Live Lounge",
+          createdAt: formatTimeAgo(post.created_at || post.createdAt),
+          content: post.content || post.body || "",
+          reactions: post.reactions || { like: 0, heart: 0, laugh: 0 },
+          comments: post.comments_count || post.comments || 0,
+        }))
+      );
+    } catch (err) {
+      console.error("Failed to fetch posts:", err);
+      setError("Failed to load posts");
+      showToast("Failed to load posts", "error");
+    } finally {
+      setLoadingPosts(false);
+      setLoading(false);
+    }
+  };
+
+  const formatTimeAgo = (dateString) => {
+    if (!dateString) return "Just now";
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now - date) / 1000);
+
+    if (diffInSeconds < 60) return "Just now";
+    if (diffInSeconds < 3600)
+      return `${Math.floor(diffInSeconds / 60)} min ago`;
+    if (diffInSeconds < 86400)
+      return `${Math.floor(diffInSeconds / 3600)}h ago`;
+    return date.toLocaleDateString();
+  };
+
+  const handleCreatePost = async () => {
+    if (!newPostContent.trim()) {
+      showToast("Please enter some content", "error");
+      return;
+    }
+
+    try {
+      const response = await studentApi.createPost({
+        content: newPostContent,
+        channel: composerChannel || activePage,
+      });
+
+      const newPost = {
+        id: response.post?.id || response.id || Date.now(),
+        author: {
+          name:
+            user?.name ||
+            `${user?.first_name || ""} ${user?.last_name || ""}`.trim() ||
+            "You",
+          avatar: user?.avatar_url || user?.avatar || "",
+        },
+        channel: composerChannel || activePage || "Live Lounge",
+        createdAt: "Just now",
+        content: newPostContent,
+        reactions: { like: 0, heart: 0, laugh: 0 },
+        comments: 0,
+      };
+
+      setPosts([newPost, ...posts]);
+      setNewPostContent("");
+      setShowComposer(false);
+      showToast("Post created successfully!", "success");
+    } catch (err) {
+      console.error("Failed to create post:", err);
+      showToast("Failed to create post", "error");
+    }
+  };
+
+  const handleReaction = async (postId, reactionType) => {
+    try {
+      await studentApi.reactToPost(postId, reactionType);
+      setPosts((prev) =>
+        prev.map((post) =>
+          post.id === postId
+            ? {
+                ...post,
+                reactions: {
+                  ...post.reactions,
+                  [reactionType]: (post.reactions[reactionType] || 0) + 1,
+                },
+              }
+            : post
+        )
+      );
+    } catch (err) {
+      console.error("Failed to react to post:", err);
+      showToast("Failed to react to post", "error");
+    }
+  };
 
   const filteredPosts = posts.filter((post) =>
     post.content.toLowerCase().includes(query.toLowerCase())
@@ -211,27 +320,6 @@ export default function Community() {
       );
     }
     return false;
-  };
-
-  const handlePostSubmit = (e) => {
-    e.preventDefault();
-    const form = new FormData(e.currentTarget);
-    const text = form.get("content");
-    if (!text) return;
-    const selectedChannel =
-      composerChannel || form.get("channel") || "Live Lounge";
-    const newPost = {
-      id: Date.now(),
-      author: { name: "You", avatar: "https://i.pravatar.cc/64?img=3" },
-      channel: selectedChannel,
-      createdAt: "just now",
-      content: String(text),
-      reactions: { like: 0, heart: 0, laugh: 0 },
-      comments: 0,
-    };
-    setPosts((p) => [newPost, ...p]);
-    setShowComposer(false);
-    setComposerChannel("");
   };
 
   return (
@@ -309,9 +397,7 @@ export default function Community() {
                     e.target.nextSibling.style.display = "flex";
                   }}
                 />
-                <div
-                  className="hidden h-11 w-11 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold items-center justify-center"
-                >
+                <div className="hidden h-11 w-11 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold items-center justify-center">
                   U
                 </div>
               </div>
@@ -497,12 +583,21 @@ export default function Community() {
                   {selectedClub.desc}
                 </p>
                 <div className="space-y-3">
-                  {filteredPosts.map((post) => (
-                    <PostCard
-                      key={post.id}
-                      post={{ ...post, channel: selectedClub.name }}
-                    />
-                  ))}
+                  {loadingPosts ? (
+                    <PostSkeleton />
+                  ) : filteredPosts.length > 0 ? (
+                    filteredPosts.map((post) => (
+                      <PostCard
+                        key={post.id}
+                        post={{ ...post, channel: selectedClub.name }}
+                        onReaction={handleReaction}
+                      />
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-slate-500">
+                      No posts yet in this channel
+                    </div>
+                  )}
                 </div>
               </div>
             ) : activePage === "announcements" ? (
@@ -662,7 +757,16 @@ export default function Community() {
                 {/* Add Comment Form */}
                 <div className="sticky bottom-0 bg-white/95 backdrop-blur-sm border-t border-slate-200 px-4 py-3 -mx-4 shadow-lg">
                   <form
-                    onSubmit={handlePostSubmit}
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const form = new FormData(e.currentTarget);
+                      const content = form.get("content");
+                      if (content) {
+                        setNewPostContent(content);
+                        handleCreatePost();
+                        e.currentTarget.reset();
+                      }
+                    }}
                     className="flex items-center gap-2"
                   >
                     <div className="flex-1 relative">
@@ -771,7 +875,11 @@ export default function Community() {
                 Create Post
               </h2>
               <button
-                onClick={() => setShowComposer(false)}
+                onClick={() => {
+                  setShowComposer(false);
+                  setNewPostContent("");
+                  setComposerChannel("");
+                }}
                 className="rounded-lg p-2 text-slate-500 hover:bg-slate-50"
               >
                 <svg
@@ -789,13 +897,20 @@ export default function Community() {
                 </svg>
               </button>
             </div>
-            <form onSubmit={handlePostSubmit}>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleCreatePost();
+              }}
+            >
               <div className="mb-4">
                 <textarea
-                  name="content"
+                  value={newPostContent}
+                  onChange={(e) => setNewPostContent(e.target.value)}
                   placeholder="What's on your mind?"
                   className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-500"
                   rows={4}
+                  required
                 />
               </div>
               <div className="mb-4 flex items-center gap-4">
@@ -837,22 +952,22 @@ export default function Community() {
                   </select>
                 </div>
               </div>
+              <div className="flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowComposer(false)}
+                  className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="rounded-lg bg-[#708090] px-4 py-2 text-sm font-semibold text-white hover:bg-[#5a6a78]"
+                >
+                  Post
+                </button>
+              </div>
             </form>
-            <div className="flex items-center justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setShowComposer(false)}
-                className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="rounded-lg bg-[#708090] px-4 py-2 text-sm font-semibold text-white hover:bg-[#5a6a78]"
-              >
-                Post
-              </button>
-            </div>
           </div>
         </div>
       )}

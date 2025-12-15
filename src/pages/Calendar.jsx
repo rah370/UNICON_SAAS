@@ -2,6 +2,8 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useBranding } from "../contexts/BrandingContext";
 import GoogleCalendar from "../components/GoogleCalendar";
+import { studentApi, adminApi } from "../apps/shared/utils/api";
+import { useToast } from "../components/Toast";
 
 const sampleAdminEvents = [
   {
@@ -49,26 +51,29 @@ const templatePersonalEvents = [
 function Calendar() {
   const { user, isAdmin } = useAuth();
   const { branding } = useBranding();
+  const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState("school");
   const [googleCalSynced, setGoogleCalSynced] = useState(true);
-  const [adminEvents, setAdminEvents] = useState(() => {
-    const cached = localStorage.getItem("uniconAdminSchedule");
-    return cached ? JSON.parse(cached) : sampleAdminEvents;
-  });
+  const [adminEvents, setAdminEvents] = useState([]);
   const [personalEvents, setPersonalEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [showPersonalModal, setShowPersonalModal] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [adminForm, setAdminForm] = useState({
     title: "",
-    date: "",
-    type: "academic",
+    event_date: "",
+    location: "",
     description: "",
+    max_attendees: 100,
+    is_public: true, // Admin can only create public events
+    type: "academic", // Default event type
   });
   const [personalForm, setPersonalForm] = useState({
     title: "",
-    date: "",
+    event_date: "",
     description: "",
+    is_public: false, // Students can only create private events
   });
 
   const personalStorageKey = user
@@ -76,8 +81,38 @@ function Calendar() {
     : null;
 
   useEffect(() => {
-    localStorage.setItem("uniconAdminSchedule", JSON.stringify(adminEvents));
-  }, [adminEvents]);
+    fetchPublicEvents();
+  }, []);
+
+  const fetchPublicEvents = async () => {
+    try {
+      setLoading(true);
+      const response = await studentApi.getEvents();
+      const events = response.events || response.data || [];
+      // Filter only public events for school calendar
+      const publicEvents = events.filter(
+        (e) => e.is_public === true || e.is_public === 1
+      );
+      setAdminEvents(
+        publicEvents.map((e) => ({
+          id: e.id,
+          title: e.title,
+          date: e.event_date,
+          type: e.category || "academic",
+          description: e.description || "",
+        }))
+      );
+    } catch (err) {
+      console.error("Failed to fetch public events:", err);
+      // Fallback to cached events
+      const cached = localStorage.getItem("uniconAdminSchedule");
+      if (cached) {
+        setAdminEvents(JSON.parse(cached));
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!personalStorageKey) return;
@@ -123,31 +158,85 @@ function Calendar() {
     return Math.round((completed / personalEvents.length) * 100);
   }, [personalEvents]);
 
-  const handleAdminSubmit = (e) => {
+  const handleAdminSubmit = async (e) => {
     e.preventDefault();
-    if (!adminForm.title || !adminForm.date) return;
-    setAdminEvents((prev) => [
-      ...prev,
-      { id: `admin-${Date.now()}`, ...adminForm },
-    ]);
-    setAdminForm({ title: "", date: "", type: "academic", description: "" });
-    setShowAdminModal(false);
+    if (!adminForm.title || !adminForm.event_date) {
+      showToast("Please fill in title and date", "error");
+      return;
+    }
+
+    // Only admin/moderator can create public events
+    if (!isAdmin && user?.role !== "moderator") {
+      showToast("Only admins and moderators can create public events", "error");
+      return;
+    }
+
+    try {
+      const response = await adminApi.createEvent({
+        ...adminForm,
+        is_public: true, // Force public for admin-created events
+      });
+
+      const newEvent = {
+        id: response.event?.id || response.id || Date.now(),
+        title: adminForm.title,
+        date: adminForm.event_date,
+        type: "academic",
+        description: adminForm.description,
+      };
+
+      setAdminEvents((prev) => [newEvent, ...prev]);
+      setAdminForm({
+        title: "",
+        event_date: "",
+        location: "",
+        description: "",
+        max_attendees: 100,
+        is_public: true,
+      });
+      setShowAdminModal(false);
+      showToast("Public event created successfully", "success");
+      fetchPublicEvents(); // Refresh events
+    } catch (err) {
+      console.error("Failed to create public event:", err);
+      showToast("Failed to create public event", "error");
+    }
   };
 
-  const handlePersonalSubmit = (e) => {
+  const handlePersonalSubmit = async (e) => {
     e.preventDefault();
-    if (!personalForm.title || !personalForm.date) return;
-    setPersonalEvents((prev) => [
-      ...prev,
-      {
-        id: `me-${Date.now()}`,
-        ...personalForm,
+    if (!personalForm.title || !personalForm.event_date) {
+      showToast("Please fill in title and date", "error");
+      return;
+    }
+
+    // Students can only create private events
+    try {
+      const response = await studentApi.getEvents(); // We'll need to add createEvent to studentApi
+      // For now, store locally as private events
+      const newEvent = {
+        id: `personal-${Date.now()}`,
+        title: personalForm.title,
+        date: personalForm.event_date,
         type: "personal",
+        description: personalForm.description,
         status: "pending",
-      },
-    ]);
-    setPersonalForm({ title: "", date: "", description: "" });
-    setShowPersonalModal(false);
+        is_public: false, // Always private for students
+      };
+
+      setPersonalEvents((prev) => [newEvent, ...prev]);
+      setPersonalForm({
+        title: "",
+        event_date: "",
+        description: "",
+        is_public: false,
+      });
+      setShowPersonalModal(false);
+      showToast("Private event created successfully", "success");
+    } catch (err) {
+      console.error("Failed to create private event:", err);
+      showToast("Failed to create private event", "error");
+    }
   };
 
   const togglePersonalStatus = (taskId) => {
@@ -192,7 +281,7 @@ function Calendar() {
                 private reminders without cluttering the campus feed.
               </p>
               <div className="flex flex-wrap gap-3">
-                {isAdmin && (
+                {(isAdmin || user?.role === "moderator") && (
                   <button
                     onClick={() => setShowAdminModal(true)}
                     className="rounded-2xl border border-white/40 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-black/10 transition hover:-translate-y-0.5"
@@ -210,7 +299,9 @@ function Calendar() {
                   onClick={() => setGoogleCalSynced(true)}
                   className="rounded-2xl border border-white/30 px-4 py-2 text-sm font-semibold text-white/90 hover:text-white transition"
                 >
-                  {googleCalSynced ? "✓ Google calendar live" : "Sync Google calendar"}
+                  {googleCalSynced
+                    ? "✓ Google calendar live"
+                    : "Sync Google calendar"}
                 </button>
               </div>
             </div>
@@ -288,7 +379,9 @@ function Calendar() {
             </div>
             <aside className="w-full lg:w-80 space-y-6">
               <div className="rounded-3xl border border-white/80 bg-white/95 p-6 shadow-lg">
-                <h3 className="text-base font-semibold text-slate-900">Upcoming school events</h3>
+                <h3 className="text-base font-semibold text-slate-900">
+                  Upcoming school events
+                </h3>
                 <div className="mt-4 space-y-3">
                   {upcomingSchoolEvents.length === 0 && (
                     <p className="text-sm text-slate-500">
@@ -310,11 +403,13 @@ function Calendar() {
                           day: "numeric",
                         })}
                       </p>
-                      <p className="text-xs text-slate-500">{event.description}</p>
+                      <p className="text-xs text-slate-500">
+                        {event.description}
+                      </p>
                     </div>
                   ))}
                 </div>
-                {isAdmin && (
+                {(isAdmin || user?.role === "moderator") && (
                   <button
                     onClick={() => setShowAdminModal(true)}
                     className="mt-4 w-full rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-900"
@@ -330,7 +425,9 @@ function Calendar() {
             <div className="flex-1 space-y-6">
               <div className="rounded-3xl border border-white/80 bg-white/95 p-6 shadow-lg">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-semibold text-slate-900">My private tasks</h2>
+                  <h2 className="text-lg font-semibold text-slate-900">
+                    My private tasks
+                  </h2>
                   <button
                     onClick={() => setShowPersonalModal(true)}
                     className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-900"
@@ -360,7 +457,9 @@ function Calendar() {
                             day: "numeric",
                           })}
                         </p>
-                        <p className="text-xs text-slate-500">{event.description}</p>
+                        <p className="text-xs text-slate-500">
+                          {event.description}
+                        </p>
                       </div>
                       <div className="flex items-center gap-2">
                         <button
@@ -383,14 +482,23 @@ function Calendar() {
             </div>
             <aside className="w-full space-y-6 lg:w-80">
               <div className="rounded-3xl border border-white/80 bg-white/95 p-6 shadow-lg">
-                <h3 className="text-base font-semibold text-slate-900">Upcoming</h3>
+                <h3 className="text-base font-semibold text-slate-900">
+                  Upcoming
+                </h3>
                 <div className="mt-4 space-y-3">
                   {upcomingPersonal.length === 0 && (
-                    <p className="text-sm text-slate-500">Nothing scheduled! 🎉</p>
+                    <p className="text-sm text-slate-500">
+                      Nothing scheduled! 🎉
+                    </p>
                   )}
                   {upcomingPersonal.map((event) => (
-                    <div key={event.id} className="rounded-2xl border border-slate-100 bg-slate-50/70 p-3">
-                      <p className="text-sm font-semibold text-slate-900">{event.title}</p>
+                    <div
+                      key={event.id}
+                      className="rounded-2xl border border-slate-100 bg-slate-50/70 p-3"
+                    >
+                      <p className="text-sm font-semibold text-slate-900">
+                        {event.title}
+                      </p>
                       <p className="text-xs text-slate-500">
                         {new Date(event.date).toLocaleDateString(undefined, {
                           month: "short",
@@ -402,8 +510,12 @@ function Calendar() {
                 </div>
               </div>
               <div className="rounded-3xl border border-white/80 bg-white/95 p-6 shadow-lg">
-                <h3 className="text-base font-semibold text-slate-900">Progress</h3>
-                <p className="text-3xl font-bold text-slate-900">{completionRate}%</p>
+                <h3 className="text-base font-semibold text-slate-900">
+                  Progress
+                </h3>
+                <p className="text-3xl font-bold text-slate-900">
+                  {completionRate}%
+                </p>
                 <p className="text-xs text-slate-500">Tasks completed</p>
                 <div className="mt-3 h-2 rounded-full bg-slate-100">
                   <div
@@ -420,7 +532,9 @@ function Calendar() {
       {selectedEvent && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
-            <h3 className="text-lg font-semibold text-slate-900">{selectedEvent.title}</h3>
+            <h3 className="text-lg font-semibold text-slate-900">
+              {selectedEvent.title}
+            </h3>
             <p className="text-sm text-slate-500">
               {new Date(selectedEvent.date).toLocaleDateString(undefined, {
                 weekday: "long",
@@ -444,26 +558,43 @@ function Calendar() {
       {showAdminModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
-            <h3 className="text-lg font-semibold text-slate-900">New campus event</h3>
+            <h3 className="text-lg font-semibold text-slate-900">
+              New campus event
+            </h3>
             <form onSubmit={handleAdminSubmit} className="mt-4 space-y-3">
               <input
                 type="text"
                 placeholder="Title"
                 value={adminForm.title}
-                onChange={(e) => setAdminForm({ ...adminForm, title: e.target.value })}
+                onChange={(e) =>
+                  setAdminForm({ ...adminForm, title: e.target.value })
+                }
                 className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm"
                 required
               />
               <input
                 type="date"
-                value={adminForm.date}
-                onChange={(e) => setAdminForm({ ...adminForm, date: e.target.value })}
+                value={adminForm.event_date}
+                onChange={(e) =>
+                  setAdminForm({ ...adminForm, event_date: e.target.value })
+                }
                 className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm"
                 required
               />
+              <input
+                type="text"
+                placeholder="Location (optional)"
+                value={adminForm.location}
+                onChange={(e) =>
+                  setAdminForm({ ...adminForm, location: e.target.value })
+                }
+                className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm"
+              />
               <select
                 value={adminForm.type}
-                onChange={(e) => setAdminForm({ ...adminForm, type: e.target.value })}
+                onChange={(e) =>
+                  setAdminForm({ ...adminForm, type: e.target.value })
+                }
                 className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm"
               >
                 <option value="academic">Academic</option>
@@ -503,28 +634,43 @@ function Calendar() {
       {showPersonalModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
-            <h3 className="text-lg font-semibold text-slate-900">Private reminder</h3>
+            <h3 className="text-lg font-semibold text-slate-900">
+              Private reminder
+            </h3>
             <form onSubmit={handlePersonalSubmit} className="mt-4 space-y-3">
               <input
                 type="text"
                 placeholder="Title"
                 value={personalForm.title}
-                onChange={(e) => setPersonalForm({ ...personalForm, title: e.target.value })}
+                onChange={(e) =>
+                  setPersonalForm({ ...personalForm, title: e.target.value })
+                }
                 className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm"
                 required
               />
               <input
                 type="date"
-                value={personalForm.date}
-                onChange={(e) => setPersonalForm({ ...personalForm, date: e.target.value })}
+                value={personalForm.event_date}
+                onChange={(e) =>
+                  setPersonalForm({
+                    ...personalForm,
+                    event_date: e.target.value,
+                  })
+                }
                 className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm"
                 required
               />
+              <div className="text-xs text-slate-500 bg-slate-50 p-2 rounded">
+                Note: This is a private event visible only to you.
+              </div>
               <textarea
                 placeholder="Notes"
                 value={personalForm.description}
                 onChange={(e) =>
-                  setPersonalForm({ ...personalForm, description: e.target.value })
+                  setPersonalForm({
+                    ...personalForm,
+                    description: e.target.value,
+                  })
                 }
                 className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm"
                 rows={3}

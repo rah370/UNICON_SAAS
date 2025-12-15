@@ -126,9 +126,12 @@ function StudentLogin() {
                       />
                       Remember
                     </label>
-                    <a href="#" className="hover:underline text-[#4a5a68]">
+                    <Link
+                      to="/forgot-password"
+                      className="hover:underline text-[#4a5a68]"
+                    >
                       Forgot password?
-                    </a>
+                    </Link>
                   </div>
                   {error && (
                     <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
