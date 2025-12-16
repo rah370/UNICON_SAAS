@@ -3,62 +3,73 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Clear Cache - UNICON SAAS</title>
+    <title>Clear Cache - UNICON</title>
     <style>
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             max-width: 600px;
             margin: 50px auto;
             padding: 20px;
-            background: #f5f5f5;
+            background: #f5f7fa;
         }
         .container {
             background: white;
             padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
         h1 {
-            color: #333;
+            color: #1e293b;
             margin-bottom: 20px;
         }
         button {
-            background: #365b6d;
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
             color: white;
             border: none;
             padding: 12px 24px;
-            border-radius: 6px;
-            cursor: pointer;
+            border-radius: 8px;
             font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
             margin: 10px 5px;
+            width: 100%;
         }
         button:hover {
-            background: #2a4754;
+            opacity: 0.9;
+        }
+        button:active {
+            transform: scale(0.98);
         }
         .status {
             margin-top: 20px;
             padding: 15px;
-            border-radius: 6px;
-            background: #f0f0f0;
+            border-radius: 8px;
+            background: #f1f5f9;
+            color: #334155;
         }
         .success {
-            background: #d4edda;
-            color: #155724;
+            background: #d1fae5;
+            color: #065f46;
         }
         .error {
-            background: #f8d7da;
-            color: #721c24;
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        .info {
+            background: #dbeafe;
+            color: #1e40af;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Clear Cache - UNICON SAAS</h1>
-        <p>Click the buttons below to clear different types of cache:</p>
+        <h1>🧹 Clear Cache Utility</h1>
+        <p>Use this tool to clear service worker cache and browser storage.</p>
         
-        <button onclick="clearServiceWorkers()">Clear Service Workers</button>
-        <button onclick="clearCaches()">Clear All Caches</button>
+        <button onclick="clearServiceWorker()">Clear Service Worker Cache</button>
+        <button onclick="clearLocalStorage()">Clear Local Storage</button>
         <button onclick="clearAll()">Clear Everything</button>
+        <button onclick="reloadPage()">Reload Page</button>
         
         <div id="status"></div>
     </div>
@@ -66,80 +77,71 @@
     <script>
         function showStatus(message, type = 'info') {
             const statusDiv = document.getElementById('status');
-            statusDiv.textContent = message;
             statusDiv.className = `status ${type}`;
+            statusDiv.textContent = message;
+            setTimeout(() => {
+                statusDiv.textContent = '';
+                statusDiv.className = 'status';
+            }, 5000);
         }
 
-        async function clearServiceWorkers() {
+        async function clearServiceWorker() {
             try {
                 if ('serviceWorker' in navigator) {
                     const registrations = await navigator.serviceWorker.getRegistrations();
-                    showStatus(`Found ${registrations.length} service worker(s)...`, 'info');
                     
+                    for (let registration of registrations) {
+                        await registration.unregister();
+                        console.log('Service Worker unregistered:', registration);
+                    }
+                    
+                    // Clear all caches
+                    const cacheNames = await caches.keys();
                     await Promise.all(
-                        registrations.map(reg => reg.unregister())
+                        cacheNames.map(cacheName => caches.delete(cacheName))
                     );
                     
-                    showStatus(`✓ Successfully unregistered ${registrations.length} service worker(s)`, 'success');
+                    showStatus(`✅ Cleared ${registrations.length} service worker(s) and ${cacheNames.length} cache(s)`, 'success');
                 } else {
-                    showStatus('Service Workers not supported', 'error');
+                    showStatus('Service Workers not supported in this browser', 'error');
                 }
             } catch (error) {
-                showStatus(`Error: ${error.message}`, 'error');
+                console.error('Error clearing service worker:', error);
+                showStatus('Error clearing service worker: ' + error.message, 'error');
             }
         }
 
-        async function clearCaches() {
+        function clearLocalStorage() {
             try {
-                if ('caches' in window) {
-                    const cacheNames = await caches.keys();
-                    showStatus(`Found ${cacheNames.length} cache(s)...`, 'info');
-                    
-                    await Promise.all(
-                        cacheNames.map(name => caches.delete(name))
-                    );
-                    
-                    showStatus(`✓ Successfully cleared ${cacheNames.length} cache(s)`, 'success');
-                } else {
-                    showStatus('Cache API not supported', 'error');
-                }
+                const keys = Object.keys(localStorage);
+                localStorage.clear();
+                showStatus(`✅ Cleared ${keys.length} localStorage item(s)`, 'success');
             } catch (error) {
-                showStatus(`Error: ${error.message}`, 'error');
+                console.error('Error clearing localStorage:', error);
+                showStatus('Error clearing localStorage: ' + error.message, 'error');
             }
         }
 
         async function clearAll() {
-            try {
-                // Clear service workers
-                if ('serviceWorker' in navigator) {
-                    const registrations = await navigator.serviceWorker.getRegistrations();
-                    await Promise.all(registrations.map(reg => reg.unregister()));
-                }
-                
-                // Clear caches
-                if ('caches' in window) {
-                    const cacheNames = await caches.keys();
-                    await Promise.all(cacheNames.map(name => caches.delete(name)));
-                }
-                
-                // Clear localStorage and sessionStorage
-                localStorage.clear();
-                sessionStorage.clear();
-                
-                showStatus('✓ Successfully cleared all caches, service workers, and storage', 'success');
-                
-                // Reload page after 2 seconds
-                setTimeout(() => {
-                    window.location.reload();
-                }, 2000);
-            } catch (error) {
-                showStatus(`Error: ${error.message}`, 'error');
-            }
+            await clearServiceWorker();
+            clearLocalStorage();
+            showStatus('✅ All caches and storage cleared!', 'success');
         }
 
-        // Auto-clear on page load
-        window.addEventListener('load', () => {
-            clearAll();
+        function reloadPage() {
+            window.location.reload(true);
+        }
+
+        // Auto-check on load
+        window.addEventListener('load', async () => {
+            if ('serviceWorker' in navigator) {
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                const cacheNames = await caches.keys();
+                
+                if (registrations.length > 0 || cacheNames.length > 0) {
+                    showStatus(`Found ${registrations.length} service worker(s) and ${cacheNames.length} cache(s)`, 'info');
+                }
+            }
         });
     </script>
 </body>

@@ -1,9 +1,8 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../../contexts/AuthContext";
-import { useBranding } from "../../contexts/BrandingContext";
-import AdminHeader from "../../apps/admin/components/AdminHeader";
-import { useToast } from "../../components/Toast";
+import { useAuth } from "../../shared/contexts/AuthContext";
+import { useBranding } from "../../shared/contexts/BrandingContext";
+import { useToast } from "../../shared/components/Toast";
 
 function SectionCard({ title, children }) {
   return (
@@ -29,6 +28,12 @@ export default function AdminSettings() {
     notifications: true,
     emailAlerts: true,
     moderationAuto: false,
+    allowStudentPosts: true,
+    requireEmailVerification: true,
+    maxFileSize: 10,
+    allowedFileTypes: "jpg,png,pdf,doc",
+    maintenanceMode: false,
+    apiKey: "",
   });
 
   const handleUpdate = (field, value) => {
@@ -40,12 +45,14 @@ export default function AdminSettings() {
 
   const saveSettings = async () => {
     try {
-      // TODO: Add API endpoint for saving admin settings
-      // await adminApi.saveSettings(settings);
+      // Save branding settings
       updateSchoolBranding({
         name: settings.name,
         color: settings.color,
       });
+
+      // In a real app, you would save other settings to the backend
+      // For now, we'll just show a success message
       showToast("Settings saved successfully!", "success");
     } catch (err) {
       console.error("Failed to save settings:", err);
@@ -62,7 +69,7 @@ export default function AdminSettings() {
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 text-white">
           <div className="flex items-center gap-4">
             <button
-              onClick={() => navigate("/admin-dashboard")}
+              onClick={() => navigate("/admin/dashboard")}
               className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm font-semibold hover:bg-white/15 transition"
             >
               ← Back
@@ -146,12 +153,79 @@ export default function AdminSettings() {
           </div>
         </SectionCard>
 
+        <SectionCard title="Content Moderation">
+          <div className="space-y-3">
+            {[
+              { key: "allowStudentPosts", label: "Allow students to create posts" },
+              { key: "moderationAuto", label: "Auto-moderation for spam" },
+              { key: "requireEmailVerification", label: "Require email verification" },
+            ].map(({ key, label }) => (
+              <label
+                key={key}
+                className="flex items-center justify-between rounded-2xl border border-white/10 bg-black/20 p-3 cursor-pointer hover:bg-black/30 transition"
+              >
+                <span>{label}</span>
+                <input
+                  type="checkbox"
+                  checked={settings[key]}
+                  onChange={(e) => handleUpdate(key, e.target.checked)}
+                  className="toggle"
+                />
+              </label>
+            ))}
+          </div>
+        </SectionCard>
+
+        <SectionCard title="File Upload Settings">
+          <div className="grid gap-4 text-sm text-white/80 lg:grid-cols-2">
+            <div>
+              <label className="text-xs text-white/60 mb-1 block">Max File Size (MB)</label>
+              <input
+                type="number"
+                value={settings.maxFileSize}
+                onChange={(e) => handleUpdate("maxFileSize", Number(e.target.value))}
+                className="w-full rounded-2xl border border-white/10 bg-black/20 px-3 py-2 text-white"
+                min={1}
+                max={100}
+              />
+            </div>
+            <div>
+              <label className="text-xs text-white/60 mb-1 block">Allowed File Types</label>
+              <input
+                type="text"
+                value={settings.allowedFileTypes}
+                onChange={(e) => handleUpdate("allowedFileTypes", e.target.value)}
+                className="w-full rounded-2xl border border-white/10 bg-black/20 px-3 py-2 text-white"
+                placeholder="jpg,png,pdf,doc"
+              />
+            </div>
+          </div>
+        </SectionCard>
+
+        <SectionCard title="System Settings">
+          <div className="space-y-3">
+            <label className="flex items-center justify-between rounded-2xl border border-white/10 bg-black/20 p-3 cursor-pointer hover:bg-black/30 transition">
+              <span>Maintenance Mode</span>
+              <input
+                type="checkbox"
+                checked={settings.maintenanceMode}
+                onChange={(e) => handleUpdate("maintenanceMode", e.target.checked)}
+                className="toggle"
+              />
+            </label>
+            {settings.maintenanceMode && (
+              <div className="rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-3 text-sm text-yellow-300">
+                ⚠️ Platform will be unavailable to students during maintenance mode
+              </div>
+            )}
+          </div>
+        </SectionCard>
+
         <SectionCard title="Notifications">
           <div className="space-y-3">
             {[
               { key: "notifications", label: "Enable notifications" },
               { key: "emailAlerts", label: "Email alerts for flagged content" },
-              { key: "moderationAuto", label: "Auto-moderation for spam" },
             ].map(({ key, label }) => (
               <label
                 key={key}

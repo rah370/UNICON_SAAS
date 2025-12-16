@@ -63,9 +63,7 @@ function Header() {
               onSubmit={(e) => {
                 e.preventDefault();
                 if (searchQuery.trim()) {
-                  navigate(
-                    `/search?q=${encodeURIComponent(searchQuery.trim())}`
-                  );
+                  navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}&type=all`);
                 }
               }}
               className="flex items-center gap-3 rounded-full border border-slate-100 bg-white px-4 py-2 shadow-[inset_0_1px_0_rgba(148,163,184,0.3)]"
@@ -85,9 +83,9 @@ function Header() {
               </svg>
               <input
                 type="text"
-                placeholder="Search posts, users, updates..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search posts, users, updates..."
                 className="flex-1 bg-transparent text-sm text-slate-600 placeholder-slate-400 focus:outline-none"
               />
             </form>

@@ -1,32 +1,37 @@
 import React, { useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider, useAuth } from "../../contexts/AuthContext";
-import { BrandingProvider } from "../../contexts/BrandingContext";
-import { ToastProvider } from "../../components/Toast";
+import AdminLogin from "./pages/AdminLogin";
+import AdminDashboard from "./pages/AdminDashboard";
+import AdminUsers from "./pages/AdminUsers";
+import AdminAnnouncements from "./pages/AdminAnnouncements";
+import AdminEvents from "./pages/AdminEvents";
+import AdminCalendar from "./pages/AdminCalendar";
+import AdminAnalytics from "./pages/AdminAnalytics";
+import AdminMarketplace from "./pages/AdminMarketplace";
+import AdminSettings from "./pages/AdminSettings";
+import { AuthProvider, useAuth } from "../shared/contexts/AuthContext";
+import { BrandingProvider } from "../shared/contexts/BrandingContext";
+import { ToastProvider } from "../shared/components/Toast";
 import AdminLayout from "./components/AdminLayout";
-import AdminLogin from "../../pages/AdminLogin";
-import AdminDashboard from "../../pages/AdminDashboard";
-import AdminAnalytics from "../../pages/admin/AdminAnalytics";
-import AdminEvents from "../../pages/admin/AdminEvents";
-import AdminMarketplace from "../../pages/admin/AdminMarketplace";
-import AdminSettings from "../../pages/admin/AdminSettings";
-import AdminUsers from "../../pages/admin/AdminUsers";
-import AdminAnnouncements from "../../pages/admin/AdminAnnouncements";
-import AdminCalendar from "../../pages/admin/AdminCalendar";
 
 // Protected Route Component for Admin
 function ProtectedAdminRoute({ children }) {
-  const { isAuthenticated, user, loading } = useAuth();
+  const { isAuthenticated, isAdmin, user, loading } = useAuth();
 
+  // Wait for auth check to complete before redirecting
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-900">
-        <div className="text-white">Loading...</div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-slate-600">Loading...</div>
       </div>
     );
   }
 
-  if (!isAuthenticated || user?.role !== "admin") {
+  if (!isAuthenticated) {
+    return <Navigate to="/admin/login" replace />;
+  }
+
+  if (!isAdmin && user?.role !== "admin") {
     return <Navigate to="/admin/login" replace />;
   }
 
@@ -34,14 +39,17 @@ function ProtectedAdminRoute({ children }) {
 }
 
 function AdminApp() {
-  // Unregister service workers to prevent offline issues
+  // Register service worker for offline functionality
   useEffect(() => {
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.getRegistrations().then((registrations) => {
-        registrations.forEach((registration) => {
-          registration.unregister();
+      navigator.serviceWorker
+        .register("/sw.js")
+        .then((registration) => {
+          console.log("Service Worker registered successfully:", registration);
+        })
+        .catch((error) => {
+          console.log("Service Worker registration failed:", error);
         });
-      });
     }
   }, []);
 
@@ -50,12 +58,13 @@ function AdminApp() {
       <AuthProvider>
         <ToastProvider>
           <Routes>
-            {/* Public Admin Routes */}
-            <Route path="/login" element={<AdminLogin />} />
+            {/* Public Admin Routes - handle both nested and direct access */}
+            <Route index element={<AdminLogin />} />
+            <Route path="login" element={<AdminLogin />} />
 
-            {/* Protected Admin Routes with Layout */}
+            {/* Protected Admin Routes - nested paths */}
             <Route
-              path="/dashboard"
+              path="dashboard"
               element={
                 <ProtectedAdminRoute>
                   <AdminLayout>
@@ -65,27 +74,7 @@ function AdminApp() {
               }
             />
             <Route
-              path="/announcements"
-              element={
-                <ProtectedAdminRoute>
-                  <AdminLayout>
-                    <AdminAnnouncements />
-                  </AdminLayout>
-                </ProtectedAdminRoute>
-              }
-            />
-            <Route
-              path="/events"
-              element={
-                <ProtectedAdminRoute>
-                  <AdminLayout>
-                    <AdminEvents />
-                  </AdminLayout>
-                </ProtectedAdminRoute>
-              }
-            />
-            <Route
-              path="/users"
+              path="users"
               element={
                 <ProtectedAdminRoute>
                   <AdminLayout>
@@ -95,27 +84,27 @@ function AdminApp() {
               }
             />
             <Route
-              path="/marketplace"
+              path="announcements"
               element={
                 <ProtectedAdminRoute>
                   <AdminLayout>
-                    <AdminMarketplace />
+                    <AdminAnnouncements />
                   </AdminLayout>
                 </ProtectedAdminRoute>
               }
             />
             <Route
-              path="/analytics"
+              path="events"
               element={
                 <ProtectedAdminRoute>
                   <AdminLayout>
-                    <AdminAnalytics />
+                    <AdminEvents />
                   </AdminLayout>
                 </ProtectedAdminRoute>
               }
             />
             <Route
-              path="/calendar"
+              path="calendar"
               element={
                 <ProtectedAdminRoute>
                   <AdminLayout>
@@ -125,7 +114,27 @@ function AdminApp() {
               }
             />
             <Route
-              path="/settings"
+              path="analytics"
+              element={
+                <ProtectedAdminRoute>
+                  <AdminLayout>
+                    <AdminAnalytics />
+                  </AdminLayout>
+                </ProtectedAdminRoute>
+              }
+            />
+            <Route
+              path="marketplace"
+              element={
+                <ProtectedAdminRoute>
+                  <AdminLayout>
+                    <AdminMarketplace />
+                  </AdminLayout>
+                </ProtectedAdminRoute>
+              }
+            />
+            <Route
+              path="settings"
               element={
                 <ProtectedAdminRoute>
                   <AdminLayout>
@@ -135,9 +144,8 @@ function AdminApp() {
               }
             />
 
-            {/* Default redirect */}
-            <Route path="/" element={<Navigate to="/admin/login" replace />} />
-            <Route path="*" element={<Navigate to="/admin/login" replace />} />
+            {/* Fallback */}
+            <Route path="*" element={<AdminLogin />} />
           </Routes>
         </ToastProvider>
       </AuthProvider>

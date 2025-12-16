@@ -1,104 +1,161 @@
 import React from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { useAuth } from "../../../contexts/AuthContext";
-import AdminHeader from "./AdminHeader";
+import { useAuth } from "../../shared/contexts/AuthContext";
+import { useBranding } from "../../shared/contexts/BrandingContext";
 
-const adminPalette = {
-  primary: "#6b21a8",
-  primaryDark: "#581c87",
-  surface: "#0b1020",
-  card: "#10172c",
-  border: "rgba(255,255,255,0.08)",
-};
-
-const navItems = [
-  { path: "/admin/dashboard", label: "Overview", id: "overview" },
-  { path: "/admin/announcements", label: "Announcements", id: "announcements" },
-  { path: "/admin/events", label: "Events", id: "events" },
-  { path: "/admin/users", label: "People", id: "users" },
-  { path: "/admin/marketplace", label: "Marketplace", id: "marketplace" },
-  { path: "/admin/analytics", label: "Analytics", id: "analytics" },
-  { path: "/admin/calendar", label: "Calendar", id: "calendar" },
-  { path: "/admin/settings", label: "Settings", id: "settings" },
-];
-
-function AdminLayout({ children }) {
+export function AdminLayout({ children, title, subtitle, actions }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
-
-  const isActive = (path) => {
-    if (path === "/admin/dashboard") {
-      return (
-        location.pathname === "/admin/dashboard" ||
-        location.pathname === "/admin-dashboard"
-      );
-    }
-    return (
-      location.pathname === path || location.pathname.startsWith(path + "/")
-    );
-  };
-
-  const tabClass = (id) => {
-    const active = navItems.find((item) => isActive(item.path))?.id === id;
-    return `w-full text-left px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
-      active
-        ? "bg-purple-600 text-white shadow-lg"
-        : "text-white/60 hover:text-white hover:bg-white/10"
-    }`;
-  };
+  const { schoolBranding } = useBranding();
 
   return (
     <div
-      className="min-h-screen"
-      style={{ background: "linear-gradient(135deg,#05070e,#1e1140)" }}
+      className="min-h-screen relative overflow-hidden"
+      style={{
+        background:
+          "linear-gradient(135deg, #f4f7fb 0%, #eef2f6 45%, #dfe6ed 100%)",
+      }}
     >
-      <header className="border-b border-white/10 bg-black/30 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 text-white">
+      {/* Subtle animated background - matching student app */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+        <div
+          className="absolute inset-0 opacity-80"
+          style={{
+            background:
+              "linear-gradient(125deg, color-mix(in srgb, var(--brand-color, #365b6d) 8%, transparent), transparent)",
+          }}
+        ></div>
+        <div
+          className="absolute -top-24 left-1/4 w-96 h-96 rounded-full blur-3xl animate-bounce"
+          style={{
+            background:
+              "color-mix(in srgb, var(--brand-color, #365b6d) 18%, transparent)",
+          }}
+        ></div>
+        <div
+          className="absolute bottom-0 right-1/5 w-[28rem] h-[28rem] rounded-full blur-3xl animate-bounce"
+          style={{
+            animationDelay: "1s",
+            background:
+              "color-mix(in srgb, var(--brand-color, #365b6d) 12%, transparent)",
+          }}
+        ></div>
+      </div>
+
+      {/* Header */}
+      <header className="relative z-20 sticky top-0 bg-white/90 backdrop-blur-xl border-b border-slate-200/70 shadow-sm">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-4">
-            <button
-              onClick={() => navigate("/admin/dashboard")}
-              className="text-xl font-bold hover:opacity-80 transition"
-            >
-              UNICON Admin
-            </button>
+            {title && (
+              <>
+                <button
+                  onClick={() => navigate("/admin/dashboard")}
+                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
+                >
+                  ← Back
+                </button>
+                <div>
+                  <h1 className="text-2xl font-bold text-slate-900">{title}</h1>
+                  {subtitle && (
+                    <p className="text-sm text-slate-600">{subtitle}</p>
+                  )}
+                </div>
+              </>
+            )}
+            {!title && (
+              <div className="flex items-center gap-3">
+                <div className="rounded-2xl border border-slate-200 bg-white/80 p-2">
+                  <span className="text-sm font-semibold text-slate-700">
+                    {schoolBranding.name?.[0] || "A"}
+                  </span>
+                </div>
+                <div>
+                  <p className="text-sm uppercase tracking-[0.35em] text-slate-500">
+                    Admin Dashboard
+                  </p>
+                  <h1 className="text-xl font-bold text-slate-900">
+                    {schoolBranding.name || "UNICON"}
+                  </h1>
+                </div>
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-3">
-            <p className="text-sm font-semibold">{user?.name}</p>
-            <div className="h-8 w-8 rounded-full border border-white/20 bg-white/10 flex items-center justify-center text-xs font-bold">
-              {user?.name?.charAt(0)}
+            <div className="text-right">
+              <p className="text-sm font-semibold text-slate-900">{user?.name}</p>
+              <p className="text-xs text-slate-500">{user?.role}</p>
             </div>
-            <button
-              onClick={logout}
-              className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm font-semibold hover:bg-white/15 transition"
-            >
-              Logout
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  // Navigate to student app - if authenticated, go to for-you, otherwise landing
+                  if (user && user.role) {
+                    // User is authenticated, go to student dashboard
+                    window.location.href = "/for-you";
+                  } else {
+                    // Not authenticated, go to landing page
+                    window.location.href = "/";
+                  }
+                }}
+                className="rounded-full border border-slate-200 bg-white px-4 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
+              >
+                Student View
+              </button>
+              <button
+                onClick={logout}
+                className="rounded-full border border-red-200 bg-white px-4 py-1.5 text-sm font-semibold text-red-600 hover:bg-red-50 transition"
+              >
+                Log out
+              </button>
+            </div>
           </div>
         </div>
       </header>
 
-      <main className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-8 lg:flex-row">
-        <aside className="lg:w-64">
-          <nav className="sticky top-6 flex flex-col gap-2">
-            {navItems.map((item) => (
-              <button
-                key={item.id}
-                className={tabClass(item.id)}
-                onClick={() => navigate(item.path)}
-              >
-                {item.label}
-              </button>
-            ))}
-          </nav>
-        </aside>
-
-        <section className="flex-1 space-y-6 pb-16 text-white">
-          {children}
-        </section>
+      {/* Main Content */}
+      <main className="relative z-10 mx-auto max-w-7xl px-4 py-8">
+        {children}
       </main>
     </div>
   );
 }
 
 export default AdminLayout;
+
+export function AdminCard({ title, children, actions, className = "" }) {
+  return (
+    <div
+      className={`rounded-[32px] border border-white/70 bg-white/90 p-6 shadow-xl backdrop-blur ${className}`}
+    >
+      {title && (
+        <div className="mb-5 flex flex-wrap items-center gap-3">
+          <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
+          {actions && (
+            <div className="ml-auto flex flex-wrap gap-2">{actions}</div>
+          )}
+        </div>
+      )}
+      {children}
+    </div>
+  );
+}
+
+export function AdminStatCard({ label, value, trend, suffix }) {
+  return (
+    <div className="rounded-[32px] border border-white/70 bg-white/90 p-6 shadow-xl backdrop-blur">
+      <p className="text-xs uppercase tracking-[0.35em] text-slate-500">
+        {label}
+      </p>
+      <p className="mt-2 text-3xl font-bold text-slate-900">
+        {value}
+        {suffix}
+      </p>
+      {trend && (
+        <p className="text-xs text-emerald-600 mt-1">
+          ▲ {trend} vs last period
+        </p>
+      )}
+    </div>
+  );
+}

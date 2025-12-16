@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../contexts/AuthContext";
-import { useBranding } from "../contexts/BrandingContext";
+import { useAuth } from "../../shared/contexts/AuthContext";
+import { useBranding } from "../../shared/contexts/BrandingContext";
 
 function StudentLogin() {
   const [email, setEmail] = useState("");
@@ -126,10 +126,7 @@ function StudentLogin() {
                       />
                       Remember
                     </label>
-                    <Link
-                      to="/forgot-password"
-                      className="hover:underline text-[#4a5a68]"
-                    >
+                    <Link to="/forgot-password" className="hover:underline text-[#4a5a68]">
                       Forgot password?
                     </Link>
                   </div>

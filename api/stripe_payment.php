@@ -2,6 +2,7 @@
 // Stripe Payment Integration
 require_once 'database.php';
 require_once 'auth.php';
+require_once 'env_loader.php';
 
 class StripePayment {
     private $db;
@@ -11,10 +12,10 @@ class StripePayment {
     
     public function __construct() {
         $this->db = Database::getInstance();
-        // In production, use environment variables
-        $this->stripeSecretKey = 'sk_test_your_stripe_secret_key'; // Replace with actual key
-        $this->stripePublishableKey = 'pk_test_your_stripe_publishable_key'; // Replace with actual key
-        $this->webhookSecret = 'whsec_your_webhook_secret'; // Replace with actual webhook secret
+        // Use environment variables with fallback to placeholders
+        $this->stripeSecretKey = env('STRIPE_SECRET_KEY', 'sk_test_your_stripe_secret_key');
+        $this->stripePublishableKey = env('STRIPE_PUBLIC_KEY', 'pk_test_your_stripe_publishable_key');
+        $this->webhookSecret = env('STRIPE_WEBHOOK_SECRET', 'whsec_your_webhook_secret');
     }
     
     // Create Stripe customer

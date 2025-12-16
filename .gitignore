@@ -1,2 +1,38 @@
 node_modules/
 dist/
+
+# Environment variables and secrets
+.env
+.env.local
+.env.production
+.env.development
+*.env
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Local configuration files
+config.local.php
+api/database.local.php
+*.local.*
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+*.tmp

@@ -1,12 +1,50 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { useAuth } from "../contexts/AuthContext";
-import { useBranding } from "../contexts/BrandingContext";
-import { EngagementDashboard } from "../components/EngagementDashboard";
-import { studentApi } from "../apps/shared/utils/api";
-import { useToast } from "../components/Toast";
-import { CardSkeleton, ListSkeleton } from "../components/SkeletonLoader";
-import { uploadImage, compressImage } from "../apps/shared/utils/fileUpload";
+import { useAuth } from "../../shared/contexts/AuthContext";
+import { useBranding } from "../../shared/contexts/BrandingContext";
+import { studentApi, apiRequest } from "../../shared/utils/api";
+import { EngagementDashboard } from "../../shared/components/EngagementDashboard";
+import { useToast } from "../../shared/components/Toast";
+import { uploadImage, compressImage } from "../../shared/utils/fileUpload";
+
+const quickStats = [
+  { label: "Focus tasks", value: "2", meta: "Due this week" },
+  { label: "Events", value: "3", meta: "RSVP today" },
+  { label: "Communities", value: "7", meta: "Active" },
+];
+
+// Default tasks will be replaced by API data
+const defaultFocusTasks = [
+  {
+    id: 1,
+    title: "Complete Math Assignment",
+    detail: "Due tomorrow at 11:59 PM",
+    tone: "from-sky-500/20 to-sky-500/10",
+    badge: "Priority",
+  },
+  {
+    id: 2,
+    title: "Study for Chemistry Test",
+    detail: "Test on Friday",
+    tone: "from-emerald-500/20 to-emerald-500/10",
+    badge: "Reminder",
+  },
+];
+
+const upcomingEvents = [
+  {
+    id: 1,
+    title: "CS315 Study Group",
+    time: "Today · 7:30 PM",
+    location: "Library Basement",
+  },
+  {
+    id: 2,
+    title: "Spring Festival RSVP",
+    time: "Tomorrow · 4:00 PM",
+    location: "Campus Quad",
+  },
+];
 
 const quickLinks = [
   { label: "Campus Pulse", href: "/community", emoji: "🌐" },
@@ -14,20 +52,24 @@ const quickLinks = [
   { label: "Marketplace", href: "/marketplace", emoji: "🛍️" },
 ];
 
-const activityFeed = [
-  {
-    id: 1,
-    title: "New post in CS315 channel",
-    detail: '"Anyone want to study for midterm?"',
-    icon: "💬",
-  },
-  {
-    id: 2,
-    title: "Spring Festival RSVP",
-    detail: "You've RSVP'd for the event",
-    icon: "🎉",
-  },
-];
+// Activity feed will be populated from API notifications
+const getNotificationIcon = (type) => {
+  switch (type) {
+    case "post":
+    case "comment":
+      return "💬";
+    case "event":
+      return "🎉";
+    case "message":
+      return "📩";
+    case "marketplace":
+      return "🛒";
+    case "task":
+      return "📋";
+    default:
+      return "🔔";
+  }
+};
 
 const resourceCards = [
   {
@@ -143,150 +185,125 @@ function ForYou() {
   const [currentMomentIndex, setCurrentMomentIndex] = useState(0);
   const [showStoryViewer, setShowStoryViewer] = useState(false);
   const [showAddStoryModal, setShowAddStoryModal] = useState(false);
-
-  // Dashboard data from API
-  const [quickStats, setQuickStats] = useState([
-    { label: "Focus tasks", value: "0", meta: "Loading..." },
-    { label: "Events", value: "0", meta: "Loading..." },
-    { label: "Communities", value: "0", meta: "Loading..." },
-  ]);
-  const [focusTasks, setFocusTasks] = useState([]);
-  const [upcomingEvents, setUpcomingEvents] = useState([]);
+  const [focusTasks, setFocusTasks] = useState(defaultFocusTasks);
   const [activityFeed, setActivityFeed] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
+  // Fetch tasks from API
   useEffect(() => {
-    fetchDashboardData();
-  }, []);
+    const fetchTasks = async () => {
+      if (!user) return;
 
-  const fetchDashboardData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
+      try {
+        const result = await studentApi.getTasks();
+        const now = new Date();
+        const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-      // Try to fetch from /api/dashboard or /api/feed
-      const data = await studentApi
-        .getDashboard()
-        .catch(() => studentApi.getFeed());
+        const upcomingTasks = (result.tasks || [])
+          .filter((task) => {
+            if (task.is_completed) return false;
+            const dueDate = task.due_date ? new Date(task.due_date) : null;
+            return dueDate && dueDate <= weekFromNow;
+          })
+          .sort((a, b) => {
+            const dateA = a.due_date
+              ? new Date(a.due_date)
+              : new Date(9999, 12, 31);
+            const dateB = b.due_date
+              ? new Date(b.due_date)
+              : new Date(9999, 12, 31);
+            return dateA - dateB;
+          })
+          .slice(0, 3)
+          .map((task) => {
+            const dueDate = task.due_date ? new Date(task.due_date) : null;
+            const isToday =
+              dueDate && dueDate.toDateString() === now.toDateString();
+            const isTomorrow =
+              dueDate &&
+              dueDate.toDateString() ===
+                new Date(now.getTime() + 24 * 60 * 60 * 1000).toDateString();
 
-      // Update quick stats
-      if (data.stats) {
-        setQuickStats([
-          {
-            label: "Focus tasks",
-            value: String(data.stats.tasks_count || data.stats.tasks || 0),
-            meta: "Due this week",
-          },
-          {
-            label: "Events",
-            value: String(data.stats.events_count || data.stats.events || 0),
-            meta: "RSVP today",
-          },
-          {
-            label: "Communities",
-            value: String(
-              data.stats.communities_count || data.stats.communities || 0
-            ),
-            meta: "Active",
-          },
-        ]);
-      }
+            let detail = "";
+            if (isToday) {
+              detail = `Due today${
+                task.due_date?.includes(" ")
+                  ? " at " + task.due_date.split(" ")[1]
+                  : ""
+              }`;
+            } else if (isTomorrow) {
+              detail = `Due tomorrow${
+                task.due_date?.includes(" ")
+                  ? " at " + task.due_date.split(" ")[1]
+                  : ""
+              }`;
+            } else if (dueDate) {
+              detail = `Due ${dueDate.toLocaleDateString(undefined, {
+                month: "short",
+                day: "numeric",
+              })}`;
+            } else {
+              detail = "No due date";
+            }
 
-      // Update focus tasks
-      if (data.tasks) {
-        setFocusTasks(
-          data.tasks.map((task) => ({
-            id: task.id,
-            title: task.title,
-            detail: task.due_date
-              ? `Due ${new Date(task.due_date).toLocaleDateString()}`
-              : task.description || "No due date",
-            tone: "from-sky-500/20 to-sky-500/10",
-            badge: task.priority || "Task",
-          }))
-        );
-      } else {
-        // Fallback: fetch tasks separately
-        try {
-          const tasksData = await studentApi.getTasks();
-          setFocusTasks(
-            (tasksData.tasks || []).slice(0, 2).map((task) => ({
+            return {
               id: task.id,
               title: task.title,
-              detail: task.due_date
-                ? `Due ${new Date(task.due_date).toLocaleDateString()}`
-                : task.description || "No due date",
-              tone: "from-sky-500/20 to-sky-500/10",
-              badge: task.priority || "Task",
-            }))
-          );
-        } catch (err) {
-          console.error("Failed to fetch tasks:", err);
-        }
-      }
+              detail,
+              tone:
+                task.priority === "high"
+                  ? "from-red-500/20 to-red-500/10"
+                  : task.priority === "medium"
+                  ? "from-sky-500/20 to-sky-500/10"
+                  : "from-emerald-500/20 to-emerald-500/10",
+              badge:
+                task.priority === "high"
+                  ? "Priority"
+                  : task.priority === "medium"
+                  ? "Normal"
+                  : "Low",
+            };
+          });
 
-      // Update upcoming events
-      if (data.events) {
-        setUpcomingEvents(
-          data.events.slice(0, 2).map((event) => ({
-            id: event.id,
-            title: event.title,
-            time: event.event_date
-              ? new Date(event.event_date).toLocaleDateString("en-US", {
-                  weekday: "short",
-                  hour: "numeric",
-                  minute: "2-digit",
-                })
-              : "TBA",
-            location: event.location || event.venue || "TBA",
-          }))
-        );
-      } else {
-        // Fallback: fetch events separately
-        try {
-          const eventsData = await studentApi.getEvents();
-          const publicEvents = (eventsData.events || []).filter(
-            (e) => e.is_public
-          );
-          setUpcomingEvents(
-            publicEvents.slice(0, 2).map((event) => ({
-              id: event.id,
-              title: event.title,
-              time: event.event_date
-                ? new Date(event.event_date).toLocaleDateString("en-US", {
-                    weekday: "short",
-                    hour: "numeric",
-                    minute: "2-digit",
-                  })
-                : "TBA",
-              location: event.location || event.venue || "TBA",
-            }))
-          );
-        } catch (err) {
-          console.error("Failed to fetch events:", err);
+        if (upcomingTasks.length > 0) {
+          setFocusTasks(upcomingTasks);
         }
+      } catch (err) {
+        console.error("Failed to fetch tasks:", err);
+        // Keep default tasks on error
       }
+    };
 
-      // Update activity feed
-      if (data.activity || data.feed) {
-        setActivityFeed(
-          (data.activity || data.feed || []).slice(0, 2).map((item, idx) => ({
-            id: item.id || idx,
-            title: item.title || item.type || "Activity",
-            detail: item.content || item.description || "",
-            icon: item.icon || "💬",
-          }))
-        );
+    fetchTasks();
+  }, [user]);
+
+  // Fetch notifications for activity feed
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      if (!user) return;
+
+      try {
+        const result = await apiRequest("/notifications");
+        // Convert notifications to activity feed format
+        const activities = (result.notifications || [])
+          .slice(0, 5) // Show only latest 5
+          .map((notif) => ({
+            id: notif.id,
+            title: notif.title || "Notification",
+            detail: notif.message || "",
+            icon: getNotificationIcon(notif.type),
+            link: notif.link,
+            timestamp: notif.created_at,
+          }));
+        setActivityFeed(activities);
+      } catch (err) {
+        console.error("Failed to fetch notifications:", err);
+        // Keep empty array on error
+        setActivityFeed([]);
       }
-    } catch (err) {
-      console.error("Failed to fetch dashboard data:", err);
-      setError(err.message || "Failed to load dashboard data");
-      showToast("Failed to load dashboard data", "error");
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+
+    fetchNotifications();
+  }, [user]);
 
   const handleStoryClick = (story) => {
     // "Your Story" should always trigger "add story" flow when clicked
@@ -416,31 +433,20 @@ function ForYou() {
               </div>
             </div>
             <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-              {loading
-                ? Array.from({ length: 3 }).map((_, i) => (
-                    <div
-                      key={i}
-                      className="rounded-2xl border border-slate-100 bg-slate-50/70 px-4 py-3 animate-pulse"
-                    >
-                      <div className="h-3 bg-slate-200 rounded w-20 mb-2"></div>
-                      <div className="h-8 bg-slate-200 rounded w-12 mb-1"></div>
-                      <div className="h-2 bg-slate-200 rounded w-24"></div>
-                    </div>
-                  ))
-                : quickStats.map((stat) => (
-                    <div
-                      key={stat.label}
-                      className="rounded-2xl border border-slate-100 bg-slate-50/70 px-4 py-3"
-                    >
-                      <p className="text-xs uppercase tracking-[0.35em] text-slate-500">
-                        {stat.label}
-                      </p>
-                      <p className="text-2xl font-bold text-slate-900">
-                        {stat.value}
-                      </p>
-                      <p className="text-xs text-slate-500">{stat.meta}</p>
-                    </div>
-                  ))}
+              {quickStats.map((stat) => (
+                <div
+                  key={stat.label}
+                  className="rounded-2xl border border-slate-100 bg-slate-50/70 px-4 py-3"
+                >
+                  <p className="text-xs uppercase tracking-[0.35em] text-slate-500">
+                    {stat.label}
+                  </p>
+                  <p className="text-2xl font-bold text-slate-900">
+                    {stat.value}
+                  </p>
+                  <p className="text-xs text-slate-500">{stat.meta}</p>
+                </div>
+              ))}
             </div>
           </div>
         </section>
@@ -465,7 +471,7 @@ function ForYou() {
                     className={`flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br ${
                       story.color
                     } text-white font-semibold shadow-md transition hover:scale-105 ${
-                      story.hasNewStory
+                      story.hasNewStory && !story.isAddButton
                         ? "ring-2 ring-blue-500 ring-offset-2"
                         : ""
                     }`}
@@ -476,7 +482,7 @@ function ForYou() {
                     <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-[#708090] border-2 border-white" />
                   )}
                 </div>
-                <p className="mt-1 text-xs font-medium text-slate-600 truncate">
+                <p className="mt-1 text-xs font-medium text-slate-600">
                   {story.label}
                 </p>
               </button>
@@ -488,18 +494,12 @@ function ForYou() {
         <section className="grid gap-6 lg:grid-cols-[1.2fr,0.8fr]">
           <div className="space-y-6">
             <div className="rounded-[28px] border border-white/70 bg-white/90 p-5 shadow-lg">
-              <h3 className="text-base font-semibold text-slate-900 mb-4">
+              <h3 className="text-base font-semibold text-slate-900">
                 Today's focus
               </h3>
-              {loading ? (
-                <ListSkeleton count={2} />
-              ) : error ? (
-                <div className="text-sm text-red-600 p-4 bg-red-50 rounded-xl">
-                  {error}
-                </div>
-              ) : focusTasks.length > 0 ? (
-                <div className="mt-4 space-y-3">
-                  {focusTasks.map((task) => (
+              <div className="mt-4 space-y-3">
+                {focusTasks.length > 0 ? (
+                  focusTasks.map((task) => (
                     <div
                       key={task.id}
                       className={`rounded-2xl border border-slate-100 bg-gradient-to-r ${task.tone} px-4 py-3`}
@@ -514,77 +514,74 @@ function ForYou() {
                       </div>
                       <p className="text-xs text-slate-600">{task.detail}</p>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-sm text-slate-500 p-4 text-center">
-                  No tasks due today
-                </div>
-              )}
+                  ))
+                ) : (
+                  <div className="text-sm text-slate-500 p-4 text-center">
+                    No tasks due today
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="rounded-[28px] border border-white/70 bg-white/90 p-5 shadow-lg">
-              <h3 className="text-base font-semibold text-slate-900 mb-4">
+              <h3 className="text-base font-semibold text-slate-900">
                 Recent activity
               </h3>
-              {loading ? (
-                <ListSkeleton count={2} />
-              ) : activityFeed.length > 0 ? (
-                <div className="mt-4 space-y-3">
-                  {activityFeed.map((activity) => (
+              <div className="mt-4 space-y-3">
+                {activityFeed.length > 0 ? (
+                  activityFeed.map((activity) => (
                     <div
                       key={activity.id}
                       className="flex items-start gap-3 rounded-2xl border border-slate-100 bg-slate-50/70 p-3"
                     >
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-base">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-base flex-shrink-0">
                         {activity.icon}
                       </div>
-                      <div>
+                      <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-slate-900">
                           {activity.title}
                         </p>
-                        <p className="text-xs text-slate-600">
-                          {activity.detail}
-                        </p>
+                        {activity.detail && (
+                          <p className="text-xs text-slate-600 truncate">
+                            {activity.detail}
+                          </p>
+                        )}
+                        {activity.timestamp && (
+                          <p className="text-xs text-slate-400 mt-1">
+                            {new Date(activity.timestamp).toLocaleDateString()}
+                          </p>
+                        )}
                       </div>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-sm text-slate-500 p-4 text-center">
-                  No recent activity
-                </div>
-              )}
+                  ))
+                ) : (
+                  <p className="text-sm text-slate-500 text-center py-4">
+                    No recent activity
+                  </p>
+                )}
+              </div>
             </div>
           </div>
 
           <div className="space-y-6">
             <div className="rounded-[28px] border border-white/70 bg-white/90 p-5 shadow-lg">
-              <h3 className="text-base font-semibold text-slate-900 mb-4">
+              <h3 className="text-base font-semibold text-slate-900">
                 Upcoming
               </h3>
-              {loading ? (
-                <ListSkeleton count={2} />
-              ) : upcomingEvents.length > 0 ? (
-                <div className="mt-4 space-y-3">
-                  {upcomingEvents.map((event) => (
-                    <div
-                      key={event.id}
-                      className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4"
-                    >
-                      <p className="text-sm font-semibold text-slate-900">
-                        {event.title}
-                      </p>
-                      <p className="text-xs text-slate-600">{event.time}</p>
-                      <p className="text-xs text-slate-500">{event.location}</p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-sm text-slate-500 p-4 text-center">
-                  No upcoming events
-                </div>
-              )}
+              <div className="mt-4 space-y-3">
+                {upcomingEvents.map((event) => (
+                  <div
+                    key={event.id}
+                    className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4"
+                  >
+                    <p className="text-sm font-semibold text-slate-900">
+                      {event.title}
+                    </p>
+                    <p className="text-xs text-slate-600">{event.time}</p>
+                    <p className="text-xs text-slate-500">{event.location}</p>
+                  </div>
+                ))}
+              </div>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">

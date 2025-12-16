@@ -1,11 +1,11 @@
 import React, { useState, useRef, useEffect } from "react";
-import { useParams } from "react-router-dom";
-import { useAuth } from "../contexts/AuthContext";
-import { useBranding } from "../contexts/BrandingContext";
-import { studentApi } from "../apps/shared/utils/api";
-import { useToast } from "../components/Toast";
-import { CardSkeleton, PostSkeleton } from "../components/SkeletonLoader";
-import { uploadImage } from "../apps/shared/utils/fileUpload";
+import { useParams, useNavigate } from "react-router-dom";
+import { useAuth } from "../../shared/contexts/AuthContext";
+import { useBranding } from "../../shared/contexts/BrandingContext";
+import { uploadFile, validateFile } from "../../shared/utils/fileUpload";
+import { useToast } from "../../shared/components/Toast";
+import { apiRequest } from "../../shared/utils/api";
+import { studentApi } from "../../shared/utils/api";
 
 const quickStats = [
   { label: "Engagement score", value: "92", meta: "+8 vs last week" },
@@ -81,12 +81,18 @@ const badgeShowcase = [
 const toolkit = ["Figma", "Next.js", "Python", "Notion", "Firebase", "Miro"];
 
 function Profile() {
-  const { user, logout } = useAuth();
-  const { branding } = useBranding();
   const { userId } = useParams();
-  const { showToast } = useToast();
+  const navigate = useNavigate();
+  const { user: currentUser, logout } = useAuth();
+  const { branding } = useBranding();
+  const { success, error: showError } = useToast();
   const brandColor = branding?.color || "#365b6d";
-  const isOwnProfile = !userId || userId === user?.id;
+
+  // If userId is provided, we're viewing someone else's profile
+  const isViewingOtherProfile =
+    !!userId && userId !== currentUser?.id?.toString();
+  const profileUserId = userId ? parseInt(userId) : currentUser?.id;
+  const isOwnProfile = !userId || userId === currentUser?.id?.toString();
 
   const [activeTab, setActiveTab] = useState("posts");
   const [isEditing, setIsEditing] = useState(false);
@@ -94,15 +100,15 @@ function Profile() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [profileData, setProfileData] = useState({
-    name: user?.name || "User Name",
+    name: currentUser?.name || "User Name",
     bio: "",
     location: "",
     interests: [],
-    major: user?.major || "",
-    year: user?.year || "",
+    major: currentUser?.major || "",
+    year: currentUser?.year || "",
   });
   const [posts, setPosts] = useState([]);
-  const [profilePic, setProfilePic] = useState(user?.avatarUrl || "");
+  const [profilePic, setProfilePic] = useState(currentUser?.avatarUrl || "");
   const [backgroundPic, setBackgroundPic] = useState("");
   const profilePicRef = useRef(null);
   const backgroundPicRef = useRef(null);
@@ -202,34 +208,41 @@ function Profile() {
     const file = event.target.files[0];
     if (!file) return;
 
-    // Validate file type and size
-    if (!file.type.startsWith("image/")) {
-      showToast("Please select an image file", "error");
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      showToast("Image size must be less than 5MB", "error");
+    // Validate file
+    const validation = validateFile(file, 5 * 1024 * 1024, [
+      "image/jpeg",
+      "image/png",
+      "image/gif",
+      "image/webp",
+    ]);
+    if (!validation.valid) {
+      showError(validation.error);
       return;
     }
 
+    // Show preview immediately
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setProfilePic(e.target.result);
+    };
+    reader.readAsDataURL(file);
+
+    // Upload file
     try {
-      // Show preview immediately
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setProfilePic(e.target.result);
-      };
-      reader.readAsDataURL(file);
-
-      // Upload to server
-      const imageUrl = await uploadImage(file, "profile");
-      setProfilePic(imageUrl);
-
-      // Update profile with new avatar
-      await studentApi.updateProfile({ avatar_url: imageUrl });
-      showToast("Profile picture updated!", "success");
+      const result = await uploadFile(file, "avatars");
+      if (result.success) {
+        // Update user profile with new avatar URL
+        await apiRequest("/profile", {
+          method: "PUT",
+          body: { avatar_url: result.file_url },
+        });
+        success("Profile picture updated successfully!");
+      }
     } catch (err) {
-      console.error("Failed to upload profile picture:", err);
-      showToast("Failed to upload profile picture", "error");
+      console.error("Upload error:", err);
+      showError("Failed to upload profile picture. Please try again.");
+      // Revert preview on error
+      setProfilePic(currentUser?.avatarUrl || "");
     }
   };
 
@@ -237,30 +250,41 @@ function Profile() {
     const file = event.target.files[0];
     if (!file) return;
 
-    if (!file.type.startsWith("image/")) {
-      showToast("Please select an image file", "error");
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      showToast("Image size must be less than 5MB", "error");
+    // Validate file
+    const validation = validateFile(file, 5 * 1024 * 1024, [
+      "image/jpeg",
+      "image/png",
+      "image/gif",
+      "image/webp",
+    ]);
+    if (!validation.valid) {
+      showError(validation.error);
       return;
     }
 
+    // Show preview immediately
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setBackgroundPic(e.target.result);
+    };
+    reader.readAsDataURL(file);
+
+    // Upload file
     try {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setBackgroundPic(e.target.result);
-      };
-      reader.readAsDataURL(file);
-
-      const imageUrl = await uploadImage(file, "background");
-      setBackgroundPic(imageUrl);
-
-      await studentApi.updateProfile({ background_image_url: imageUrl });
-      showToast("Background image updated!", "success");
+      const result = await uploadFile(file, "documents"); // Using documents type for cover photos
+      if (result.success) {
+        // Update user profile with new cover photo URL
+        await apiRequest("/profile", {
+          method: "PUT",
+          body: { cover_photo_url: result.file_url },
+        });
+        success("Cover photo updated successfully!");
+      }
     } catch (err) {
-      console.error("Failed to upload background image:", err);
-      showToast("Failed to upload background image", "error");
+      console.error("Upload error:", err);
+      showError("Failed to upload cover photo. Please try again.");
+      // Revert preview on error
+      setBackgroundPic("");
     }
   };
 
@@ -410,7 +434,7 @@ function Profile() {
                   </span>
                 </div>
                 <p className="mt-1 text-slate-500">
-                  @{user?.email?.split("@")[0] || "username"}
+                  @{currentUser?.email?.split("@")[0] || "username"}
                 </p>
                 <p className="mt-3 text-base text-slate-700 max-w-2xl">
                   {profileData.bio}
@@ -426,7 +450,7 @@ function Profile() {
                     <span role="img" aria-label="calendar">
                       📅
                     </span>
-                    {formatDate(user?.joinDate)}
+                    {formatDate(currentUser?.joinDate)}
                   </div>
                   <div className="flex items-center gap-2">
                     <span role="img" aria-label="school">
@@ -772,7 +796,7 @@ function Profile() {
                 <h3 className="text-base font-semibold text-slate-900">
                   Contact
                 </h3>
-                <p className="mt-2 text-sm text-slate-600">{user?.email}</p>
+                <p className="mt-2 text-sm text-slate-600">{currentUser?.email}</p>
                 <p className="text-xs text-slate-500">
                   Usually replies within a day.
                 </p>

@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { useAuth } from "../contexts/AuthContext";
-import { useBranding } from "../contexts/BrandingContext";
-import { studentApi } from "../apps/shared/utils/api";
-import { useToast } from "../components/Toast";
-import { CardSkeleton } from "../components/SkeletonLoader";
+import { useAuth } from "../../shared/contexts/AuthContext";
+import { useBranding } from "../../shared/contexts/BrandingContext";
+import { useToast } from "../../shared/components/Toast";
+import { studentApi } from "../../shared/utils/api";
 
 function Settings() {
   const { user, logout } = useAuth();

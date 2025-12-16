@@ -1,18 +1,28 @@
 <?php
 // Email Verification System
 require_once 'database.php';
+require_once 'env_loader.php';
 
 class EmailVerification {
     private $db;
-    private $smtpHost = 'smtp.gmail.com';
-    private $smtpPort = 587;
-    private $smtpUsername = 'your-email@gmail.com'; // Replace with actual email
-    private $smtpPassword = 'your-app-password'; // Replace with actual app password
-    private $fromEmail = 'noreply@unicon.edu';
-    private $fromName = 'UNICON Platform';
+    private $smtpHost;
+    private $smtpPort;
+    private $smtpUsername;
+    private $smtpPassword;
+    private $fromEmail;
+    private $fromName;
+    private $frontendUrl;
     
     public function __construct() {
         $this->db = Database::getInstance();
+        // Load SMTP settings from environment variables
+        $this->smtpHost = env('SMTP_HOST', 'smtp.gmail.com');
+        $this->smtpPort = env('SMTP_PORT', 587);
+        $this->smtpUsername = env('SMTP_USER', 'your-email@gmail.com');
+        $this->smtpPassword = env('SMTP_PASS', 'your-app-password');
+        $this->fromEmail = env('FROM_EMAIL', 'noreply@unicon.edu');
+        $this->fromName = env('FROM_NAME', 'UNICON Platform');
+        $this->frontendUrl = env('FRONTEND_URL', 'http://localhost:3000');
     }
     
     // Send verification email
@@ -29,7 +39,7 @@ class EmailVerification {
             );
             
             // Prepare email content
-            $verificationUrl = "http://localhost:3000/verify-email?token=" . $token;
+            $verificationUrl = $this->frontendUrl . "/verify-email?token=" . $token;
             $subject = "Verify Your UNICON Account";
             $message = $this->getVerificationEmailTemplate($firstName, $verificationUrl);
             
@@ -101,7 +111,7 @@ class EmailVerification {
             );
             
             // Prepare email content
-            $resetUrl = "http://localhost:3000/reset-password?token=" . $token;
+            $resetUrl = $this->frontendUrl . "/reset-password?token=" . $token;
             $subject = "Reset Your UNICON Password";
             $message = $this->getPasswordResetEmailTemplate($user['first_name'], $resetUrl);
             

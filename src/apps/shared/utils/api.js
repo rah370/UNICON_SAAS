@@ -4,7 +4,6 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
 export async function apiRequest(endpoint, options = {}) {
   const token = localStorage.getItem("uniconToken");
-  const requestUrl = `${API_BASE_URL}${endpoint}`;
 
   const config = {
     ...options,
@@ -20,7 +19,7 @@ export async function apiRequest(endpoint, options = {}) {
   }
 
   try {
-    const response = await fetch(requestUrl, config);
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
     const data = await response.json();
 
     if (!response.ok) {
@@ -133,11 +132,6 @@ export const studentApi = {
 
   // Events
   getEvents: () => apiRequest("/events"),
-  createEvent: (data) =>
-    apiRequest("/events", {
-      method: "POST",
-      body: { ...data, is_public: false }, // Students can only create private events
-    }),
   rsvpEvent: (eventId, status) =>
     apiRequest("/events/rsvp", {
       method: "POST",
@@ -145,97 +139,4 @@ export const studentApi = {
     }),
   getEventAttendees: (eventId) => apiRequest(`/events/${eventId}/attendees`),
   getUserEventStatus: (eventId) => apiRequest(`/events/${eventId}/status`),
-
-  // Authentication
-  forgotPassword: (email) =>
-    apiRequest("/auth/forgot-password", {
-      method: "POST",
-      body: { email },
-    }),
-  resetPassword: (token, password) =>
-    apiRequest("/auth/reset-password", {
-      method: "POST",
-      body: { token, password },
-    }),
-
-  // Feed/Dashboard
-  getFeed: () => apiRequest("/feed"),
-  getDashboard: () => apiRequest("/dashboard"),
-
-  // Community
-  getClubs: () => apiRequest("/community/clubs"),
-  getPosts: (params) => {
-    const query = new URLSearchParams(params || {}).toString();
-    return apiRequest(`/posts${query ? `?${query}` : ""}`);
-  },
-  createPost: (data) =>
-    apiRequest("/posts", {
-      method: "POST",
-      body: data,
-    }),
-  reactToPost: (postId, reaction) =>
-    apiRequest("/posts/react", {
-      method: "POST",
-      body: { post_id: postId, reaction },
-    }),
-  commentOnPost: (postId, content) =>
-    apiRequest("/posts/comment", {
-      method: "POST",
-      body: { post_id: postId, content },
-    }),
-
-  // Marketplace
-  getMarketplace: (params) => {
-    const query = new URLSearchParams(params || {}).toString();
-    return apiRequest(`/marketplace${query ? `?${query}` : ""}`);
-  },
-  createListing: (data) =>
-    apiRequest("/marketplace", {
-      method: "POST",
-      body: data,
-    }),
-  updateListing: (itemId, data) =>
-    apiRequest("/marketplace", {
-      method: "PUT",
-      body: { item_id: itemId, ...data },
-    }),
-
-  // Messages
-  getConversations: () => apiRequest("/messages/conversations"),
-  getMessages: (conversationId) =>
-    apiRequest(`/messages/conversations/${conversationId}`),
-  sendMessage: (conversationId, content) =>
-    apiRequest("/messages", {
-      method: "POST",
-      body: { conversation_id: conversationId, content },
-    }),
-  createConversation: (userId) =>
-    apiRequest("/messages/conversations", {
-      method: "POST",
-      body: { user_id: userId },
-    }),
-
-  // User Profile
-  getProfile: (userId) =>
-    apiRequest(`/user/profile${userId ? `?user_id=${userId}` : ""}`),
-  updateProfile: (data) =>
-    apiRequest("/user/profile", {
-      method: "PUT",
-      body: data,
-    }),
-
-  // Settings
-  getSettings: () => apiRequest("/user/settings"),
-  updateSettings: (data) =>
-    apiRequest("/user/settings", {
-      method: "PUT",
-      body: data,
-    }),
-
-  // Search
-  search: (query, type) => {
-    const params = new URLSearchParams({ q: query });
-    if (type) params.append("type", type);
-    return apiRequest(`/search?${params.toString()}`);
-  },
 };

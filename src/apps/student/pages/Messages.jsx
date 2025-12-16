@@ -5,11 +5,10 @@ import React, {
   useState,
   useCallback,
 } from "react";
-import { useAuth } from "../contexts/AuthContext";
-import { useWebSocket } from "../contexts/WebSocketContext";
-import { studentApi } from "../apps/shared/utils/api";
-import { useToast } from "../components/Toast";
-import { ListSkeleton } from "../components/SkeletonLoader";
+import { useSearchParams, useNavigate } from "react-router-dom";
+import { useAuth } from "../../shared/contexts/AuthContext";
+import { messagesApi } from "../../shared/utils/messagesApi";
+import { useToast } from "../../shared/components/Toast";
 
 // --- small helpers ---
 const classNames = (...a) => a.filter(Boolean).join(" ");
@@ -49,11 +48,125 @@ const initials = (name) =>
     .join("")
     .toUpperCase();
 
-// --- API integration for real conversations ---
+// --- Enhanced fake API with safety features ---
+const fakeConversations = [
+  {
+    id: "conv1",
+    name: "Sarah Chen",
+    avatar: "",
+    lastMessage: "See you at 3 PM?",
+    timestamp: timeNow(),
+    unread: 2,
+    online: true,
+    verified: true,
+    role: "student",
+    blocked: false,
+    reported: false,
+    otherUserId: 1,
+    isGroup: false,
+  },
+  {
+    id: "conv2",
+    name: "Mike Rodriguez",
+    avatar: "",
+    lastMessage: "Thanks for the notes!",
+    timestamp: timeNow(),
+    unread: 0,
+    online: false,
+    verified: true,
+    role: "student",
+    blocked: false,
+    reported: false,
+    otherUserId: 2,
+    isGroup: false,
+  },
+  {
+    id: "conv3",
+    name: "Professor Smith",
+    avatar: "",
+    lastMessage: "Submit by Friday.",
+    timestamp: timeNow(),
+    unread: 1,
+    online: false,
+    isGroup: false,
+    verified: true,
+    role: "teacher", // Changed from "professor" to "teacher" for consistency
+    blocked: false,
+    reported: false,
+    otherUserId: 3,
+  },
+  {
+    id: "conv6",
+    name: "Admin User",
+    avatar: "",
+    lastMessage: "System maintenance tonight",
+    timestamp: timeNow(),
+    unread: 0,
+    online: false,
+    isGroup: false,
+    verified: true,
+    role: "admin",
+    blocked: false,
+    reported: false,
+    otherUserId: 4,
+  },
+  {
+    id: "conv4",
+    name: "Study Group CS101",
+    avatar: "",
+    lastMessage: "Room 205 today.",
+    timestamp: timeNow(),
+    unread: 0,
+    online: false,
+    isGroup: true,
+    verified: true,
+    role: "group",
+    blocked: false,
+    reported: false,
+    moderated: true,
+    otherUserId: null,
+  },
+];
+
+const fakeThread = [
+  {
+    id: "m1",
+    senderId: "u2",
+    sender: "Sarah Chen",
+    content: "Hey! Study group tomorrow?",
+    ts: timeNow(),
+    status: "sent",
+    verified: true,
+    flagged: false,
+    senderRole: "student", // Added role for role-based ticks
+  },
+  {
+    id: "m2",
+    senderId: "me",
+    sender: "You",
+    content: "Yes—what time again?",
+    ts: timeNow(),
+    status: "sent",
+    verified: true,
+    flagged: false,
+    senderRole: "student", // Added role for role-based ticks
+  },
+  {
+    id: "m3",
+    senderId: "u2",
+    sender: "Sarah Chen",
+    content: "3 PM in the library. 📚",
+    ts: timeNow(),
+    status: "sent",
+    verified: true,
+    flagged: false,
+    senderRole: "student", // Added role for role-based ticks
+  },
+];
 
 const quickFilters = [
   { id: "all", label: "All" },
-  { id: "groups", label: "Group Chats" },
+  { id: "group", label: "Group Chat" },
 ];
 
 const quickReplies = [
@@ -75,24 +188,57 @@ const safetySettings = {
 };
 
 // --- reusable UI bits ---
-function Avatar({ name, online, role }) {
+function Avatar({ name, online, verified, role, flagged }) {
+  // Determine tick color based on role
+  const getTickColor = () => {
+    if (!role) return null;
+
+    const roleLower = String(role).toLowerCase();
+    if (roleLower === "group") return null; // No tick for groups
+
+    if (roleLower === "admin" || roleLower === "super_admin") {
+      return "bg-purple-500"; // Purple for admin
+    } else if (
+      roleLower === "teacher" ||
+      roleLower === "staff" ||
+      roleLower === "professor"
+    ) {
+      return "bg-green-500"; // Green for teachers/professors
+    } else if (roleLower === "student") {
+      return "bg-blue-500"; // Blue for students
+    }
+    return null; // No tick for unknown roles
+  };
+
+  const tickColor = getTickColor();
+
   return (
     <div className="relative">
       <div
-        className={`w-10 h-10 rounded-full text-white grid place-items-center font-semibold ${
-          role === "professor" || role === "teacher"
-            ? "bg-purple-500"
-            : role === "admin"
-            ? "bg-red-500"
+        className={`w-10 h-10 rounded-full text-slate-700 grid place-items-center font-semibold ${
+          flagged
+            ? "bg-red-100 border-2 border-red-300"
             : role === "group"
-            ? "bg-green-500"
-            : "bg-blue-500"
+            ? "bg-indigo-100 border-2 border-indigo-300"
+            : "bg-slate-200"
         }`}
       >
         {initials(name)}
       </div>
       {online && (
         <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-green-400 ring-2 ring-white" />
+      )}
+      {tickColor && (
+        <span
+          className={`absolute -top-1 -right-1 h-4 w-4 rounded-full ${tickColor} flex items-center justify-center`}
+        >
+          <span className="text-white text-xs">✓</span>
+        </span>
+      )}
+      {flagged && (
+        <span className="absolute -top-1 -left-1 h-4 w-4 rounded-full bg-[#708090] flex items-center justify-center">
+          <span className="text-white text-xs">⚠</span>
+        </span>
       )}
     </div>
   );
@@ -139,8 +285,8 @@ function ConversationList({
   const passesFilter = useCallback(
     (conversation) => {
       switch (filterKey) {
-        case "groups":
-          return conversation.isGroup === true;
+        case "group":
+          return conversation.isGroup === true || conversation.role === "group";
         default:
           return true; // "all" shows everything
       }
@@ -198,22 +344,13 @@ function ConversationList({
             >
               <div className="flex items-start gap-3">
                 <div className="relative flex-shrink-0">
-                  <div
-                    className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold text-sm ${
-                      c.role === "professor" || c.role === "teacher"
-                        ? "bg-purple-500"
-                        : c.role === "admin"
-                        ? "bg-red-500"
-                        : c.role === "group"
-                        ? "bg-green-500"
-                        : "bg-blue-500"
-                    }`}
-                  >
-                    {initials(c.name)}
-                  </div>
-                  {c.online && (
-                    <div className="absolute bottom-0.5 right-0.5 w-3.5 h-3.5 bg-green-400 rounded-full border-2 border-white"></div>
-                  )}
+                  <Avatar
+                    name={c.name}
+                    online={c.online}
+                    verified={c.verified}
+                    role={c.role}
+                    flagged={c.flagged}
+                  />
                 </div>
                 <div className="flex-1 min-w-0 pt-1">
                   <div className="flex items-center justify-between gap-2 mb-1">
@@ -307,8 +444,17 @@ function ConversationList({
   );
 }
 
-// --- Enhanced message bubble ---
-function MessageBubble({ own, text, ts, status, onReport }) {
+// --- Enhanced message bubble with safety features ---
+function MessageBubble({
+  own,
+  text,
+  ts,
+  status,
+  verified,
+  flagged,
+  onReport,
+  senderRole,
+}) {
   const [showReportMenu, setShowReportMenu] = useState(false);
 
   const handleReport = () => {
@@ -316,19 +462,50 @@ function MessageBubble({ own, text, ts, status, onReport }) {
     setShowReportMenu(false);
   };
 
+  // Get tick color based on sender role
+  const getRoleTick = () => {
+    if (!senderRole || own) return null;
+
+    const roleLower = String(senderRole || "").toLowerCase();
+    if (roleLower === "admin" || roleLower === "super_admin") {
+      return (
+        <span className="text-purple-500 font-bold text-sm" title="Admin">
+          ✓
+        </span>
+      );
+    } else if (
+      roleLower === "teacher" ||
+      roleLower === "staff" ||
+      roleLower === "professor"
+    ) {
+      return (
+        <span className="text-green-500 font-bold text-sm" title="Teacher">
+          ✓
+        </span>
+      );
+    } else if (roleLower === "student") {
+      return (
+        <span className="text-blue-500 font-bold text-sm" title="Student">
+          ✓
+        </span>
+      );
+    }
+    return null;
+  };
+
   return (
     <div className={classNames("flex", own ? "justify-end" : "justify-start")}>
-      <div className="relative group">
+      <div className="relative group" style={{ maxWidth: "75%" }}>
         <div
           className={classNames(
-            "max-w-[75%] rounded-2xl px-4 py-2",
+            "rounded-full px-4 py-2 inline-block",
             own
               ? "bg-gradient-to-br from-[var(--brand-color)] to-[var(--brand-color-700)] text-white shadow-md"
               : "bg-white text-slate-900 border border-slate-200"
           )}
           role="text"
         >
-          <p className="text-sm whitespace-pre-wrap">{text}</p>
+          <p className="text-sm">{text}</p>
           <div
             className={classNames(
               "flex items-center gap-1 mt-1 text-[11px]",
@@ -336,6 +513,7 @@ function MessageBubble({ own, text, ts, status, onReport }) {
             )}
           >
             <span>{formatClock(ts)}</span>
+            {!own && getRoleTick()}
             {own && (
               <span
                 aria-label={
@@ -553,6 +731,7 @@ function ChatWindow({
               ts={row.ts}
               status={row.status}
               onReport={onReport}
+              senderRole={row.senderRole}
             />
           )
         )}
@@ -646,9 +825,10 @@ function ChatWindow({
 
 // --- main page with enhanced safety features ---
 export default function Messages() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const { user, isAdmin } = useAuth();
-  const { showToast } = useToast();
-  const { isConnected, sendMessage, subscribe } = useWebSocket();
+  const { success, error: showError } = useToast();
   const [loading, setLoading] = useState(true);
   const [conversations, setConversations] = useState([]);
   const [selected, setSelected] = useState(null);
@@ -657,177 +837,182 @@ export default function Messages() {
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportedContent, setReportedContent] = useState("");
   const [conversationFilter, setConversationFilter] = useState("all");
-  const [error, setError] = useState(null);
-  const typingTimeoutRef = useRef(null);
+  const [showNewChatModal, setShowNewChatModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [searching, setSearching] = useState(false);
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
 
-  // Fetch conversations from API
-  useEffect(() => {
-    fetchConversations();
+  // Check for user parameter in URL to open conversation
+  const userIdFromUrl = searchParams.get("user");
+
+  // Helper function to format conversations
+  const formatConversations = useCallback((conversations) => {
+    if (!conversations || !Array.isArray(conversations)) {
+      return [];
+    }
+
+    return conversations.map((conv) => {
+      // Check if it's a group chat
+      const isGroup = conv.is_group || conv.role === "group" || false;
+      const otherUserId = conv.other_user_id || conv.id || null;
+
+      return {
+        id: isGroup
+          ? `group-${otherUserId || Date.now()}`
+          : `conv-${otherUserId || Date.now()}`,
+        name: isGroup
+          ? conv.name ||
+            `${conv.first_name || ""} ${conv.last_name || ""}`.trim() ||
+            "Group Chat"
+          : `${conv.first_name || ""} ${conv.last_name || ""}`.trim() ||
+            conv.email ||
+            "User",
+        avatar: conv.avatar_url || "",
+        lastMessage: conv.last_message || "",
+        timestamp:
+          conv.last_message_time || conv.timestamp || new Date().toISOString(),
+        unread: conv.unread_count || conv.unread || 0,
+        online: false, // TODO: Implement online status
+        verified: true,
+        role: conv.role || "student",
+        isGroup: isGroup,
+        blocked: false,
+        reported: false,
+        otherUserId: isGroup ? null : otherUserId,
+      };
+    });
   }, []);
 
-  // Subscribe to WebSocket events
+  // Fetch conversations on mount and set up polling
   useEffect(() => {
-    if (!isConnected) return;
-
-    const unsubscribeNewMessage = subscribe("new_message", (data) => {
-      if (selected && selected.id === data.conversation_id) {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: data.message_id,
-            senderId: data.sender_id,
-            sender: data.sender_name || "Unknown",
-            content: data.content,
-            ts: data.timestamp || timeNow(),
-            status: "sent",
-            verified: data.verified !== false,
-            flagged: data.flagged || false,
-          },
-        ]);
-      }
-      // Update conversation last message
-      setConversations((prev) =>
-        prev.map((c) =>
-          c.id === data.conversation_id
-            ? {
-                ...c,
-                lastMessage: data.content,
-                timestamp: data.timestamp || timeNow(),
-                unread: c.id === selected?.id ? 0 : (c.unread || 0) + 1,
-              }
-            : c
-        )
-      );
-    });
-
-    const unsubscribeTyping = subscribe("typing", (data) => {
-      if (selected && selected.id === data.conversation_id) {
-        setTyping(true);
-        if (typingTimeoutRef.current) {
-          clearTimeout(typingTimeoutRef.current);
+    const fetchConversations = async () => {
+      try {
+        const result = await messagesApi.getConversations();
+        const formatted = formatConversations(result.conversations);
+        setConversations(formatted);
+      } catch (err) {
+        console.error("Failed to fetch conversations:", err);
+        if (conversations.length === 0) {
+          showError("Failed to load conversations. Using demo data.");
+          try {
+            setConversations(fakeConversations);
+          } catch (demoErr) {
+            console.error("Error setting demo data:", demoErr);
+            setConversations([]);
+          }
         }
-        typingTimeoutRef.current = setTimeout(() => {
-          setTyping(false);
-        }, 3000);
-      }
-    });
-
-    const unsubscribeUserOnline = subscribe("user_online", (data) => {
-      setConversations((prev) =>
-        prev.map((c) => (c.id === data.user_id ? { ...c, online: true } : c))
-      );
-    });
-
-    const unsubscribeUserOffline = subscribe("user_offline", (data) => {
-      setConversations((prev) =>
-        prev.map((c) => (c.id === data.user_id ? { ...c, online: false } : c))
-      );
-    });
-
-    return () => {
-      unsubscribeNewMessage();
-      unsubscribeTyping();
-      unsubscribeUserOnline();
-      unsubscribeUserOffline();
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
       }
     };
-  }, [isConnected, selected, subscribe]);
 
-  const fetchConversations = async () => {
-    try {
+    if (user) {
       setLoading(true);
-      setError(null);
-      const response = await studentApi.getConversations();
-      const convs = response.conversations || response.data || [];
+      fetchConversations().finally(() => setLoading(false));
 
-      setConversations(
-        convs.map((conv) => ({
-          id: conv.id || conv.conversation_id,
-          name: conv.name || conv.participant_name || "Unknown",
-          avatar: conv.avatar || conv.avatar_url || "",
-          lastMessage: conv.last_message || conv.lastMessage || "",
-          timestamp: conv.last_message_time || conv.updated_at || timeNow(),
-          unread: conv.unread_count || conv.unread || 0,
-          online: conv.is_online || false,
-          verified: conv.verified !== false,
-          role: conv.role || "student",
-          blocked: conv.blocked || false,
-          reported: conv.reported || false,
-          isGroup: conv.is_group || false,
-          moderated: conv.moderated || false,
-        }))
-      );
-    } catch (err) {
-      console.error("Failed to fetch conversations:", err);
-      setError(err.message || "Failed to load conversations");
-      showToast("Failed to load conversations", "error");
-    } finally {
-      setLoading(false);
+      // Poll for new conversations every 5 seconds
+      const pollInterval = setInterval(() => {
+        fetchConversations();
+      }, 5000);
+
+      return () => clearInterval(pollInterval);
     }
-  };
+  }, [user, showError, formatConversations, conversations]);
+
+  // Fetch messages for a conversation
+  const fetchMessages = useCallback(
+    async (otherUserId) => {
+      if (!otherUserId) {
+        console.warn("No otherUserId provided to fetchMessages");
+        return;
+      }
+
+      try {
+        const result = await messagesApi.getMessages(otherUserId);
+        if (!result || !result.messages) {
+          console.warn("No messages in API response");
+          return;
+        }
+
+        const formatted = (result.messages || [])
+          .map((msg) => {
+            if (!msg) return null;
+            return {
+              id: (msg.id || Date.now()).toString(),
+              senderId:
+                msg.sender_id === user?.id
+                  ? "me"
+                  : (msg.sender_id || "").toString(),
+              sender:
+                msg.sender_id === user?.id
+                  ? "You"
+                  : `${msg.first_name || ""} ${msg.last_name || ""}`.trim() ||
+                    msg.email ||
+                    "User",
+              content: msg.content || "",
+              ts: msg.created_at || new Date().toISOString(),
+              status: "sent",
+              verified: true,
+              flagged: false,
+              senderRole: msg.role || "student", // Include role from API
+            };
+          })
+          .filter(Boolean); // Remove any null entries
+
+        setMessages(formatted);
+      } catch (err) {
+        console.error("Failed to fetch messages:", err);
+        if (messages.length === 0) {
+          showError("Failed to load messages.");
+          setMessages([]); // Set empty array instead of crashing
+        }
+      }
+    },
+    [user, showError, messages.length]
+  );
 
   // when selecting a conversation
   const openConversation = useCallback(
     async (c) => {
       setSelected(c);
-      // mark read
+      // mark read locally
       setConversations((prev) =>
         prev.map((x) => (x.id === c.id ? { ...x, unread: 0 } : x))
       );
 
-      // fetch messages from API
-      try {
-        const response = await studentApi.getMessages(c.id);
-        const messagesData = response.messages || response.data || [];
-        setMessages(
-          messagesData.map((msg) => ({
-            id: msg.id || msg.message_id,
-            senderId: msg.sender_id || msg.user_id,
-            sender: msg.sender_name || msg.author_name || "Unknown",
-            content: msg.content || msg.body || "",
-            ts: msg.timestamp || msg.created_at || timeNow(),
-            status: msg.status || "sent",
-            verified: msg.verified !== false,
-            flagged: msg.flagged || false,
-          }))
-        );
-      } catch (err) {
-        console.error("Failed to fetch messages:", err);
-        showToast("Failed to load messages", "error");
-        setMessages([]);
-      }
+      const otherUserId = c.otherUserId || c.id.replace("conv-", "");
+      await fetchMessages(otherUserId);
     },
-    [showToast]
+    [fetchMessages, setConversations]
   );
 
-  // Send message with API and WebSocket
-  const handleTyping = useCallback(
-    (isTyping = true) => {
-      if (!selected || !isConnected) return;
+  // Poll for new messages in the current conversation
+  useEffect(() => {
+    if (!selected || !selected.otherUserId) return;
 
-      sendMessage({
-        type: "typing",
-        conversation_id: selected.id,
-        is_typing: isTyping,
-      });
-    },
-    [selected, isConnected, sendMessage]
-  );
+    const otherUserId =
+      selected.otherUserId || selected.id.replace("conv-", "");
 
+    // Poll for new messages every 3 seconds
+    const pollInterval = setInterval(() => {
+      fetchMessages(otherUserId);
+    }, 3000);
+
+    return () => clearInterval(pollInterval);
+  }, [selected, fetchMessages]);
+
+  // optimistic send with safety checks
   const send = useCallback(
     async (text) => {
-      if (!selected || !text.trim()) return;
-
-      // Stop typing indicator
-      handleTyping(false);
+      if (!selected || !selected.otherUserId) {
+        showError("Please select a conversation first.");
+        return;
+      }
 
       const tempId = `tmp-${Date.now()}`;
       const optimistic = {
         id: tempId,
-        senderId: user?.id || "me",
-        sender: user?.name || "You",
+        senderId: "me",
+        sender: "You",
         content: text,
         ts: timeNow(),
         status: "sending",
@@ -837,50 +1022,53 @@ export default function Messages() {
       setMessages((prev) => [...prev, optimistic]);
 
       try {
-        // Send via API
-        const response = await studentApi.sendMessage(selected.id, text);
+        const otherUserId =
+          selected.otherUserId || selected.id.replace("conv-", "");
+        const result = await messagesApi.sendMessage(otherUserId, text);
 
-        // Update optimistic message with real data
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === tempId
-              ? {
-                  ...m,
-                  id: response.message?.id || response.id || tempId,
-                  status: "sent",
-                }
-              : m
-          )
-        );
+        // Replace optimistic message with real one
+        if (result.message) {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === tempId
+                ? {
+                    id: result.message.id.toString(),
+                    senderId: "me",
+                    sender: "You",
+                    content: result.message.content,
+                    ts: result.message.created_at,
+                    status: "sent",
+                    verified: true,
+                    flagged: false,
+                    senderRole: user?.role || "student", // Include current user's role
+                  }
+                : m
+            )
+          );
+        } else {
+          // If no message returned, just mark as sent
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === tempId
+                ? { ...m, status: "sent", senderRole: user?.role || "student" }
+                : m
+            )
+          );
+        }
 
-        // Update conversation last message
-        setConversations((prev) =>
-          prev.map((c) =>
-            c.id === selected.id
-              ? {
-                  ...c,
-                  lastMessage: text,
-                  timestamp: timeNow(),
-                }
-              : c
-          )
-        );
-
-        // Send via WebSocket if available
-        sendMessage({
-          type: "send_message",
-          conversation_id: selected.id,
-          content: text,
-        });
+        // Refresh conversations to update last message
+        const convResult = await messagesApi.getConversations();
+        const formatted = formatConversations(convResult.conversations);
+        setConversations(formatted);
       } catch (err) {
         console.error("Failed to send message:", err);
+        showError("Failed to send message. Please try again.");
         setMessages((prev) =>
           prev.map((m) => (m.id === tempId ? { ...m, status: "failed" } : m))
         );
-        showToast("Failed to send message", "error");
       }
     },
-    [selected, user, showToast, sendMessage, handleTyping]
+    [selected, showError, formatConversations, user]
   );
 
   // Safety functions
@@ -914,6 +1102,11 @@ export default function Messages() {
     setReportedContent("");
   }, []);
 
+  // Handle typing indicator (simplified version)
+  const handleTyping = useCallback(() => {
+    // Typing indicator is handled in the ChatWindow component
+  }, []);
+
   // typing simulator (pretend remote user typing)
   useEffect(() => {
     if (!selected) return;
@@ -927,10 +1120,129 @@ export default function Messages() {
     };
   }, [selected]);
 
-  const handleNewChat = useCallback(
-    () => alert("New chat creation coming soon"),
-    []
+  const handleNewChat = useCallback(() => {
+    setShowNewChatModal(true);
+    setSearchQuery("");
+    setSearchResults([]);
+  }, []);
+
+  // Debounce search query for real-time search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery.trim());
+    }, 300); // 300ms debounce delay
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Perform search when debounced query changes
+  useEffect(() => {
+    const performSearch = async () => {
+      if (!debouncedSearchQuery) {
+        setSearchResults([]);
+        setSearching(false);
+        return;
+      }
+
+      try {
+        setSearching(true);
+        const result = await messagesApi.searchUsers(debouncedSearchQuery);
+        // Filter out current user and already existing conversations
+        const existingUserIds = conversations
+          .map((c) => c.otherUserId)
+          .filter(Boolean);
+        const filtered = (result.users || []).filter(
+          (u) =>
+            u.id !== user?.id &&
+            !existingUserIds.includes(u.id.toString()) &&
+            u.is_active !== false
+        );
+        setSearchResults(filtered);
+      } catch (err) {
+        console.error("Failed to search users:", err);
+        showError("Failed to search users.");
+        setSearchResults([]);
+      } finally {
+        setSearching(false);
+      }
+    };
+
+    performSearch();
+  }, [debouncedSearchQuery, conversations, user, showError]);
+
+  const handleStartChat = useCallback(
+    async (otherUser) => {
+      try {
+        // Create a new conversation entry
+        const newConv = {
+          id: `conv-${otherUser.id}`,
+          name:
+            `${otherUser.first_name} ${otherUser.last_name}`.trim() ||
+            otherUser.email,
+          avatar: otherUser.avatar_url || "",
+          lastMessage: "",
+          timestamp: new Date().toISOString(),
+          unread: 0,
+          online: false,
+          verified: true,
+          role: otherUser.role || "student",
+          blocked: false,
+          reported: false,
+          otherUserId: otherUser.id.toString(),
+        };
+
+        setConversations((prev) => [newConv, ...prev]);
+        setSelected(newConv);
+        setMessages([]);
+        setShowNewChatModal(false);
+        setSearchQuery("");
+        setSearchResults([]);
+        success(`Started conversation with ${newConv.name}`);
+      } catch (err) {
+        console.error("Failed to start chat:", err);
+        showError("Failed to start chat.");
+      }
+    },
+    [success, showError, setSearchParams]
   );
+
+  // Handle opening conversation from URL parameter
+  useEffect(() => {
+    if (userIdFromUrl && conversations.length > 0 && !selected) {
+      // Find existing conversation
+      const existingConv = conversations.find(
+        (c) => c.otherUserId === userIdFromUrl
+      );
+
+      if (existingConv) {
+        openConversation(existingConv);
+        setSearchParams({}); // Clear URL param after opening
+      } else {
+        // Try to find user and start chat
+        messagesApi
+          .searchUsers(userIdFromUrl)
+          .then((result) => {
+            const foundUser = result.users?.find(
+              (u) => u.id.toString() === userIdFromUrl
+            );
+            if (foundUser) {
+              handleStartChat(foundUser);
+            }
+          })
+          .catch(() => {
+            // If search fails, just open new chat modal
+            setShowNewChatModal(true);
+          });
+      }
+    }
+  }, [
+    userIdFromUrl,
+    conversations,
+    selected,
+    openConversation,
+    handleStartChat,
+    setSearchParams,
+  ]);
 
   if (loading) {
     return (
@@ -942,10 +1254,24 @@ export default function Messages() {
         </header>
         <main className="max-w-6xl mx-auto px-4 py-6 grid gap-6 lg:grid-cols-3">
           <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
-            <ListSkeleton count={5} />
+            <div className="space-y-3">
+              {[...Array(5)].map((_, i) => (
+                <div
+                  key={i}
+                  className="h-16 bg-slate-200/70 rounded animate-pulse"
+                />
+              ))}
+            </div>
           </div>
           <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-4 space-y-3">
-            <ListSkeleton count={8} />
+            <div className="space-y-3">
+              {[...Array(8)].map((_, i) => (
+                <div
+                  key={i}
+                  className="h-16 bg-slate-200/70 rounded animate-pulse"
+                />
+              ))}
+            </div>
           </div>
         </main>
       </div>
@@ -954,13 +1280,6 @@ export default function Messages() {
 
   return (
     <div className="min-h-screen bg-[#f5f7fa] pb-16">
-      {error && (
-        <div className="mx-auto max-w-6xl px-4 pt-4">
-          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-red-800 text-sm">
-            {error}
-          </div>
-        </div>
-      )}
       <section className="mx-auto max-w-6xl px-4 pt-6">
         <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
           <div className="flex flex-wrap gap-2">
@@ -1051,6 +1370,72 @@ export default function Messages() {
       </section>
 
       {/* Report Modal */}
+      {showNewChatModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-lg max-h-[80vh] flex flex-col">
+            <h3 className="text-lg font-semibold text-slate-900 mb-4">
+              New Chat
+            </h3>
+            <div className="mb-4">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                }}
+                placeholder="Search by name or email (e.g., 'ken' or 'kenshee')..."
+                className="w-full rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+              />
+            </div>
+            <div className="flex-1 overflow-y-auto mb-4">
+              {searching ? (
+                <div className="text-center text-slate-500 py-4">
+                  Searching...
+                </div>
+              ) : searchResults.length === 0 && searchQuery ? (
+                <div className="text-center text-slate-500 py-4">
+                  No users found
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {searchResults.map((user) => (
+                    <button
+                      key={user.id}
+                      onClick={() => handleStartChat(user)}
+                      className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors text-left"
+                    >
+                      <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-700 font-semibold">
+                        {initials(`${user.first_name} ${user.last_name}`)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-slate-900 truncate">
+                          {user.first_name} {user.last_name}
+                        </p>
+                        <p className="text-sm text-slate-500 truncate">
+                          {user.email}
+                        </p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowNewChatModal(false);
+                  setSearchQuery("");
+                  setSearchResults([]);
+                }}
+                className="flex-1 px-4 py-2 border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showReportModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-xl p-6 w-full max-w-md mx-4">

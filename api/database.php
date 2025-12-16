@@ -1,10 +1,13 @@
 <?php
-// Database configuration
-define('DB_HOST', 'localhost');
-define('DB_NAME', 'unicon_saas');
-define('DB_USER', 'root');
-define('DB_PASS', '');
-define('DB_CHARSET', 'utf8mb4');
+// Load environment variables
+require_once __DIR__ . '/env_loader.php';
+
+// Database configuration - uses environment variables with fallbacks
+define('DB_HOST', env('DB_HOST', 'localhost'));
+define('DB_NAME', env('DB_NAME', 'unicon_saas'));
+define('DB_USER', env('DB_USER', 'root'));
+define('DB_PASS', env('DB_PASS', ''));
+define('DB_CHARSET', env('DB_CHARSET', 'utf8mb4'));
 
 class Database {
     private static $instance = null;
@@ -12,8 +15,10 @@ class Database {
     
     private function __construct() {
         try {
+            // Get socket path from environment or use default XAMPP path
+            $socket = env('DB_SOCKET', '/Applications/XAMPP/xamppfiles/var/mysql/mysql.sock');
+            
             // Try socket connection first (for XAMPP)
-            $socket = '/Applications/XAMPP/xamppfiles/var/mysql/mysql.sock';
             if (file_exists($socket)) {
                 $dsn = "mysql:unix_socket=" . $socket . ";dbname=" . DB_NAME . ";charset=" . DB_CHARSET;
             } else {

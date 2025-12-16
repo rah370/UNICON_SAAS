@@ -39,44 +39,50 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  event.respondWith(
-    caches.match(event.request).then((response) => {
-      // Return cached version or fetch from network
-      if (response) {
-        return response;
-      }
-
-      return fetch(event.request)
-        .then((response) => {
-          // Don't cache non-successful responses
-          if (
-            !response ||
-            response.status !== 200 ||
-            response.type !== "basic"
-          ) {
-            return response;
-          }
-
-          // Clone the response
-          const responseToCache = response.clone();
-
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
-
-          return response;
-        })
+  const url = new URL(event.request.url);
+  
+  // Don't cache JavaScript files - always fetch from network for fresh code
+  if (url.pathname.endsWith('.js') || url.pathname.includes('/src/') || url.pathname.includes('/assets/')) {
+    event.respondWith(
+      fetch(event.request)
         .catch(() => {
-          // DISABLED: Don't show offline page automatically - causes false positives
-          // If both cache and network fail, just let the request fail
-          // The React app will handle offline state through its own detection
-          // if (event.request.destination === 'document') {
-          //   return caches.match(OFFLINE_URL);
-          // }
-          // Return undefined to let the request fail naturally
-          return undefined;
-        });
-    })
+          // Only use cache if network fails
+          return caches.match(event.request);
+        })
+    );
+    return;
+  }
+
+  event.respondWith(
+    fetch(event.request)
+      .then((response) => {
+        // Don't cache non-successful responses
+        if (!response || response.status !== 200 || response.type !== 'basic') {
+          return response;
+        }
+
+        // Only cache static assets, not dynamic content
+        if (url.pathname.match(/\.(png|jpg|jpeg|svg|gif|ico|css|woff|woff2|ttf|eot)$/)) {
+          const responseToCache = response.clone();
+          caches.open(CACHE_NAME)
+            .then((cache) => {
+              cache.put(event.request, responseToCache);
+            });
+        }
+
+        return response;
+      })
+      .catch(() => {
+        // If network fails, try cache
+        return caches.match(event.request)
+          .then((cachedResponse) => {
+            // If both cache and network fail, show offline page for navigation requests
+            if (!cachedResponse && event.request.destination === 'document') {
+              return caches.match(OFFLINE_URL);
+            }
+            return cachedResponse;
+          });
+      })
   );
 });
 

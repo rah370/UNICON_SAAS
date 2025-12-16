@@ -1,14 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { useAuth } from "../contexts/AuthContext";
-import { useBranding } from "../contexts/BrandingContext";
-import { studentApi } from "../apps/shared/utils/api";
-import { useToast } from "../components/Toast";
-import { GridSkeleton } from "../components/SkeletonLoader";
-import {
-  uploadImage,
-  compressImage,
-  uploadMultipleImages,
-} from "../apps/shared/utils/fileUpload";
+import { useAuth } from "../../shared/contexts/AuthContext";
+import { useBranding } from "../../shared/contexts/BrandingContext";
+import { useToast } from "../../shared/components/Toast";
+import { studentApi } from "../../shared/utils/api";
+import { uploadImage, compressImage, uploadMultipleImages } from "../../shared/utils/fileUpload";
 
 function Marketplace() {
   const { user, isAdmin } = useAuth();
@@ -135,6 +130,29 @@ function Marketplace() {
     const filteredByTab = items.filter((item) => item.type === expectedType);
     if (selectedCategory === "all") return filteredByTab;
     return filteredByTab.filter((item) => item.category === selectedCategory);
+  };
+
+  const handleImageUpload = async (files) => {
+    if (!files || files.length === 0) return;
+
+    try {
+      setUploadingImages(true);
+      const imageFiles = Array.from(files);
+      const compressedFiles = await Promise.all(
+        imageFiles.map((file) => compressImage(file))
+      );
+      const uploadedUrls = await uploadMultipleImages(compressedFiles, "marketplace");
+      setNewListing((prev) => ({
+        ...prev,
+        images: [...prev.images, ...uploadedUrls],
+      }));
+      showToast("Images uploaded successfully!", "success");
+    } catch (err) {
+      console.error("Failed to upload images:", err);
+      showToast("Failed to upload images", "error");
+    } finally {
+      setUploadingImages(false);
+    }
   };
 
   const handleCreateListing = async (e) => {
@@ -280,7 +298,13 @@ function Marketplace() {
         {activeTab === "schoolStore" && (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
             {loading ? (
-              <GridSkeleton count={6} columns={3} />
+              [...Array(6)].map((_, i) => (
+                <div key={i} className="bg-white rounded-xl border border-slate-200 p-6 animate-pulse">
+                  <div className="h-32 bg-slate-200 rounded mb-4"></div>
+                  <div className="h-4 bg-slate-200 rounded w-3/4 mb-2"></div>
+                  <div className="h-6 bg-slate-200 rounded w-1/2"></div>
+                </div>
+              ))
             ) : error ? (
               <div className="col-span-full text-center py-8 text-red-600">
                 {error}
@@ -341,7 +365,13 @@ function Marketplace() {
         {activeTab === "studentListings" && (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
             {loading ? (
-              <GridSkeleton count={6} columns={3} />
+              [...Array(6)].map((_, i) => (
+                <div key={i} className="bg-white rounded-xl border border-slate-200 p-6 animate-pulse">
+                  <div className="h-32 bg-slate-200 rounded mb-4"></div>
+                  <div className="h-4 bg-slate-200 rounded w-3/4 mb-2"></div>
+                  <div className="h-6 bg-slate-200 rounded w-1/2"></div>
+                </div>
+              ))
             ) : error ? (
               <div className="col-span-full text-center py-8 text-red-600">
                 {error}
