@@ -378,13 +378,13 @@ function Profile() {
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-slate-900/40 to-slate-950" />
       </div>
 
-      <section className="relative -mt-24 px-4">
-        <div className="mx-auto max-w-5xl space-y-6">
-          <div className="rounded-3xl border border-white/80 bg-white/95 p-6 shadow-2xl backdrop-blur">
-            <div className="flex flex-col gap-6 lg:flex-row lg:items-center">
-              <div className="flex items-center gap-4 lg:flex-col lg:items-start">
+      <section className="relative -mt-20 sm:-mt-24 px-3 sm:px-4">
+        <div className="mx-auto max-w-5xl space-y-4 sm:space-y-6">
+          <div className="rounded-2xl sm:rounded-3xl border border-white/80 bg-white/95 p-4 sm:p-6 shadow-2xl backdrop-blur">
+            <div className="flex flex-col gap-4 sm:gap-6 lg:flex-row lg:items-center">
+              <div className="flex items-center gap-3 sm:gap-4 lg:flex-col lg:items-start">
                 <div className="relative">
-                  <div className="h-24 w-24 rounded-3xl bg-[#708090] text-white shadow-2xl ring-4 ring-white flex items-center justify-center text-3xl font-bold overflow-hidden">
+                  <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-2xl sm:rounded-3xl bg-[#708090] text-white shadow-2xl ring-2 sm:ring-4 ring-white flex items-center justify-center text-2xl sm:text-3xl font-bold overflow-hidden">
                     {profilePic ? (
                       <img
                         src={profilePic}
@@ -425,9 +425,9 @@ function Profile() {
                 />
               </div>
 
-              <div className="flex-1">
-                <div className="flex flex-wrap items-center gap-3">
-                  <h1 className="text-3xl font-bold text-slate-900">
+              <div className="flex-1 min-w-0">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                  <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-900 truncate">
                     {profileData.name}
                   </h1>
                   <span className="rounded-full border border-slate-200 px-3 py-1 text-xs font-medium uppercase tracking-[0.3em] text-slate-500">
@@ -462,10 +462,10 @@ function Profile() {
                 </div>
               </div>
 
-              <div className="flex flex-col gap-3 lg:w-56">
+              <div className="flex flex-col sm:flex-row lg:flex-col gap-2 sm:gap-3 w-full lg:w-56">
                 <button
                   onClick={() => setIsEditing(true)}
-                  className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 hover:border-slate-300"
+                  className="flex-1 sm:flex-initial rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 hover:border-slate-300"
                 >
                   Edit profile
                 </button>
@@ -486,7 +486,7 @@ function Profile() {
               </div>
             </div>
 
-            <div className="mt-6 grid gap-4 sm:grid-cols-3">
+            <div className="mt-4 sm:mt-6 grid gap-3 sm:gap-4 grid-cols-2 sm:grid-cols-3">
               {[
                 { label: "Posts", value: 24 },
                 { label: "Followers", value: 156 },
@@ -855,143 +855,147 @@ function Profile() {
 
             <div className="overflow-y-auto flex-1 px-6 py-4">
               <div className="grid gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Name
-                </label>
-                <input
-                  type="text"
-                  value={profileData.name}
-                  onChange={(e) =>
-                    setProfileData({ ...profileData, name: e.target.value })
-                  }
-                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 focus:border-slate-500 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Bio
-                </label>
-                <textarea
-                  rows="3"
-                  value={profileData.bio}
-                  onChange={(e) =>
-                    setProfileData({ ...profileData, bio: e.target.value })
-                  }
-                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 focus:border-slate-500 focus:outline-none"
-                />
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Location
+                    Name
                   </label>
                   <input
                     type="text"
-                    value={profileData.location}
+                    value={profileData.name}
                     onChange={(e) =>
-                      setProfileData({
-                        ...profileData,
-                        location: e.target.value,
-                      })
+                      setProfileData({ ...profileData, name: e.target.value })
                     }
                     className="w-full rounded-2xl border border-slate-300 px-4 py-3 focus:border-slate-500 focus:outline-none"
                   />
                 </div>
+
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Major
+                    Bio
                   </label>
-                  <input
-                    type="text"
-                    value={profileData.major}
+                  <textarea
+                    rows="3"
+                    value={profileData.bio}
                     onChange={(e) =>
-                      setProfileData({ ...profileData, major: e.target.value })
+                      setProfileData({ ...profileData, bio: e.target.value })
                     }
                     className="w-full rounded-2xl border border-slate-300 px-4 py-3 focus:border-slate-500 focus:outline-none"
                   />
                 </div>
-              </div>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Year
-                </label>
-                <div className="relative">
-                  <select
-                    value={profileData.year}
-                    onChange={(e) =>
-                      setProfileData({ ...profileData, year: e.target.value })
-                    }
-                    className="w-full appearance-none rounded-2xl border border-slate-300 px-4 py-3 pr-10 text-slate-700 focus:border-slate-500 focus:outline-none"
-                  >
-                    <option value="Freshman">Freshman</option>
-                    <option value="Sophomore">Sophomore</option>
-                    <option value="Junior">Junior</option>
-                    <option value="Senior">Senior</option>
-                    <option value="Graduate">Graduate</option>
-                  </select>
-                  <svg
-                    className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Interests
-                </label>
-                <div className="flex flex-wrap gap-2 mb-2">
-                  {profileData.interests.map((interest) => (
-                    <span
-                      key={interest}
-                      className="flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700"
-                    >
-                      {interest}
-                      <button
-                        onClick={() => handleRemoveInterest(interest)}
-                        className="text-slate-500"
-                      >
-                        ✕
-                      </button>
-                    </span>
-                  ))}
-                </div>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="Add interest"
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        handleAddInterest(e.target.value);
-                        e.target.value = "";
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Location
+                    </label>
+                    <input
+                      type="text"
+                      value={profileData.location}
+                      onChange={(e) =>
+                        setProfileData({
+                          ...profileData,
+                          location: e.target.value,
+                        })
                       }
-                    }}
-                    className="flex-1 rounded-2xl border border-slate-300 px-4 py-3 focus:border-slate-500 focus:outline-none"
-                  />
-                  <button
-                    onClick={(e) => {
-                      const input = e.currentTarget.previousElementSibling;
-                      handleAddInterest(input.value || "");
-                      input.value = "";
-                    }}
-                    className="rounded-2xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700"
-                  >
-                    Add
-                  </button>
+                      className="w-full rounded-2xl border border-slate-300 px-4 py-3 focus:border-slate-500 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Major
+                    </label>
+                    <input
+                      type="text"
+                      value={profileData.major}
+                      onChange={(e) =>
+                        setProfileData({
+                          ...profileData,
+                          major: e.target.value,
+                        })
+                      }
+                      className="w-full rounded-2xl border border-slate-300 px-4 py-3 focus:border-slate-500 focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Year
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={profileData.year}
+                      onChange={(e) =>
+                        setProfileData({ ...profileData, year: e.target.value })
+                      }
+                      className="w-full appearance-none rounded-2xl border border-slate-300 px-4 py-3 pr-10 text-slate-700 focus:border-slate-500 focus:outline-none"
+                    >
+                      <option value="Freshman">Freshman</option>
+                      <option value="Sophomore">Sophomore</option>
+                      <option value="Junior">Junior</option>
+                      <option value="Senior">Senior</option>
+                      <option value="Graduate">Graduate</option>
+                    </select>
+                    <svg
+                      className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M19 9l-7 7-7-7"
+                      />
+                    </svg>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Interests
+                  </label>
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {profileData.interests.map((interest) => (
+                      <span
+                        key={interest}
+                        className="flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700"
+                      >
+                        {interest}
+                        <button
+                          onClick={() => handleRemoveInterest(interest)}
+                          className="text-slate-500"
+                        >
+                          ✕
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Add interest"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleAddInterest(e.target.value);
+                          e.target.value = "";
+                        }
+                      }}
+                      className="flex-1 rounded-2xl border border-slate-300 px-4 py-3 focus:border-slate-500 focus:outline-none"
+                    />
+                    <button
+                      onClick={(e) => {
+                        const input = e.currentTarget.previousElementSibling;
+                        handleAddInterest(input.value || "");
+                        input.value = "";
+                      }}
+                      className="rounded-2xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700"
+                    >
+                      Add
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

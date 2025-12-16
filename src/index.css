@@ -433,3 +433,92 @@ body {
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
+
+/* Mobile-specific optimizations */
+@media (max-width: 640px) {
+  /* Improve touch targets on mobile */
+  /* Apply to form inputs and selects - these should always be touch-friendly */
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Apply to buttons and links, but exclude those with explicit sizing classes */
+  /* This preserves intentional compact layouts like icon buttons (h-9 w-9) */
+  button:not([class*="h-"]):not([class*="w-"]):not([class*="size-"]),
+  a:not([class*="h-"]):not([class*="w-"]):not([class*="size-"]) {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Explicitly reset min-size for elements with explicit dimensions to prevent conflicts */
+  button[class*="h-"],
+  button[class*="w-"],
+  a[class*="h-"],
+  a[class*="w-"] {
+    min-height: 0;
+    min-width: 0;
+  }
+
+  /* Better text readability */
+  body {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  /* Prevent horizontal scroll - target specific elements only */
+  /* Do NOT use universal selector (*) as it breaks absolutely/fixed positioned elements, modals, overlays */
+  img,
+  video,
+  iframe,
+  embed,
+  object,
+  svg,
+  table,
+  pre,
+  code {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* Prevent horizontal scroll on root elements */
+  html,
+  body {
+    overflow-x: hidden;
+    width: 100%;
+  }
+
+  /* Better tap highlight */
+  a,
+  button {
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+  }
+}
+
+/* Smooth scrolling on mobile */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* Safe area insets for notched devices */
+@supports (padding: max(0px)) {
+  .safe-top {
+    padding-top: max(1rem, env(safe-area-inset-top));
+  }
+
+  .safe-bottom {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+
+  .safe-left {
+    padding-left: max(1rem, env(safe-area-inset-left));
+  }
+
+  .safe-right {
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+}

@@ -29,54 +29,131 @@ self.addEventListener("install", (event) => {
 
 // Fetch event - serve from cache when offline
 self.addEventListener("fetch", (event) => {
-  // Skip non-GET requests
-  if (event.request.method !== "GET") {
-    return;
-  }
-
   // Skip chrome-extension and other non-http requests
   if (!event.request.url.startsWith("http")) {
     return;
   }
 
-  event.respondWith(
-    caches.match(event.request).then((response) => {
-      // Return cached version or fetch from network
-      if (response) {
-        return response;
-      }
+  const url = new URL(event.request.url);
 
-      return fetch(event.request)
+  // Handle API calls for all HTTP methods - never cache, always hit network
+  if (url.pathname.startsWith("/api/")) {
+    event.respondWith(
+      fetch(event.request)
         .then((response) => {
-          // Don't cache non-successful responses
-          if (
-            !response ||
-            response.status !== 200 ||
-            response.type !== "basic"
-          ) {
-            return response;
+          // Ensure we always return a valid Response object
+          if (!response || !(response instanceof Response)) {
+            return new Response(
+              JSON.stringify({ error: "Invalid response from server" }),
+              {
+                status: 500,
+                headers: { "Content-Type": "application/json" },
+              }
+            );
           }
+          return response;
+        })
+        .catch((error) => {
+          // Always return a valid Response object on error
+          console.error("Service worker API fetch error:", error);
+          return new Response(
+            JSON.stringify({ error: "offline", message: error.message }),
+            {
+              status: 503,
+              headers: { "Content-Type": "application/json" },
+            }
+          );
+        })
+    );
+    return;
+  }
 
-          // Clone the response
-          const responseToCache = response.clone();
+  // Skip non-GET requests for non-API requests
+  if (event.request.method !== "GET") {
+    return;
+  }
 
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
-
+  // Don't cache JavaScript files - always fetch from network for fresh code
+  if (
+    url.pathname.endsWith(".js") ||
+    url.pathname.includes("/src/") ||
+    url.pathname.includes("/assets/")
+  ) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          // Ensure we always return a valid Response object
+          if (!response || !(response instanceof Response)) {
+            return caches.match(event.request).then((cached) => {
+              return cached || new Response("Not found", { status: 404 });
+            });
+          }
           return response;
         })
         .catch(() => {
-          // DISABLED: Don't show offline page automatically - causes false positives
-          // If both cache and network fail, just let the request fail
-          // The React app will handle offline state through its own detection
-          // if (event.request.destination === 'document') {
-          //   return caches.match(OFFLINE_URL);
-          // }
-          // Return undefined to let the request fail naturally
-          return undefined;
+          // Only use cache if network fails, always return a valid Response
+          return caches.match(event.request).then((cached) => {
+            return (
+              cached ||
+              new Response("Offline", {
+                status: 503,
+                headers: { "Content-Type": "text/plain" },
+              })
+            );
+          });
+        })
+    );
+    return;
+  }
+
+  event.respondWith(
+    fetch(event.request)
+      .then((response) => {
+        // Don't cache non-successful responses
+        if (!response || response.status !== 200 || response.type !== "basic") {
+          return response;
+        }
+
+        // Only cache static assets, not dynamic content
+        if (
+          url.pathname.match(
+            /\.(png|jpg|jpeg|svg|gif|ico|css|woff|woff2|ttf|eot)$/
+          )
+        ) {
+          const responseToCache = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
+        }
+
+        return response;
+      })
+      .catch(() => {
+        // If network fails, try cache
+        return caches.match(event.request).then((cachedResponse) => {
+          // If both cache and network fail, show offline page for navigation requests
+          if (!cachedResponse && event.request.destination === "document") {
+            return caches.match(OFFLINE_URL).then((offlinePage) => {
+              // Guarantee a Response object - offline page might not exist
+              return (
+                offlinePage ||
+                new Response("Offline", {
+                  status: 503,
+                  headers: { "Content-Type": "text/plain" },
+                })
+              );
+            });
+          }
+          // Guarantee a Response object to avoid null/undefined errors
+          return (
+            cachedResponse ||
+            new Response("Offline", {
+              status: 503,
+              headers: { "Content-Type": "text/plain" },
+            })
+          );
         });
-    })
+      })
   );
 });
 

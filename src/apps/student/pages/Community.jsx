@@ -2,7 +2,10 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "../../shared/contexts/AuthContext";
 import { studentApi } from "../../shared/utils/api";
 import { useToast } from "../../shared/components/Toast";
-import { ListSkeleton, PostSkeleton } from "../../shared/components/SkeletonLoader";
+import {
+  ListSkeleton,
+  PostSkeleton,
+} from "../../shared/components/SkeletonLoader";
 
 const sidebarNav = [
   { id: "announcements", label: "Announcements", emoji: "📣", badge: 4 },
@@ -384,8 +387,8 @@ export default function Community() {
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute inset-y-0 right-0 w-1/3 bg-gradient-to-l from-white/80 to-transparent" />
         </div>
-        <div className="relative mx-auto max-w-6xl px-4 py-5 space-y-5">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="relative mx-auto max-w-6xl px-3 sm:px-4 py-4 sm:py-5 space-y-4 sm:space-y-5">
+          <div className="flex flex-col gap-3 sm:gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-center gap-4">
               <div className="relative">
                 <img
@@ -411,15 +414,15 @@ export default function Community() {
               </div>
             </div>
 
-            <div className="flex flex-1 flex-col gap-3 lg:flex-row lg:items-center lg:justify-end">
+            <div className="flex flex-1 flex-col gap-2 sm:gap-3 lg:flex-row lg:items-center lg:justify-end">
               <div className="relative w-full lg:max-w-sm">
                 <input
                   type="text"
                   placeholder="Search posts, users, topics..."
-                  className="w-full rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 pl-12 text-sm placeholder-slate-500 shadow-sm transition-all hover:border-slate-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/15"
+                  className="w-full rounded-xl sm:rounded-2xl border border-slate-200 bg-white/80 px-3 sm:px-4 py-2.5 sm:py-3 pl-10 sm:pl-12 text-sm placeholder-slate-500 shadow-sm transition-all hover:border-slate-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/15"
                 />
                 <svg
-                  className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+                  className="pointer-events-none absolute left-3 sm:left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -549,12 +552,16 @@ export default function Community() {
                       setSelectedClub(null);
                     }}
                     className={`w-full text-left flex items-center justify-between gap-3 rounded-xl px-3 py-3 text-sm transition hover:bg-slate-50 overflow-hidden ${
-                      activePage === item.id ? "bg-slate-100 font-medium border border-slate-200" : ""
+                      activePage === item.id
+                        ? "bg-slate-100 font-medium border border-slate-200"
+                        : ""
                     }`}
                   >
                     <span className="flex items-center gap-3 min-w-0">
                       <span className="text-base">{item.emoji}</span>
-                      <span className="text-slate-800 truncate">{item.label}</span>
+                      <span className="text-slate-800 truncate">
+                        {item.label}
+                      </span>
                     </span>
                     {item.badge ? (
                       <span className="grid h-6 w-6 flex-shrink-0 place-items-center rounded-full bg-[#708090] text-xs font-semibold text-white">

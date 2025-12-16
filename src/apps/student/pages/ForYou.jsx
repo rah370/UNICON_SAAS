@@ -394,9 +394,9 @@ function ForYou() {
 
   return (
     <div className="relative z-10">
-      <div className="mx-auto max-w-6xl px-4 py-6 space-y-6 lg:px-6">
+      <div className="mx-auto max-w-6xl px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6 lg:px-6">
         {/* Hero */}
-        <section className="rounded-[32px] border border-white/70 bg-white/90 p-6 shadow-xl backdrop-blur">
+        <section className="rounded-2xl sm:rounded-[32px] border border-white/70 bg-white/90 p-4 sm:p-6 shadow-xl backdrop-blur">
           <div className="grid gap-6 lg:grid-cols-[1.3fr,0.7fr]">
             <div className="space-y-4">
               <p className="text-xs font-semibold uppercase tracking-[0.45em] text-slate-500">
@@ -459,34 +459,37 @@ function ForYou() {
               View all
             </button>
           </div>
-          <div className="mt-3 flex justify-evenly items-start pb-1 overflow-x-auto scrollbar-hide">
-            {stories.map((story) => (
-              <button
-                key={story.id}
-                onClick={() => handleStoryClick(story)}
-                className="flex-shrink-0 text-center min-w-[70px] max-w-[90px]"
-              >
-                <div className="relative mx-auto">
-                  <div
-                    className={`flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br ${
-                      story.color
-                    } text-white font-semibold shadow-md transition hover:scale-105 ${
-                      story.hasNewStory && !story.isAddButton
-                        ? "ring-2 ring-blue-500 ring-offset-2"
-                        : ""
-                    }`}
-                  >
-                    {story.initials}
+          {/* Carousel container: extends to edges on mobile, contained on desktop */}
+          <div className="mt-3 -mx-4 sm:mx-0 px-4 sm:px-0">
+            <div className="flex justify-start sm:justify-evenly items-start pb-1 overflow-x-auto scrollbar-hide gap-2 sm:gap-0">
+              {stories.map((story) => (
+                <button
+                  key={story.id}
+                  onClick={() => handleStoryClick(story)}
+                  className="flex-shrink-0 text-center min-w-[70px] max-w-[90px]"
+                >
+                  <div className="relative mx-auto">
+                    <div
+                      className={`flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br ${
+                        story.color
+                      } text-white font-semibold shadow-md transition hover:scale-105 ${
+                        story.hasNewStory && !story.isAddButton
+                          ? "ring-2 ring-blue-500 ring-offset-2"
+                          : ""
+                      }`}
+                    >
+                      {story.initials}
+                    </div>
+                    {story.hasNewStory && (
+                      <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-[#708090] border-2 border-white" />
+                    )}
                   </div>
-                  {story.hasNewStory && (
-                    <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-[#708090] border-2 border-white" />
-                  )}
-                </div>
-                <p className="mt-1 text-xs font-medium text-slate-600">
-                  {story.label}
-                </p>
-              </button>
-            ))}
+                  <p className="mt-1 text-xs font-medium text-slate-600">
+                    {story.label}
+                  </p>
+                </button>
+              ))}
+            </div>
           </div>
         </section>
 
