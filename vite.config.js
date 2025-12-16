@@ -18,5 +18,6 @@ export default defineConfig({
     outDir: "dist",
     assetsDir: "assets",
   },
-  base: "./",
+  // Use "/" for Vercel deployments (absolute paths)
+  base: "/",
 });
