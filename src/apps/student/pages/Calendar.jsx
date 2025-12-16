@@ -378,26 +378,26 @@ function Calendar() {
               </div>
             </div>
             <div className="grid flex-1 gap-3 sm:grid-cols-3">
-              <div className="rounded-2xl border border-white/30 bg-white/10 px-4 py-3">
-                <p className="text-xs uppercase tracking-[0.35em] text-white/70">
+              <div className="rounded-2xl border border-white/30 bg-white/10 px-3 py-3">
+                <p className="text-xs uppercase tracking-[0.25em] text-white/70 leading-snug">
                   School events
                 </p>
-                <p className="text-3xl font-bold">{adminEvents.length}</p>
-                <p className="text-xs text-white/70">Visible to everyone</p>
+                <p className="text-3xl font-bold leading-tight">{adminEvents.length}</p>
+                <p className="text-xs text-white/70 leading-snug">Visible to everyone</p>
               </div>
-              <div className="rounded-2xl border border-white/30 bg-white/10 px-4 py-3">
-                <p className="text-xs uppercase tracking-[0.35em] text-white/70">
+              <div className="rounded-2xl border border-white/30 bg-white/10 px-3 py-3">
+                <p className="text-xs uppercase tracking-[0.25em] text-white/70 leading-snug">
                   Private tasks
                 </p>
-                <p className="text-3xl font-bold">{personalEvents.length}</p>
-                <p className="text-xs text-white/70">Only you can see</p>
+                <p className="text-3xl font-bold leading-tight">{personalEvents.length}</p>
+                <p className="text-xs text-white/70 leading-snug">Only you can see</p>
               </div>
-              <div className="rounded-2xl border border-white/30 bg-white/10 px-4 py-3">
-                <p className="text-xs uppercase tracking-[0.35em] text-white/70">
+              <div className="rounded-2xl border border-white/30 bg-white/10 px-3 py-3">
+                <p className="text-xs uppercase tracking-[0.25em] text-white/70 leading-snug">
                   Personal progress
                 </p>
-                <p className="text-3xl font-bold">{completionRate}%</p>
-                <p className="text-xs text-white/70">Completed this term</p>
+                <p className="text-3xl font-bold leading-tight">{completionRate}%</p>
+                <p className="text-xs text-white/70 leading-snug">Completed this term</p>
               </div>
             </div>
           </div>

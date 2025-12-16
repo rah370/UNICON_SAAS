@@ -842,16 +842,19 @@ function Profile() {
       </div>
 
       {isEditing && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[#708090]/60 px-4">
-          <div className="w-full max-w-2xl rounded-3xl bg-white p-6 shadow-2xl">
-            <h2 className="text-2xl font-semibold text-slate-900">
-              Edit profile
-            </h2>
-            <p className="text-sm text-slate-500">
-              Refresh how your classmates see you.
-            </p>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[#708090]/60 px-4 py-4 overflow-y-auto">
+          <div className="w-full max-w-2xl rounded-3xl bg-white shadow-2xl my-auto max-h-[90vh] flex flex-col">
+            <div className="p-6 pb-4 border-b border-slate-100">
+              <h2 className="text-2xl font-semibold text-slate-900">
+                Edit profile
+              </h2>
+              <p className="text-sm text-slate-500 mt-1">
+                Refresh how your classmates see you.
+              </p>
+            </div>
 
-            <div className="mt-6 grid gap-4">
+            <div className="overflow-y-auto flex-1 px-6 py-4">
+              <div className="grid gap-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">
                   Name
@@ -993,21 +996,22 @@ function Profile() {
               </div>
             </div>
 
-            <div className="mt-6 flex gap-3">
+            <div className="p-6 pt-4 border-t border-slate-100 bg-white rounded-b-3xl flex gap-3">
               <button
                 onClick={() => setIsEditing(false)}
-                className="flex-1 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+                className="flex-1 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSaveProfile}
-                className="flex-1 rounded-2xl px-4 py-3 text-sm font-semibold text-white"
+                disabled={saving}
+                className="flex-1 rounded-2xl px-4 py-3 text-sm font-semibold text-white transition disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{
                   background: `linear-gradient(135deg, ${brandColor}, #0f1c24)`,
                 }}
               >
-                Save changes
+                {saving ? "Saving..." : "Save changes"}
               </button>
             </div>
           </div>
