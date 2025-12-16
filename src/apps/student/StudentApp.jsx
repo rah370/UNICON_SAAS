@@ -100,9 +100,14 @@ function StudentAppLayout({ children }) {
 }
 
 function StudentApp() {
-  // Register service worker for offline functionality
+  // Register service worker for offline functionality (production only)
   useEffect(() => {
-    if ("serviceWorker" in navigator) {
+    // Only register service worker in production to avoid interfering with dev API requests
+    if (
+      "serviceWorker" in navigator &&
+      import.meta.env.PROD &&
+      !window.location.hostname.includes("localhost")
+    ) {
       navigator.serviceWorker
         .register("/sw.js")
         .then((registration) => {
@@ -111,6 +116,16 @@ function StudentApp() {
         .catch((error) => {
           console.log("Service Worker registration failed:", error);
         });
+    } else if (import.meta.env.DEV) {
+      // Unregister any existing service workers in development
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.getRegistrations().then((registrations) => {
+          registrations.forEach((registration) => {
+            registration.unregister();
+            console.log("Service Worker unregistered for development");
+          });
+        });
+      }
     }
   }, []);
 
