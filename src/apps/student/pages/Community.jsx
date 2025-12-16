@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { useAuth } from "../contexts/AuthContext";
-import { studentApi } from "../apps/shared/utils/api";
-import { useToast } from "../components/Toast";
-import { ListSkeleton, PostSkeleton } from "../components/SkeletonLoader";
+import { useAuth } from "../../shared/contexts/AuthContext";
+import { studentApi } from "../../shared/utils/api";
+import { useToast } from "../../shared/components/Toast";
+import { ListSkeleton, PostSkeleton } from "../../shared/components/SkeletonLoader";
 
 const sidebarNav = [
   { id: "announcements", label: "Announcements", emoji: "📣", badge: 4 },
@@ -526,7 +526,7 @@ export default function Community() {
       <div className="mx-auto grid max-w-6xl grid-cols-1 gap-8 px-4 py-8 lg:grid-cols-[240px_1fr] relative z-10">
         {/* Sidebar */}
         <aside className="hidden lg:block">
-          <div className="rounded-2xl border border-slate-200 bg-white p-3">
+          <div className="rounded-2xl border border-slate-200 bg-white p-2">
             <div className="flex items-center justify-between px-2 pb-2">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Community
@@ -548,16 +548,16 @@ export default function Community() {
                       setActivePage(item.id);
                       setSelectedClub(null);
                     }}
-                    className={`w-full text-left flex items-center justify-between rounded-xl px-2 py-2 text-sm transition hover:bg-slate-50 ${
-                      activePage === item.id ? "bg-slate-100 font-medium" : ""
+                    className={`w-full text-left flex items-center justify-between gap-3 rounded-xl px-3 py-3 text-sm transition hover:bg-slate-50 overflow-hidden ${
+                      activePage === item.id ? "bg-slate-100 font-medium border border-slate-200" : ""
                     }`}
                   >
-                    <span className="flex items-center gap-2">
-                      <span className="text-lg">{item.emoji}</span>
-                      <span className="text-slate-800">{item.label}</span>
+                    <span className="flex items-center gap-3 min-w-0">
+                      <span className="text-base">{item.emoji}</span>
+                      <span className="text-slate-800 truncate">{item.label}</span>
                     </span>
                     {item.badge ? (
-                      <span className="grid h-6 w-6 place-items-center rounded-full bg-[#708090] text-xs font-semibold text-white">
+                      <span className="grid h-6 w-6 flex-shrink-0 place-items-center rounded-full bg-[#708090] text-xs font-semibold text-white">
                         {item.badge}
                       </span>
                     ) : null}

@@ -1,10 +1,22 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../shared/contexts/AuthContext";
 import { useBranding } from "../../shared/contexts/BrandingContext";
+import { loadStripe } from "@stripe/stripe-js";
+import {
+  Elements,
+  PaymentElement,
+  useElements,
+  useStripe,
+} from "@stripe/react-stripe-js";
+
+const stripePromise = loadStripe(
+  import.meta.env.VITE_STRIPE_PUBLIC_KEY || "pk_test_12345_placeholder_key"
+);
 
 function Register() {
   const [currentStep, setCurrentStep] = useState(1);
+  const paidPlans = ["Basic", "Pro"];
   const [formData, setFormData] = useState({
     // Personal Information
     firstName: "",
@@ -43,7 +55,7 @@ function Register() {
     logo: null,
 
     // Plan Selection
-    plan: "Pro",
+    plan: "Free Trial",
 
     // Additional Information
     howDidYouHear: "",
@@ -58,6 +70,17 @@ function Register() {
 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [clientSecret, setClientSecret] = useState("");
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState("");
+  const stripeRef = useRef(null);
+  const elementsRef = useRef(null);
+  const planPrices = {
+    "Free Trial": "Free - 30 days",
+    Basic: "$29 / month",
+    Pro: "$79 / month",
+    Enterprise: "Custom",
+  };
   const { register } = useAuth();
   const { branding, updateBranding } = useBranding();
   const navigate = useNavigate();
@@ -102,10 +125,77 @@ function Register() {
     }
   };
 
+  const PaymentFields = ({ clientSecret }) => {
+    const stripe = useStripe();
+    const elements = useElements();
+
+    useEffect(() => {
+      if (stripe) {
+        stripeRef.current = stripe;
+      }
+    }, [stripe]);
+
+    useEffect(() => {
+      if (elements) {
+        elementsRef.current = elements;
+      }
+    }, [elements]);
+
+    if (!clientSecret) {
+      return (
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+          Select a paid plan and enter your email to load secure checkout.
+        </div>
+      );
+    }
+
+    return <PaymentElement options={{ layout: "tabs" }} />;
+  };
+
+  useEffect(() => {
+    const requiresPayment = paidPlans.includes(formData.plan);
+    if (!requiresPayment) {
+      setClientSecret("");
+      setPaymentStatus("");
+      setPaymentLoading(false);
+      return;
+    }
+    if (!formData.email || !formData.email.includes("@")) {
+      return;
+    }
+
+    const loadIntent = async () => {
+      try {
+        setPaymentLoading(true);
+        setPaymentStatus("Preparing secure payment...");
+        const res = await fetch("/api/registration/payment-intent", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: formData.email, plan: formData.plan }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success || !data.client_secret) {
+          throw new Error(data.error || "Unable to start payment.");
+        }
+        setClientSecret(data.client_secret);
+        setPaymentStatus("Card form ready");
+      } catch (err) {
+        console.error("Payment intent error", err);
+        setPaymentStatus(err.message || "Payment setup failed");
+        setClientSecret("");
+      } finally {
+        setPaymentLoading(false);
+      }
+    };
+
+    loadIntent();
+  }, [formData.plan, formData.email]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setLoading(true);
+    setPaymentStatus("");
 
     try {
       // Validation
@@ -142,6 +232,47 @@ function Register() {
         return;
       }
 
+      const requiresPayment = paidPlans.includes(formData.plan);
+
+      if (requiresPayment) {
+        if (!clientSecret) {
+          setError(
+            "Payment is not ready yet. Please wait for the card form to load."
+          );
+          return;
+        }
+        if (!stripeRef.current || !elementsRef.current) {
+          setError(
+            "Payment form is still initializing. Please try again in a moment."
+          );
+          return;
+        }
+        setPaymentStatus("Confirming payment...");
+        const { error: stripeError, paymentIntent } =
+          await stripeRef.current.confirmPayment({
+            elements: elementsRef.current,
+            confirmParams: {
+              return_url: window.location.origin + "/student-login",
+              receipt_email: formData.email,
+            },
+            redirect: "if_required",
+          });
+        if (stripeError) {
+          setError(stripeError.message || "Payment failed. Please try again.");
+          return;
+        }
+        if (
+          paymentIntent &&
+          !["succeeded", "processing", "requires_capture"].includes(
+            paymentIntent.status
+          )
+        ) {
+          setError("Payment could not be completed. Please try another card.");
+          return;
+        }
+        setPaymentStatus("Payment confirmed");
+      }
+
       const result = await register(formData);
       if (result.success) {
         updateBranding({
@@ -150,7 +281,7 @@ function Register() {
           logoData: formData.logo,
           plan: formData.plan,
         });
-      navigate("/student-login");
+        navigate("/student-login");
       } else {
         setError(result.error);
       }
@@ -162,6 +293,19 @@ function Register() {
   };
 
   const plans = [
+    {
+      name: "Free Trial",
+      price: "Free",
+      popular: true,
+      features: [
+        "30-day full access",
+        "All features unlocked",
+        "Up to 1,000 students",
+        "Full platform access",
+        "Email support",
+        "No credit card required",
+      ],
+    },
     {
       name: "Basic",
       price: "$29",
@@ -177,7 +321,7 @@ function Register() {
     {
       name: "Pro",
       price: "$79",
-      popular: true,
+      popular: false,
       features: [
         "Up to 2,000 students",
         "Advanced announcements",
@@ -1055,7 +1199,9 @@ function Register() {
                       <h4 className="font-medium text-slate-700">
                         Selected Plan
                       </h4>
-                      <p className="text-sm text-slate-600">{formData.plan}</p>
+                      <p className="text-sm text-slate-600">
+                        {formData.plan} — {planPrices[formData.plan]}
+                      </p>
                     </div>
                     <div>
                       <h4 className="font-medium text-slate-700">Curriculum</h4>
@@ -1064,6 +1210,70 @@ function Register() {
                       </p>
                     </div>
                   </div>
+                </div>
+
+                {/* Payment */}
+                <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-base font-semibold text-slate-900">
+                        Payment
+                      </p>
+                      <p className="text-sm text-slate-500">
+                        Secure card payment required for paid plans.
+                      </p>
+                    </div>
+                    <div className="rounded-full bg-cyan-50 px-3 py-1 text-xs font-semibold text-cyan-700">
+                      {planPrices[formData.plan]}
+                    </div>
+                  </div>
+                  {paidPlans.includes(formData.plan) ? (
+                    <Elements
+                      stripe={stripePromise}
+                      options={{
+                        clientSecret,
+                        appearance: { theme: "flat" },
+                      }}
+                    >
+                      <PaymentFields clientSecret={clientSecret} />
+                    </Elements>
+                  ) : formData.plan === "Free Trial" ? (
+                    <div className="rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-700">
+                      <div className="flex items-center gap-2 mb-2">
+                        <svg
+                          className="w-5 h-5"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                        <span className="font-semibold">
+                          Free Trial - No Payment Required
+                        </span>
+                      </div>
+                      <p>
+                        Start your 30-day free trial with full access to all
+                        features. No credit card required.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+                      Enterprise plan will be invoiced by our team after
+                      onboarding. No card required now.
+                    </div>
+                  )}
+                  {paymentStatus && (
+                    <p className="text-xs text-slate-500">{paymentStatus}</p>
+                  )}
+                  {paymentLoading && (
+                    <p className="text-xs text-slate-500">
+                      Loading payment form...
+                    </p>
+                  )}
                 </div>
 
                 {/* Agreements */}

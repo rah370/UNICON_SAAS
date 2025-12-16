@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../shared/contexts/AuthContext";
 import { useBranding } from "../../shared/contexts/BrandingContext";
-import { apiRequest } from "../../shared/utils/api";
+import { studentApi } from "../../shared/utils/api";
 import { useToast } from "../../shared/components/Toast";
 
 function SearchResults() {
@@ -11,10 +11,10 @@ function SearchResults() {
   const { user } = useAuth();
   const { branding } = useBranding();
   const { error: showError } = useToast();
-  
+
   const query = searchParams.get("q") || "";
   const type = searchParams.get("type") || "all";
-  
+
   const [searchQuery, setSearchQuery] = useState(query);
   const [selectedType, setSelectedType] = useState(type);
   const [results, setResults] = useState({
@@ -34,45 +34,56 @@ function SearchResults() {
     { id: "marketplace", label: "Marketplace", icon: "🛒" },
   ];
 
-  const performSearch = async (searchTerm, searchType) => {
-    if (!searchTerm.trim()) {
-      setResults({ users: [], posts: [], events: [], marketplace: [] });
-      setHasSearched(false);
-      return;
-    }
+  const performSearch = useCallback(
+    async (searchTerm, searchType) => {
+      if (!searchTerm.trim()) {
+        setResults({ users: [], posts: [], events: [], marketplace: [] });
+        setHasSearched(false);
+        return;
+      }
 
-    setLoading(true);
-    setHasSearched(true);
+      setLoading(true);
+      setHasSearched(true);
 
-    try {
-      const result = await apiRequest(
-        `/search?q=${encodeURIComponent(searchTerm)}&type=${searchType}`
-      );
-      console.log("Search result:", result); // Debug log
-      setResults({
-        users: result.users || [],
-        posts: result.posts || [],
-        events: result.events || [],
-        marketplace: result.marketplace || [],
-      });
-    } catch (err) {
-      console.error("Search error:", err);
-      showError("Failed to perform search. Please try again.");
-      setResults({ users: [], posts: [], events: [], marketplace: [] });
-    } finally {
-      setLoading(false);
-    }
-  };
+      try {
+        const result = await studentApi.search(
+          searchTerm,
+          searchType === "all" ? null : searchType
+        );
+        console.log("Search result:", result); // Debug log
+        setResults({
+          users: result.users || [],
+          posts: result.posts || [],
+          events: result.events || [],
+          marketplace: result.marketplace || [],
+        });
+      } catch (err) {
+        console.error("Search error:", err);
+        showError("Failed to perform search. Please try again.");
+        setResults({ users: [], posts: [], events: [], marketplace: [] });
+      } finally {
+        setLoading(false);
+      }
+    },
+    [showError]
+  );
 
   useEffect(() => {
     if (query) {
+      setSearchQuery(query);
+      setSelectedType(type);
       performSearch(query, type);
+    } else {
+      setResults({ users: [], posts: [], events: [], marketplace: [] });
+      setHasSearched(false);
     }
-  }, []);
+  }, [query, type, performSearch]);
 
   const handleSearch = (e) => {
     e.preventDefault();
-    navigate(`/search?q=${encodeURIComponent(searchQuery)}&type=${selectedType}`);
+    navigate(
+      `/search?q=${encodeURIComponent(searchQuery)}&type=${selectedType}`
+    );
     performSearch(searchQuery, selectedType);
   };
 
@@ -236,7 +247,9 @@ function SearchResults() {
                             <p className="font-semibold text-slate-900">
                               {user.first_name} {user.last_name}
                             </p>
-                            <p className="text-sm text-slate-600 truncate">{user.email}</p>
+                            <p className="text-sm text-slate-600 truncate">
+                              {user.email}
+                            </p>
                             {user.role && (
                               <span className="inline-block mt-1 text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
                                 {user.role}
@@ -273,9 +286,7 @@ function SearchResults() {
                       >
                         <div className="flex items-center gap-3 mb-2">
                           <div className="h-8 w-8 rounded-full bg-[#365b6d] text-white flex items-center justify-center text-xs font-semibold">
-                            {initials(
-                              `${post.first_name} ${post.last_name}`
-                            )}
+                            {initials(`${post.first_name} ${post.last_name}`)}
                           </div>
                           <div>
                             <p className="text-sm font-semibold text-slate-900">
@@ -382,8 +393,7 @@ function SearchResults() {
               Start searching
             </h3>
             <p className="text-slate-600">
-              Enter a search term above to find posts, people, events, and
-              more
+              Enter a search term above to find posts, people, events, and more
             </p>
           </div>
         )}
@@ -393,4 +403,3 @@ function SearchResults() {
 }
 
 export default SearchResults;
-

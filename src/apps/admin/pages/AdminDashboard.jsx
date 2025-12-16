@@ -3,7 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../shared/contexts/AuthContext";
 import { useBranding } from "../../shared/contexts/BrandingContext";
 import { adminApi } from "../../shared/utils/api";
-import { AdminLayout, AdminCard, AdminStatCard } from "../components/AdminLayout";
+import { AdminCard, AdminStatCard } from "../components/AdminLayout";
+import { useToast } from "../../shared/components/Toast";
+import {
+  GridSkeleton,
+  ListSkeleton,
+} from "../../shared/components/SkeletonLoader";
 
 const adminPalette = {
   primary: "#2563eb",
@@ -115,18 +120,31 @@ export default function AdminDashboard() {
   const navigate = useNavigate();
   const { user, logout, isAuthenticated } = useAuth();
   const { schoolBranding, updateSchoolBranding } = useBranding();
+  const { success, showError } = useToast();
   const [activeTab, setActiveTab] = useState("overview");
+  const [opsSnapshot, setOpsSnapshot] = useState({
+    pendingApprovals: 0,
+    openTickets: 0,
+    uptime: 0,
+    incidents: 0,
+    updated_at: null,
+  });
+  const [approvals, setApprovals] = useState([]);
+  const [alerts, setAlerts] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
   const [events, setEvents] = useState([]);
   const [users, setUsers] = useState([]);
   const [marketplace, setMarketplace] = useState([]);
+  const [activityLogs, setActivityLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [selectedPanel, setSelectedPanel] = useState(null);
+  const [marketplaceFilter, setMarketplaceFilter] = useState("all");
 
   // Redirect to admin login if not authenticated or not admin
   React.useEffect(() => {
     if (!isAuthenticated || user?.role !== "admin") {
-      navigate("/admin-login");
+      navigate("/admin/login");
     }
   }, [isAuthenticated, user, navigate]);
 
@@ -139,34 +157,51 @@ export default function AdminDashboard() {
         setLoading(true);
         setError(null);
 
-        const [postsRes, eventsRes, usersRes, marketplaceRes] = await Promise.all([
+        const [
+          postsRes,
+          eventsRes,
+          usersRes,
+          marketplaceRes,
+          logsRes,
+          snapshotRes,
+          approvalsRes,
+          alertsRes,
+        ] = await Promise.all([
           adminApi.getPosts().catch(() => ({ posts: [] })),
           adminApi.getEvents().catch(() => ({ events: [] })),
           adminApi.getUsers().catch(() => ({ users: [] })),
           adminApi.getMarketplace().catch(() => ({ items: [] })),
+          adminApi.getActivityLogs(10, 0).catch(() => ({ logs: [] })),
+          adminApi.getOpsSnapshot().catch(() => ({})),
+          adminApi.getApprovals().catch(() => ({ items: [] })),
+          adminApi.getAlerts().catch(() => ({ alerts: [] })),
         ]);
 
         // Transform posts to announcements format
-        const announcementsData = (postsRes.posts || []).slice(0, 5).map((post) => ({
-          id: post.id,
-          title: post.title || "Untitled",
-          content: post.content || "",
-          createdAt: post.created_at,
-          audience: post.category || "Everyone",
-          status: post.status || "published",
-          reach: Math.floor(Math.random() * 100),
-        }));
+        const announcementsData = (postsRes.posts || [])
+          .slice(0, 5)
+          .map((post) => ({
+            id: post.id,
+            title: post.title || "Untitled",
+            content: post.content || "",
+            createdAt: post.created_at,
+            audience: post.category || "Everyone",
+            status: post.status || "published",
+            reach: Math.floor(Math.random() * 100),
+          }));
 
         // Transform events
-        const eventsData = (eventsRes.events || []).slice(0, 5).map((event) => ({
-          id: event.id,
-          title: event.title,
-          date: event.event_date,
-          venue: event.location || "TBA",
-          capacity: event.max_attendees || 100,
-          rsvp: event.attendees_count || 0,
-          moderated: true,
-        }));
+        const eventsData = (eventsRes.events || [])
+          .slice(0, 5)
+          .map((event) => ({
+            id: event.id,
+            title: event.title,
+            date: event.event_date,
+            venue: event.location || "TBA",
+            capacity: event.max_attendees || 100,
+            rsvp: event.attendees_count || 0,
+            moderated: true,
+          }));
 
         // Transform users
         const usersData = (usersRes.users || []).map((u) => ({
@@ -179,19 +214,27 @@ export default function AdminDashboard() {
         }));
 
         // Transform marketplace
-        const marketplaceData = (marketplaceRes.items || []).slice(0, 5).map((item) => ({
-          id: item.id,
-          title: item.title,
-          seller: `${item.first_name || ""} ${item.last_name || ""}`.trim() || "Unknown",
-          price: item.price || 0,
-          status: item.is_sold ? "sold" : "approved",
-          flagged: false,
-        }));
+        const marketplaceData = (marketplaceRes.items || [])
+          .slice(0, 5)
+          .map((item) => ({
+            id: item.id,
+            title: item.title,
+            seller:
+              `${item.first_name || ""} ${item.last_name || ""}`.trim() ||
+              "Unknown",
+            price: item.price || 0,
+            status: item.is_sold ? "sold" : "approved",
+            flagged: false,
+          }));
 
         setAnnouncements(announcementsData);
         setEvents(eventsData);
         setUsers(usersData);
         setMarketplace(marketplaceData);
+        setActivityLogs(logsRes.logs || []);
+        setOpsSnapshot(snapshotRes || {});
+        setApprovals(approvalsRes.items || []);
+        setAlerts(alertsRes.alerts || []);
       } catch (err) {
         console.error("Failed to fetch dashboard data:", err);
         setError("Failed to load dashboard data");
@@ -260,10 +303,15 @@ export default function AdminDashboard() {
     [users.length, announcements.length, events.length, marketplace.length]
   );
 
+  const filteredMarketplace = useMemo(() => {
+    if (marketplaceFilter === "all") return marketplace;
+    return marketplace.filter((item) => item.status === marketplaceFilter);
+  }, [marketplace, marketplaceFilter]);
+
   const addAnnouncement = async () => {
     if (!announcementForm.title.trim() || !announcementForm.content.trim())
       return;
-    
+
     try {
       const result = await adminApi.createPost({
         title: announcementForm.title,
@@ -283,9 +331,10 @@ export default function AdminDashboard() {
           ...prev,
         ]);
         setAnnouncementForm({ title: "", content: "", audience: "Everyone" });
+        success("Announcement created successfully");
       }
     } catch (err) {
-      alert("Failed to create announcement: " + err.message);
+      showError("Failed to create announcement: " + err.message);
     }
   };
 
@@ -297,25 +346,27 @@ export default function AdminDashboard() {
           item.id === id ? { ...item, status: "published", reach: 100 } : item
         )
       );
+      success("Announcement published successfully");
     } catch (err) {
-      alert("Failed to publish announcement: " + err.message);
+      showError("Failed to publish announcement: " + err.message);
     }
   };
 
   const archiveAnnouncement = async (id) => {
     if (!confirm("Are you sure you want to delete this announcement?")) return;
-    
+
     try {
       await adminApi.deletePost(id);
       setAnnouncements((prev) => prev.filter((item) => item.id !== id));
+      success("Announcement deleted successfully");
     } catch (err) {
-      alert("Failed to delete announcement: " + err.message);
+      showError("Failed to delete announcement: " + err.message);
     }
   };
 
   const addEvent = async () => {
     if (!eventForm.title || !eventForm.date || !eventForm.venue) return;
-    
+
     try {
       const result = await adminApi.createEvent({
         title: eventForm.title,
@@ -336,9 +387,10 @@ export default function AdminDashboard() {
           ...prev,
         ]);
         setEventForm({ title: "", date: "", venue: "", capacity: 100 });
+        success("Event created successfully");
       }
     } catch (err) {
-      alert("Failed to create event: " + err.message);
+      showError("Failed to create event: " + err.message);
     }
   };
 
@@ -352,15 +404,25 @@ export default function AdminDashboard() {
             : item
         )
       );
+      success(
+        `Listing ${
+          status === "approved" ? "approved" : "rejected"
+        } successfully`
+      );
     } catch (err) {
-      alert("Failed to update listing: " + err.message);
+      showError("Failed to update listing: " + err.message);
     }
+  };
+
+  const handleMarketplaceDecision = async (id, status) => {
+    await approveListing(id, status);
+    setApprovals((prev) => prev.filter((item) => item.id !== id));
   };
 
   const toggleUserStatus = async (id) => {
     const user = users.find((u) => u.id === id);
     const newStatus = user?.status === "active" ? 0 : 1;
-    
+
     try {
       await adminApi.updateUserStatus(id, newStatus);
       setUsers((prev) =>
@@ -373,8 +435,11 @@ export default function AdminDashboard() {
             : u
         )
       );
+      success(
+        `User ${newStatus === 1 ? "activated" : "suspended"} successfully`
+      );
     } catch (err) {
-      alert("Failed to update user status: " + err.message);
+      showError("Failed to update user status: " + err.message);
     }
   };
 
@@ -392,44 +457,123 @@ export default function AdminDashboard() {
         : "text-slate-700 border-slate-200 bg-white hover:bg-slate-50"
     }`;
 
+  const navBadges = useMemo(() => {
+    const pendingApprovals = approvals.length;
+    const flaggedMarketplace = approvals.filter(
+      (a) => a.type === "marketplace"
+    ).length;
+    const pendingAnnouncements = approvals.filter(
+      (a) => a.type === "announcement"
+    ).length;
+    const pendingEvents = approvals.filter((a) => a.type === "event").length;
+    return {
+      announcements: pendingAnnouncements || announcements.length,
+      events: pendingEvents || events.length,
+      users: users.length,
+      marketplace: flaggedMarketplace || marketplace.length,
+      analytics: alerts.length,
+    };
+  }, [
+    approvals,
+    alerts.length,
+    announcements.length,
+    events.length,
+    users.length,
+    marketplace.length,
+  ]);
+
   return (
-    <AdminLayout>
-      <div className="flex flex-col gap-6 lg:flex-row">
-        <aside className="lg:w-64">
-          <nav className="sticky top-6 flex flex-col gap-2">
-            {[
-              ["/admin/dashboard", "Overview", "overview"],
-              ["/admin/announcements", "Announcements", "announcements"],
-              ["/admin/events", "Events", "events"],
-              ["/admin/calendar", "Calendar", "calendar"],
-              ["/admin/users", "People", "users"],
-              ["/admin/marketplace", "Marketplace", "marketplace"],
-              ["/admin/analytics", "Analytics", "analytics"],
-              ["/admin/settings", "Settings", "settings"],
-            ].map(([path, label, id]) => (
+    <>
+      <div className="flex flex-col gap-6">
+        <nav className="sticky top-16 z-10 flex gap-2 overflow-x-auto rounded-3xl border border-white/60 bg-white/90 p-2 shadow-sm backdrop-blur">
+          {[
+            ["/admin/dashboard", "Overview", "overview"],
+            ["/admin/announcements", "Announcements", "announcements"],
+            ["/admin/events", "Events", "events"],
+            ["/admin/calendar", "Calendar", "calendar"],
+            ["/admin/users", "People", "users"],
+            ["/admin/marketplace", "Marketplace", "marketplace"],
+            ["/admin/analytics", "Analytics", "analytics"],
+            ["/admin/settings", "Settings", "settings"],
+            ["/admin/profile", "Profile", "profile"],
+          ].map(([path, label, id]) => {
+            const badgeCount = navBadges[id];
+            const isActive = activeTab === id;
+            return (
               <button
                 key={id}
-                className={tabClass(id)}
                 onClick={() => navigate(path)}
-                style={
-                  activeTab === id
-                    ? {
-                        background:
-                          "linear-gradient(135deg, #2563eb, #1d4ed8)",
-                      }
-                    : {}
-                }
+                className={`whitespace-nowrap rounded-2xl px-4 py-3 text-sm font-semibold transition ${
+                  isActive
+                    ? "bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow"
+                    : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-50"
+                }`}
               >
-                {label}
+                <span className="flex items-center gap-2">
+                  {label}
+                  {badgeCount ? (
+                    <span
+                      className={`rounded-full px-2 text-[11px] font-semibold ${
+                        isActive ? "bg-white/20 text-white" : "bg-blue-50 text-blue-700"
+                      }`}
+                    >
+                      {badgeCount}
+                    </span>
+                  ) : null}
+                </span>
+              </button>
+            );
+          })}
+        </nav>
+
+        <section className="space-y-6 pb-16">
+          <div className="grid gap-3 rounded-[30px] border border-white/70 bg-white/90 p-4 shadow-xl sm:grid-cols-2 xl:grid-cols-4">
+            {[
+              {
+                label: "Create announcement",
+                action: () => navigate("/admin/announcements"),
+                hint: "⌘ + N",
+              },
+              {
+                label: "Schedule event",
+                action: () => navigate("/admin/events"),
+                hint: "⌘ + E",
+              },
+              {
+                label: "Review approvals",
+                action: () => setActiveTab("marketplace"),
+                hint: "⌘ + R",
+              },
+              {
+                label: "Invite user",
+                action: () => navigate("/admin/users"),
+                hint: "⌘ + I",
+              },
+            ].map((item) => (
+              <button
+                key={item.label}
+                onClick={item.action}
+                className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left text-sm font-semibold text-slate-800 hover:-translate-y-0.5 hover:shadow-md"
+              >
+                <span>{item.label}</span>
+                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
+                  {item.hint}
+                </span>
               </button>
             ))}
-          </nav>
-        </aside>
+          </div>
 
-        <section className="flex-1 space-y-6 pb-16">
           {loading && (
-            <div className="text-center text-slate-600 py-12">
-              Loading dashboard data...
+            <div className="space-y-6">
+              <GridSkeleton count={4} columns={4} />
+              <div className="grid gap-6 lg:grid-cols-2">
+                <div className="space-y-3">
+                  <ListSkeleton count={3} />
+                </div>
+                <div className="space-y-3">
+                  <ListSkeleton count={3} />
+                </div>
+              </div>
             </div>
           )}
           {error && (
@@ -439,14 +583,224 @@ export default function AdminDashboard() {
           )}
           {!loading && (
             <div className="space-y-6">
+              <div className="grid gap-4 lg:grid-cols-[1.3fr,0.7fr]">
+                <AdminCard
+                  title="Operations snapshot"
+                  actions={
+                    <span className="text-xs text-slate-500">
+                      Updated{" "}
+                      {opsSnapshot.updated_at
+                        ? new Date(opsSnapshot.updated_at).toLocaleTimeString()
+                        : "just now"}
+                    </span>
+                  }
+                >
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    {[
+                      [
+                        "Approvals",
+                        opsSnapshot.pendingApprovals || 0,
+                        "pending",
+                      ],
+                      ["Open tickets", opsSnapshot.openTickets || 0, "items"],
+                      ["Uptime", `${opsSnapshot.uptime || 0}%`, "last 24h"],
+                      ["Incidents", opsSnapshot.incidents || 0, "current"],
+                    ].map(([label, value, meta]) => (
+                      <div
+                        key={label}
+                        className="rounded-2xl border border-slate-100 bg-slate-50/60 p-3 text-sm text-slate-700"
+                      >
+                        <p className="text-xs uppercase tracking-wide text-slate-500">
+                          {label}
+                        </p>
+                        <p className="mt-2 text-2xl font-bold text-slate-900">
+                          {value}
+                        </p>
+                        <p className="text-xs text-slate-500">{meta}</p>
+                      </div>
+                    ))}
+                  </div>
+                </AdminCard>
+
+                <AdminCard title="Alerts">
+                  <div className="space-y-3">
+                    {alerts.length === 0 && (
+                      <div className="rounded-2xl border border-slate-100 bg-slate-50 p-3 text-sm text-slate-500">
+                        No active alerts.
+                      </div>
+                    )}
+                    {alerts.map((alert) => (
+                      <button
+                        key={alert.id}
+                        onClick={() =>
+                          setSelectedPanel({ type: "alert", item: alert })
+                        }
+                        className="flex w-full items-start gap-3 rounded-2xl border border-slate-100 bg-white p-3 text-left hover:bg-slate-50"
+                      >
+                        <span
+                          className={`mt-0.5 h-2.5 w-2.5 rounded-full ${
+                            alert.severity === "high"
+                              ? "bg-red-500"
+                              : alert.severity === "medium"
+                              ? "bg-amber-400"
+                              : "bg-emerald-400"
+                          }`}
+                        />
+                        <div className="flex-1">
+                          <p className="text-sm font-semibold text-slate-900">
+                            {alert.message}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            {new Date(alert.created_at).toLocaleTimeString()}
+                          </p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </AdminCard>
+              </div>
+
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 {overviewStats.map((stat) => (
                   <AdminStatCard key={stat.label} {...stat} />
                 ))}
               </div>
 
+              <div className="grid gap-6 lg:grid-cols-[1.1fr,0.9fr]">
+                <AdminCard
+                  title="Approvals queue"
+                  actions={
+                    <span className="text-xs text-slate-500">
+                      {approvals.length} waiting
+                    </span>
+                  }
+                >
+                  <div className="space-y-3">
+                    {approvals.length === 0 && (
+                      <div className="rounded-2xl border border-slate-100 bg-slate-50 p-3 text-sm text-slate-500">
+                        Nothing to approve right now.
+                      </div>
+                    )}
+                    {approvals.map((item) => (
+                      <div
+                        key={item.id}
+                        className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-white p-3 text-sm text-slate-800"
+                      >
+                        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-xs font-semibold uppercase text-slate-600">
+                          {item.type.slice(0, 2)}
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-semibold text-slate-900">
+                            {item.title}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            {item.submitted_by} •{" "}
+                            {new Date(item.submitted_at).toLocaleTimeString()}
+                          </p>
+                        </div>
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                            item.risk === "high"
+                              ? "bg-red-50 text-red-700"
+                              : item.risk === "medium"
+                              ? "bg-amber-50 text-amber-700"
+                              : "bg-emerald-50 text-emerald-700"
+                          }`}
+                        >
+                          {item.risk}
+                        </span>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() =>
+                              setSelectedPanel({ type: "approval", item })
+                            }
+                            className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                          >
+                            Open
+                          </button>
+                          <button
+                            onClick={() =>
+                              handleMarketplaceDecision(item.id, "approved")
+                            }
+                            className="rounded-full bg-emerald-600 px-3 py-1 text-xs font-semibold text-white hover:bg-emerald-700"
+                          >
+                            Approve
+                          </button>
+                          <button
+                            onClick={() =>
+                              handleMarketplaceDecision(item.id, "rejected")
+                            }
+                            className="rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-600 hover:bg-red-100"
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </AdminCard>
+
+                <AdminCard
+                  title="Marketplace review"
+                  actions={
+                    <select
+                      value={marketplaceFilter}
+                      onChange={(e) => setMarketplaceFilter(e.target.value)}
+                      className="rounded-xl border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700"
+                    >
+                      <option value="all">All</option>
+                      <option value="approved">Approved</option>
+                      <option value="pending">Pending</option>
+                      <option value="sold">Sold</option>
+                    </select>
+                  }
+                >
+                  <div className="space-y-3">
+                    {filteredMarketplace.length === 0 && (
+                      <div className="rounded-2xl border border-slate-100 bg-slate-50 p-3 text-sm text-slate-500">
+                        No listings in this filter.
+                      </div>
+                    )}
+                    {filteredMarketplace.map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() =>
+                          setSelectedPanel({ type: "listing", item })
+                        }
+                        className="flex w-full items-center gap-3 rounded-2xl border border-slate-100 bg-white p-3 text-left hover:bg-slate-50"
+                      >
+                        <div className="h-10 w-10 rounded-2xl bg-slate-100 text-center text-xs font-semibold uppercase text-slate-600">
+                          <div className="flex h-full items-center justify-center">
+                            {item.title.slice(0, 2)}
+                          </div>
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-semibold text-slate-900">
+                            {item.title}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            {item.seller} • ₱{item.price || 0}
+                          </p>
+                        </div>
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                            item.status === "approved"
+                              ? "bg-emerald-50 text-emerald-700"
+                              : item.status === "sold"
+                              ? "bg-slate-100 text-slate-700"
+                              : "bg-amber-50 text-amber-700"
+                          }`}
+                        >
+                          {item.status}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </AdminCard>
+              </div>
+
               <div className="grid gap-6 lg:grid-cols-2">
-                <AdminCard 
+                <AdminCard
                   title="Quick Actions"
                   actions={
                     <button
@@ -497,29 +851,117 @@ export default function AdminDashboard() {
                   </div>
                 </AdminCard>
 
-                <AdminCard title="Recent Activity">
+                <AdminCard
+                  title="Recent Activity"
+                  actions={
+                    <button
+                      onClick={() => navigate("/admin/analytics")}
+                      className="text-xs text-slate-600 hover:text-slate-900"
+                    >
+                      View All
+                    </button>
+                  }
+                >
                   <div className="space-y-3 text-sm">
-                    <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3">
-                      <div className="h-2 w-2 rounded-full bg-emerald-500"></div>
-                      <div className="flex-1">
-                        <p className="text-slate-900">New user registered</p>
-                        <p className="text-xs text-slate-500">2 minutes ago</p>
+                    {activityLogs.length > 0 ? (
+                      activityLogs.slice(0, 5).map((log) => {
+                        const getActionColor = (action) => {
+                          if (
+                            action.includes("created") ||
+                            action.includes("registered")
+                          )
+                            return "bg-emerald-500";
+                          if (
+                            action.includes("updated") ||
+                            action.includes("modified")
+                          )
+                            return "bg-blue-500";
+                          if (
+                            action.includes("deleted") ||
+                            action.includes("removed")
+                          )
+                            return "bg-red-500";
+                          if (
+                            action.includes("pending") ||
+                            action.includes("flagged")
+                          )
+                            return "bg-yellow-500";
+                          return "bg-slate-500";
+                        };
+
+                        const getActionLabel = (action) => {
+                          if (action.includes("user")) return "User";
+                          if (action.includes("event")) return "Event";
+                          if (
+                            action.includes("announcement") ||
+                            action.includes("post")
+                          )
+                            return "Announcement";
+                          if (
+                            action.includes("marketplace") ||
+                            action.includes("listing")
+                          )
+                            return "Marketplace";
+                          if (action.includes("settings")) return "Settings";
+                          return "Activity";
+                        };
+
+                        const timeAgo = (dateString) => {
+                          if (!dateString) return "Recently";
+                          const date = new Date(dateString);
+                          const now = new Date();
+                          const diffMs = now - date;
+                          const diffMins = Math.floor(diffMs / 60000);
+                          const diffHours = Math.floor(diffMs / 3600000);
+                          const diffDays = Math.floor(diffMs / 86400000);
+
+                          if (diffMins < 1) return "Just now";
+                          if (diffMins < 60)
+                            return `${diffMins} minute${
+                              diffMins !== 1 ? "s" : ""
+                            } ago`;
+                          if (diffHours < 24)
+                            return `${diffHours} hour${
+                              diffHours !== 1 ? "s" : ""
+                            } ago`;
+                          return `${diffDays} day${
+                            diffDays !== 1 ? "s" : ""
+                          } ago`;
+                        };
+
+                        const userName =
+                          log.first_name && log.last_name
+                            ? `${log.first_name} ${log.last_name}`
+                            : log.email || "System";
+
+                        return (
+                          <div
+                            key={log.id}
+                            className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3"
+                          >
+                            <div
+                              className={`h-2 w-2 rounded-full ${getActionColor(
+                                log.action
+                              )}`}
+                            ></div>
+                            <div className="flex-1">
+                              <p className="text-slate-900">
+                                {getActionLabel(log.action)}:{" "}
+                                {log.action.replace(/_/g, " ")}
+                                {log.user_id && ` by ${userName}`}
+                              </p>
+                              <p className="text-xs text-slate-500">
+                                {timeAgo(log.created_at)}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="text-center py-4 text-slate-500 text-sm">
+                        No recent activity
                       </div>
-                    </div>
-                    <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3">
-                      <div className="h-2 w-2 rounded-full bg-yellow-500"></div>
-                      <div className="flex-1">
-                        <p className="text-slate-900">Pending marketplace listing</p>
-                        <p className="text-xs text-slate-500">15 minutes ago</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3">
-                      <div className="h-2 w-2 rounded-full bg-blue-500"></div>
-                      <div className="flex-1">
-                        <p className="text-slate-900">Event RSVP received</p>
-                        <p className="text-xs text-slate-500">1 hour ago</p>
-                      </div>
-                    </div>
+                    )}
                   </div>
                 </AdminCard>
               </div>
@@ -528,9 +970,15 @@ export default function AdminDashboard() {
                 <div className="space-y-3 text-sm">
                   <div className="flex items-center justify-between rounded-xl border border-yellow-200 bg-yellow-50 p-3">
                     <div>
-                      <p className="text-slate-900 font-semibold">Marketplace Listings</p>
+                      <p className="text-slate-900 font-semibold">
+                        Marketplace Listings
+                      </p>
                       <p className="text-xs text-slate-600">
-                        {marketplace.filter((m) => m.status === "pending").length} items need review
+                        {
+                          marketplace.filter((m) => m.status === "pending")
+                            .length
+                        }{" "}
+                        items need review
                       </p>
                     </div>
                     <button
@@ -542,12 +990,14 @@ export default function AdminDashboard() {
                   </div>
                   <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-3">
                     <div>
-                      <p className="text-slate-900 font-semibold">User Reports</p>
-                      <p className="text-xs text-slate-600">0 pending reports</p>
+                      <p className="text-slate-900 font-semibold">
+                        User Reports
+                      </p>
+                      <p className="text-xs text-slate-600">
+                        0 pending reports
+                      </p>
                     </div>
-                    <button
-                      className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
-                    >
+                    <button className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition">
                       View
                     </button>
                   </div>
@@ -800,7 +1250,7 @@ export default function AdminDashboard() {
                 title="User Management"
                 actions={
                   <button
-                    onClick={() => alert("Bulk import feature coming soon")}
+                    onClick={() => showError("Bulk import feature coming soon")}
                     className="rounded-full border border-white/20 px-4 py-2 text-sm font-semibold text-white/80 hover:border-white/60"
                   >
                     + Import Users
@@ -1089,6 +1539,88 @@ export default function AdminDashboard() {
           )}
         </section>
       </div>
-    </AdminLayout>
+      {selectedPanel && (
+        <div className="fixed inset-0 z-40 flex items-center justify-end bg-black/30 backdrop-blur-sm">
+          <div className="h-full w-full max-w-lg overflow-y-auto rounded-l-3xl bg-white p-6 shadow-2xl">
+            <div className="mb-4 flex items-start justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.35em] text-slate-500">
+                  {selectedPanel.type}
+                </p>
+                <h3 className="text-xl font-bold text-slate-900">
+                  {selectedPanel.item?.title || selectedPanel.item?.message}
+                </h3>
+              </div>
+              <button
+                onClick={() => setSelectedPanel(null)}
+                className="rounded-full border border-slate-200 bg-white px-3 py-1 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="space-y-3 text-sm text-slate-700">
+              {selectedPanel.item?.message && (
+                <p className="rounded-2xl bg-slate-50 p-3 text-slate-800">
+                  {selectedPanel.item.message}
+                </p>
+              )}
+              {selectedPanel.item?.submitted_by && (
+                <p className="text-slate-500">
+                  Submitted by{" "}
+                  <span className="font-semibold text-slate-800">
+                    {selectedPanel.item.submitted_by}
+                  </span>
+                </p>
+              )}
+              {selectedPanel.item?.seller && (
+                <p className="text-slate-500">
+                  Seller{" "}
+                  <span className="font-semibold text-slate-800">
+                    {selectedPanel.item.seller}
+                  </span>
+                </p>
+              )}
+              {selectedPanel.item?.created_at && (
+                <p className="text-slate-500">
+                  Created{" "}
+                  {new Date(selectedPanel.item.created_at).toLocaleString()}
+                </p>
+              )}
+              <div className="flex gap-2">
+                {selectedPanel.type === "listing" && (
+                  <>
+                    <button
+                      onClick={() =>
+                        selectedPanel.item?.id &&
+                        handleMarketplaceDecision(
+                          selectedPanel.item.id,
+                          "approved"
+                        )
+                      }
+                      className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+                    >
+                      Approve
+                    </button>
+                    <button
+                      onClick={() =>
+                        selectedPanel.item?.id &&
+                        handleMarketplaceDecision(
+                          selectedPanel.item.id,
+                          "rejected"
+                        )
+                      }
+                      className="rounded-full bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-100"
+                    >
+                      Reject
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

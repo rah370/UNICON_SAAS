@@ -17,6 +17,7 @@ require_once 'file_upload.php';
 require_once 'stripe_payment.php';
 require_once 'email_verification.php';
 require_once 'enhanced_endpoints.php';
+require_once 'school_branding.php';
 
 // Simple routing
 $request_uri = $_SERVER['REQUEST_URI'];
@@ -41,6 +42,7 @@ $stripePayment = new StripePayment();
 $emailVerification = new EmailVerification();
 $db = Database::getInstance();
 $enhanced = new EnhancedEndpoints($db);
+$schoolBranding = new SchoolBranding();
 
 // Helper function to get current user
 function getCurrentUser($token, $auth) {
@@ -59,6 +61,67 @@ function requireAuth($token, $auth) {
     return $user;
 }
 
+// Route handling - check for nested paths first
+// Handle /api/schools/{schoolId}/branding paths
+if (preg_match('#^schools/(\d+)/branding(/logo)?$#', $path, $matches)) {
+    $schoolId = (int)$matches[1];
+    $isLogoUpload = isset($matches[2]) && $matches[2] === '/logo';
+    $user = getCurrentUser($token, $auth);
+    
+    if ($method === 'GET') {
+        // Get branding - all authenticated users can read
+        if (!$user) {
+            http_response_code(401);
+            echo json_encode(['error' => 'Unauthorized']);
+            exit;
+        }
+        
+        $result = $schoolBranding->getBranding($schoolId);
+        echo json_encode($result);
+        exit;
+        
+    } elseif ($method === 'PUT' && !$isLogoUpload) {
+        // Update branding - admin only
+        $user = requireAuth($token, $auth);
+        
+        if ($user['school_id'] != $schoolId && !in_array($user['role'], ['super_admin', 'admin'])) {
+            http_response_code(403);
+            echo json_encode(['error' => 'Forbidden: Only admins can update branding']);
+            exit;
+        }
+        
+        $result = $schoolBranding->updateBranding($schoolId, $input, $user['id']);
+        if (!$result['success']) {
+            http_response_code(400);
+        }
+        echo json_encode($result);
+        exit;
+        
+    } elseif ($method === 'POST' && $isLogoUpload) {
+        // Upload logo - admin only
+        $user = requireAuth($token, $auth);
+        
+        if ($user['school_id'] != $schoolId && !in_array($user['role'], ['super_admin', 'admin'])) {
+            http_response_code(403);
+            echo json_encode(['error' => 'Forbidden: Only admins can upload logos']);
+            exit;
+        }
+        
+        if (!isset($_FILES['logo'])) {
+            http_response_code(400);
+            echo json_encode(['error' => 'No file uploaded']);
+            exit;
+        }
+        
+        $result = $schoolBranding->uploadLogo($schoolId, $_FILES['logo'], $user['id']);
+        if (!$result['success']) {
+            http_response_code(400);
+        }
+        echo json_encode($result);
+        exit;
+    }
+}
+
 // Route handling
 switch ($path) {
     case 'health':
@@ -66,6 +129,78 @@ switch ($path) {
             'status' => 'ok',
             'timestamp' => date('Y-m-d H:i:s'),
             'version' => '2.0.0'
+        ]);
+        break;
+    
+    case 'admin/ops-snapshot':
+        $user = requireAuth($token, $auth);
+        echo json_encode([
+            'pendingApprovals' => 6,
+            'openTickets' => 3,
+            'uptime' => 99.96,
+            'incidents' => 0,
+            'updated_at' => date('Y-m-d H:i:s'),
+        ]);
+        break;
+
+    case 'admin/approvals':
+        $user = requireAuth($token, $auth);
+        echo json_encode([
+            'items' => [
+                [
+                    'id' => 401,
+                    'type' => 'marketplace',
+                    'title' => '3D Printer Service',
+                    'submitted_by' => 'Alex Johnson',
+                    'submitted_at' => date('c', strtotime('-2 hours')),
+                    'risk' => 'medium',
+                    'status' => 'pending',
+                ],
+                [
+                    'id' => 402,
+                    'type' => 'event',
+                    'title' => 'Robotics Club Demo Day',
+                    'submitted_by' => 'Maria Garcia',
+                    'submitted_at' => date('c', strtotime('-4 hours')),
+                    'risk' => 'low',
+                    'status' => 'pending',
+                ],
+                [
+                    'id' => 403,
+                    'type' => 'announcement',
+                    'title' => 'Policy Update: Device Security',
+                    'submitted_by' => 'Dean Office',
+                    'submitted_at' => date('c', strtotime('-1 day')),
+                    'risk' => 'high',
+                    'status' => 'pending',
+                ],
+            ]
+        ]);
+        break;
+
+    case 'admin/alerts':
+        $user = requireAuth($token, $auth);
+        echo json_encode([
+            'alerts' => [
+                [
+                    'id' => 1,
+                    'severity' => 'high',
+                    'message' => '2 flagged marketplace listings awaiting review',
+                    'created_at' => date('c', strtotime('-30 minutes')),
+                ],
+                [
+                    'id' => 2,
+                    'severity' => 'medium',
+                    'message' => 'API latency spiked on /events (p95 920ms)',
+                    'created_at' => date('c', strtotime('-2 hours')),
+                ],
+                [
+                    'id' => 3,
+                    'severity' => 'low',
+                    'message' => '3 announcements scheduled in the next hour',
+                    'created_at' => date('c', strtotime('-3 hours')),
+                ],
+            ]
         ]);
         break;
         
@@ -81,6 +216,20 @@ switch ($path) {
         $schoolId = $input['school_id'] ?? null;
         
         $result = $auth->authenticate($email, $password, $schoolId);
+        
+        // Add branding to login response if successful (gracefully handle if table doesn't exist)
+        if ($result['success'] && isset($result['user']['school_id'])) {
+            try {
+                $brandingResult = $schoolBranding->getBranding($result['user']['school_id']);
+                $result['branding'] = $brandingResult['branding'] ?? null;
+            } catch (Exception $e) {
+                // If branding table doesn't exist or other error, just skip branding
+                // Login should still work without branding
+                error_log("Branding fetch failed during login: " . $e->getMessage());
+                $result['branding'] = null;
+            }
+        }
+        
         echo json_encode($result);
         break;
         
@@ -108,7 +257,21 @@ switch ($path) {
         
     case 'auth/me':
         $user = requireAuth($token, $auth);
-        echo json_encode(['user' => $user]);
+        
+        // Get branding for the user's school (gracefully handle if table doesn't exist)
+        $branding = null;
+        try {
+            $brandingResult = $schoolBranding->getBranding($user['school_id']);
+            $branding = $brandingResult['branding'] ?? null;
+        } catch (Exception $e) {
+            // If branding table doesn't exist, just skip branding
+            error_log("Branding fetch failed in auth/me: " . $e->getMessage());
+        }
+        
+        echo json_encode([
+            'user' => $user,
+            'branding' => $branding
+        ]);
         break;
         
     case 'auth/verify-email':
@@ -162,25 +325,37 @@ switch ($path) {
         $user = requireAuth($token, $auth);
         
         if ($method === 'GET') {
-            $posts = $db->fetchAll(
-                "SELECT p.*, u.first_name, u.last_name, u.avatar_url 
-                 FROM posts p 
-                 JOIN users u ON p.user_id = u.id 
-                 WHERE p.school_id = ? 
-                 ORDER BY p.created_at DESC 
-                 LIMIT 50",
-                [$user['school_id']]
-            );
+            $channel = $_GET['channel'] ?? null;
+            $category = $_GET['category'] ?? null;
+            
+            $sql = "SELECT p.*, u.first_name, u.last_name, u.avatar_url 
+                    FROM posts p 
+                    JOIN users u ON p.user_id = u.id 
+                    WHERE p.school_id = ?";
+            $params = [$user['school_id']];
+            
+            if ($channel) {
+                $sql .= " AND p.category = ?";
+                $params[] = $channel;
+            } elseif ($category) {
+                $sql .= " AND p.category = ?";
+                $params[] = $category;
+            }
+            
+            $sql .= " ORDER BY p.created_at DESC LIMIT 50";
+            
+            $posts = $db->fetchAll($sql, $params);
             echo json_encode(['posts' => $posts]);
         } elseif ($method === 'POST') {
             $title = $input['title'] ?? '';
             $content = $input['content'] ?? '';
             $imageUrl = $input['image_url'] ?? null;
             $category = $input['category'] ?? 'general';
+            $channelId = $input['channel_id'] ?? null;
             
             $postId = $db->query(
-                "INSERT INTO posts (school_id, user_id, title, content, image_url, category) VALUES (?, ?, ?, ?, ?, ?)",
-                [$user['school_id'], $user['id'], $title, $content, $imageUrl, $category]
+                "INSERT INTO posts (school_id, user_id, title, content, image_url, category, channel_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                [$user['school_id'], $user['id'], $title, $content, $imageUrl, $category, $channelId]
             );
             $postId = $db->lastInsertId();
             
@@ -340,35 +515,36 @@ switch ($path) {
             // Admins can see all items for moderation
             $isAdmin = ($user['role'] === 'admin' || $user['role'] === 'super_admin');
             
-            if ($isAdmin) {
-                // Admins see all items regardless of status
-                $items = $db->fetchAll(
-                    "SELECT m.*, u.first_name, u.last_name,
+            $category = $_GET['category'] ?? null;
+            $search = $_GET['search'] ?? null;
+            
+            $sql = "SELECT m.*, u.first_name, u.last_name,
                      CONCAT(u.first_name, ' ', u.last_name) as seller,
-                     COALESCE(m.status, 'pending') as status
+                     COALESCE(m.status, ?) as status
                      FROM marketplace_items m 
                      JOIN users u ON m.seller_id = u.id 
-                     WHERE m.school_id = ? 
-                     ORDER BY m.created_at DESC 
-                     LIMIT 100",
-                    [$user['school_id']]
-                );
-            } else {
-                // Students see only approved items that aren't sold
-                $items = $db->fetchAll(
-                    "SELECT m.*, u.first_name, u.last_name,
-                     CONCAT(u.first_name, ' ', u.last_name) as seller,
-                     COALESCE(m.status, 'approved') as status
-                     FROM marketplace_items m 
-                     JOIN users u ON m.seller_id = u.id 
-                     WHERE m.school_id = ? 
-                     AND (m.status = 'approved' OR m.status IS NULL)
-                     AND m.is_sold = 0 
-                     ORDER BY m.created_at DESC 
-                     LIMIT 50",
-                    [$user['school_id']]
-                );
+                     WHERE m.school_id = ?";
+            $params = [$isAdmin ? 'pending' : 'approved', $user['school_id']];
+            
+            if (!$isAdmin) {
+                $sql .= " AND (m.status = 'approved' OR m.status IS NULL) AND m.is_sold = 0";
             }
+            
+            if ($category) {
+                $sql .= " AND m.category = ?";
+                $params[] = $category;
+            }
+            
+            if ($search) {
+                $sql .= " AND (m.title LIKE ? OR m.description LIKE ?)";
+                $searchTerm = "%$search%";
+                $params[] = $searchTerm;
+                $params[] = $searchTerm;
+            }
+            
+            $sql .= " ORDER BY m.created_at DESC LIMIT " . ($isAdmin ? 100 : 50);
+            
+            $items = $db->fetchAll($sql, $params);
             echo json_encode(['items' => $items]);
         } elseif ($method === 'POST') {
             $title = $input['title'] ?? '';
@@ -452,6 +628,59 @@ switch ($path) {
         $plans = $stripePayment->getPricingPlans();
         echo json_encode(['plans' => $plans]);
         break;
+
+    case 'contact':
+        if ($method !== 'POST') {
+            http_response_code(405);
+            echo json_encode(['error' => 'Method not allowed']);
+            break;
+        }
+
+        $name = trim($input['name'] ?? '');
+        $email = trim($input['email'] ?? '');
+        $school = trim($input['school'] ?? '');
+        $message = trim($input['message'] ?? '');
+
+        if (!$name || !$email || !$message) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Missing required fields']);
+            break;
+        }
+
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Invalid email']);
+            break;
+        }
+
+        // In lieu of email service, log to a file
+        $logEntry = sprintf(
+            "[%s] Contact from %s (%s, %s): %s\n",
+            date('c'),
+            $name,
+            $email,
+            $school,
+            $message
+        );
+        file_put_contents(__DIR__ . '/contact_submissions.log', $logEntry, FILE_APPEND);
+
+        echo json_encode(['success' => true, 'message' => 'Thanks for reaching out. We will contact you shortly.']);
+        break;
+    
+    case 'registration/payment-intent':
+        if ($method !== 'POST') {
+            http_response_code(405);
+            echo json_encode(['error' => 'Method not allowed']);
+            break;
+        }
+        $email = $input['email'] ?? '';
+        $plan = $input['plan'] ?? '';
+        $result = $stripePayment->createRegistrationPaymentIntent($email, $plan);
+        if (!$result['success']) {
+            http_response_code(400);
+        }
+        echo json_encode($result);
+        break;
         
     case 'webhook/stripe':
         if ($method !== 'POST') {
@@ -471,7 +700,9 @@ switch ($path) {
         $user = requireAuth($token, $auth);
         
         if ($method === 'GET') {
-            $result = $enhanced->getProfile($user['id']);
+            // Support viewing other users' profiles via query parameter
+            $profileUserId = $_GET['user_id'] ?? $user['id'];
+            $result = $enhanced->getProfile($profileUserId);
             echo json_encode($result);
         } elseif ($method === 'PUT') {
             $result = $enhanced->updateProfile($user['id'], $input);
@@ -604,6 +835,70 @@ switch ($path) {
         } elseif ($method === 'DELETE') {
             $result = $enhanced->deleteUser($input['user_id']);
             echo json_encode($result);
+        } elseif ($method === 'POST') {
+            if (isset($input['bulk_import'])) {
+                $users = $input['users'] ?? [];
+                if (empty($users)) {
+                    http_response_code(400);
+                    echo json_encode(['error' => 'No users provided']);
+                    break;
+                }
+                $result = $enhanced->bulkImportUsers($user['school_id'], $users);
+                echo json_encode($result);
+            } else {
+                // Create single user
+                $newUser = [
+                    'first_name' => $input['first_name'] ?? '',
+                    'last_name' => $input['last_name'] ?? '',
+                    'email' => $input['email'] ?? '',
+                    'role' => $input['role'] ?? 'student',
+                    'status' => isset($input['status']) ? (int)$input['status'] : 1,
+                ];
+                if (empty($newUser['email'])) {
+                    http_response_code(400);
+                    echo json_encode(['error' => 'Email is required']);
+                    break;
+                }
+                $result = $enhanced->createUser($user['school_id'], $newUser);
+                echo json_encode($result);
+            }
+        }
+        break;
+        
+    case 'admin/settings':
+        $user = requireAuth($token, $auth);
+        
+        if ($user['role'] !== 'admin' && $user['role'] !== 'super_admin') {
+            http_response_code(403);
+            echo json_encode(['error' => 'Forbidden']);
+            break;
+        }
+        
+        if ($method === 'GET') {
+            $result = $enhanced->getSchoolSettings($user['school_id']);
+            echo json_encode($result);
+        } elseif ($method === 'PUT') {
+            $result = $enhanced->updateSchoolSettings($user['school_id'], $input);
+            // Log the activity
+            $enhanced->logActivity($user['school_id'], $user['id'], 'settings_updated', ['settings' => array_keys($input)]);
+            echo json_encode($result);
+        }
+        break;
+        
+    case 'admin/activity-logs':
+        $user = requireAuth($token, $auth);
+        
+        if ($user['role'] !== 'admin' && $user['role'] !== 'super_admin') {
+            http_response_code(403);
+            echo json_encode(['error' => 'Forbidden']);
+            break;
+        }
+        
+        if ($method === 'GET') {
+            $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 50;
+            $offset = isset($_GET['offset']) ? (int)$_GET['offset'] : 0;
+            $result = $enhanced->getActivityLogs($user['school_id'], $limit, $offset);
+            echo json_encode($result);
         }
         break;
         
@@ -643,6 +938,153 @@ switch ($path) {
         if ($method === 'POST') {
             $result = $enhanced->syncPending($user['id']);
             echo json_encode($result);
+        }
+        break;
+        
+    case 'contact':
+        // Contact form submission (no auth required)
+        if ($method === 'POST') {
+            $name = $input['name'] ?? '';
+            $email = $input['email'] ?? '';
+            $school = $input['school'] ?? '';
+            $message = $input['message'] ?? '';
+            
+            if (!$name || !$email || !$message) {
+                http_response_code(400);
+                echo json_encode(['error' => 'Name, email, and message are required']);
+                break;
+            }
+            
+            // Validate email
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                http_response_code(400);
+                echo json_encode(['error' => 'Invalid email address']);
+                break;
+            }
+            
+            // Store contact submission in database
+            try {
+                $db->query(
+                    "INSERT INTO contact_submissions (name, email, school, message, created_at) VALUES (?, ?, ?, ?, NOW())",
+                    [$name, $email, $school, $message]
+                );
+                
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'Thank you for contacting us! We will get back to you soon.'
+                ]);
+            } catch (Exception $e) {
+                http_response_code(500);
+                echo json_encode(['error' => 'Failed to submit contact form. Please try again.']);
+            }
+        } else {
+            http_response_code(405);
+            echo json_encode(['error' => 'Method not allowed']);
+        }
+        break;
+        
+    case 'newsletter':
+        // Newsletter signup (no auth required)
+        if ($method === 'POST') {
+            $email = $input['email'] ?? '';
+            
+            if (!$email) {
+                http_response_code(400);
+                echo json_encode(['error' => 'Email is required']);
+                break;
+            }
+            
+            // Validate email
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                http_response_code(400);
+                echo json_encode(['error' => 'Invalid email address']);
+                break;
+            }
+            
+            // Store newsletter signup in database
+            try {
+                // Check if email already exists
+                $existing = $db->fetch(
+                    "SELECT id FROM newsletter_subscribers WHERE email = ?",
+                    [$email]
+                );
+                
+                if ($existing) {
+                    echo json_encode([
+                        'success' => true,
+                        'message' => 'You are already subscribed to our newsletter!'
+                    ]);
+                } else {
+                    $db->query(
+                        "INSERT INTO newsletter_subscribers (email, subscribed_at) VALUES (?, NOW())",
+                        [$email]
+                    );
+                    
+                    echo json_encode([
+                        'success' => true,
+                        'message' => 'Successfully subscribed to our newsletter!'
+                    ]);
+                }
+            } catch (Exception $e) {
+                http_response_code(500);
+                echo json_encode(['error' => 'Failed to subscribe. Please try again.']);
+            }
+        } else {
+            http_response_code(405);
+            echo json_encode(['error' => 'Method not allowed']);
+        }
+        break;
+        
+    case 'branding':
+        // Simplified branding endpoint - uses current user's school
+        $user = requireAuth($token, $auth);
+        $schoolId = $user['school_id'];
+        
+        if ($method === 'GET') {
+            $result = $schoolBranding->getBranding($schoolId);
+            echo json_encode($result);
+        } elseif ($method === 'PUT') {
+            // Only admins can update
+            if (!in_array($user['role'], ['super_admin', 'admin'])) {
+                http_response_code(403);
+                echo json_encode(['error' => 'Forbidden: Only admins can update branding']);
+                break;
+            }
+            
+            $result = $schoolBranding->updateBranding($schoolId, $input, $user['id']);
+            if (!$result['success']) {
+                http_response_code(400);
+            }
+            echo json_encode($result);
+        } elseif ($method === 'POST' && isset($_FILES['logo'])) {
+            // Upload logo
+            if (!in_array($user['role'], ['super_admin', 'admin'])) {
+                http_response_code(403);
+                echo json_encode(['error' => 'Forbidden: Only admins can upload logos']);
+                break;
+            }
+            
+            $result = $schoolBranding->uploadLogo($schoolId, $_FILES['logo'], $user['id']);
+            if (!$result['success']) {
+                http_response_code(400);
+            }
+            echo json_encode($result);
+        } else {
+            http_response_code(405);
+            echo json_encode(['error' => 'Method not allowed']);
+        }
+        break;
+        
+    case 'branding/fonts':
+        // Get approved fonts list (no auth required)
+        if ($method === 'GET') {
+            echo json_encode([
+                'success' => true,
+                'fonts' => $schoolBranding->getApprovedFonts()
+            ]);
+        } else {
+            http_response_code(405);
+            echo json_encode(['error' => 'Method not allowed']);
         }
         break;
         

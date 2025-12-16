@@ -123,13 +123,19 @@ class Auth {
                 [$userData['domain'] ?? '', $userData['school_name']]
             );
             
+            // Normalize plan name (convert "Free Trial" to "free_trial")
+            $plan = strtolower(str_replace(' ', '_', $userData['plan'] ?? 'free_trial'));
+            if (!in_array($plan, ['free_trial', 'basic', 'pro', 'premium'])) {
+                $plan = 'free_trial'; // Default to free_trial if invalid
+            }
+            
             if (!$school) {
                 $schoolId = $this->db->query(
                     "INSERT INTO schools (name, domain, plan, primary_color, logo_url) VALUES (?, ?, ?, ?, ?)",
                     [
                         $userData['school_name'],
                         $userData['domain'] ?? null,
-                        $userData['plan'] ?? 'basic',
+                        $plan,
                         $userData['primary_color'] ?? '#1D4E89',
                         $userData['logo_url'] ?? null
                     ]
@@ -165,10 +171,57 @@ class Auth {
             );
             $userId = $this->db->lastInsertId();
             
-            // Create subscription
+            // Create subscription with trial dates for free_trial plan
+            if ($plan === 'free_trial') {
+                $trialStart = date('Y-m-d H:i:s');
+                $trialEnd = date('Y-m-d H:i:s', strtotime('+30 days'));
+                $this->db->query(
+                    "INSERT INTO subscriptions (school_id, plan, status, trial_started_at, trial_end_date) VALUES (?, ?, 'active', ?, ?)",
+                    [$schoolId, $plan, $trialStart, $trialEnd]
+                );
+            } else {
+                $this->db->query(
+                    "INSERT INTO subscriptions (school_id, plan, status) VALUES (?, ?, 'active')",
+                    [$schoolId, $plan]
+                );
+            }
+            
+            // Create default branding for the school
+            $primaryColor = $userData['primary_color'] ?? '#1D4E89';
+            $logoUrl = $userData['logo_url'] ?? null;
+            
             $this->db->query(
-                "INSERT INTO subscriptions (school_id, plan, status) VALUES (?, ?, 'active')",
-                [$schoolId, $userData['plan'] ?? 'basic']
+                "INSERT INTO school_branding (
+                    school_id, 
+                    primary_color, 
+                    secondary_color, 
+                    background_color, 
+                    text_color, 
+                    accent_color,
+                    font_family,
+                    heading_font_weight,
+                    body_font_weight,
+                    base_font_size,
+                    theme_mode,
+                    logo_url,
+                    version,
+                    is_active
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1)
+                ON DUPLICATE KEY UPDATE school_id = school_id",
+                [
+                    $schoolId,
+                    $primaryColor,
+                    $userData['secondary_color'] ?? '#3B82F6',
+                    $userData['background_color'] ?? '#FFFFFF',
+                    $userData['text_color'] ?? '#1F2937',
+                    $userData['accent_color'] ?? '#10B981',
+                    $userData['font_family'] ?? 'Inter',
+                    $userData['heading_font_weight'] ?? '700',
+                    $userData['body_font_weight'] ?? '400',
+                    $userData['base_font_size'] ?? '16px',
+                    $userData['theme_mode'] ?? 'light',
+                    $logoUrl
+                ]
             );
             
             $this->db->getConnection()->commit();

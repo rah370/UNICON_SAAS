@@ -121,7 +121,7 @@ function BottomNav() {
 
   const adminNavItems = [
     {
-      path: "/admin-dashboard",
+      path: "/admin/dashboard",
       label: "Dashboard",
       unread: 0,
       icon: (
@@ -141,7 +141,7 @@ function BottomNav() {
       ),
     },
     {
-      path: "/admin-users",
+      path: "/admin/users",
       label: "Users",
       unread: 0,
       icon: (
@@ -161,7 +161,7 @@ function BottomNav() {
       ),
     },
     {
-      path: "/admin-content",
+      path: "/admin/announcements",
       label: "Content",
       unread: 0,
       icon: (
@@ -181,7 +181,7 @@ function BottomNav() {
       ),
     },
     {
-      path: "/admin-analytics",
+      path: "/admin/analytics",
       label: "Analytics",
       unread: 0,
       icon: (
@@ -201,7 +201,7 @@ function BottomNav() {
       ),
     },
     {
-      path: "/admin-settings",
+      path: "/admin/settings",
       label: "Settings",
       unread: 0,
       icon: (

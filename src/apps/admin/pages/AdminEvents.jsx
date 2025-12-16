@@ -2,6 +2,9 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../shared/contexts/AuthContext";
 import { adminApi } from "../../shared/utils/api";
+import { useToast } from "../../shared/components/Toast";
+import { exportEvents } from "../../shared/utils/exportUtils";
+import { CardSkeleton } from "../../shared/components/SkeletonLoader";
 
 const defaultEvents = [
   {
@@ -26,9 +29,9 @@ const defaultEvents = [
 
 function SectionCard({ title, children, actions }) {
   return (
-    <div className="rounded-3xl border border-white/[0.08] bg-white/[0.06] p-6 shadow-[0_25px_60px_rgba(0,0,0,0.45)] backdrop-blur-lg">
+    <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
       <div className="mb-5 flex flex-wrap items-center gap-3">
-        <h3 className="text-lg font-semibold text-white">{title}</h3>
+        <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
         <div className="ml-auto flex flex-wrap gap-2">{actions}</div>
       </div>
       {children}
@@ -39,6 +42,7 @@ function SectionCard({ title, children, actions }) {
 export default function AdminEvents() {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
+  const { success, showError } = useToast();
   const [events, setEvents] = useState([]);
   const [form, setForm] = useState({
     title: "",
@@ -56,7 +60,7 @@ export default function AdminEvents() {
 
   useEffect(() => {
     if (!isAuthenticated || user?.role !== "admin") {
-      navigate("/admin-login");
+      navigate("/admin/login");
       return;
     }
 
@@ -88,12 +92,12 @@ export default function AdminEvents() {
 
   const addEvent = async () => {
     if (!form.title || !form.date || !form.venue) return;
-    
+
     try {
-      const eventDateTime = form.time 
+      const eventDateTime = form.time
         ? `${form.date}T${form.time}:00`
         : `${form.date}T12:00:00`;
-      
+
       const result = await adminApi.createEvent({
         title: form.title,
         event_date: eventDateTime,
@@ -106,29 +110,30 @@ export default function AdminEvents() {
 
       if (result.success) {
         setEvents((prev) => [
-          { 
-            id: result.event_id, 
-            ...form, 
+          {
+            id: result.event_id,
+            ...form,
             date: form.date,
             time: form.time,
-            rsvp: 0, 
-            moderated: true 
+            rsvp: 0,
+            moderated: true,
           },
           ...prev,
         ]);
-        setForm({ 
-          title: "", 
-          date: "", 
+        setForm({
+          title: "",
+          date: "",
           time: "",
-          venue: "", 
-          capacity: 100, 
+          venue: "",
+          capacity: 100,
           description: "",
           eventType: "general",
           requiresRSVP: true,
         });
       }
+      success("Event created successfully");
     } catch (err) {
-      alert("Failed to create event: " + err.message);
+      showError("Failed to create event: " + err.message);
     }
   };
 
@@ -139,60 +144,61 @@ export default function AdminEvents() {
       setEvents((prev) =>
         prev.map((e) => (e.id === id ? { ...e, moderated: !e.moderated } : e))
       );
+      success("Event updated successfully");
     } catch (err) {
-      alert("Failed to update event: " + err.message);
+      showError("Failed to update event: " + err.message);
     }
   };
 
   const deleteEvent = async (id) => {
     if (!confirm("Are you sure you want to delete this event?")) return;
-    
+
     try {
       await adminApi.deleteEvent(id);
       setEvents((prev) => prev.filter((e) => e.id !== id));
+      success("Event deleted successfully");
     } catch (err) {
-      alert("Failed to delete event: " + err.message);
+      showError("Failed to delete event: " + err.message);
     }
   };
 
   return (
-    <div
-      className="min-h-screen"
-      style={{ background: "linear-gradient(135deg,#05070e,#1e1140)" }}
-    >
-      <header className="border-b border-white/10 bg-black/30 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 text-white">
+    <div className="min-h-screen bg-gradient-to-br from-white via-[#eef3f7] to-[#dce7ef] text-slate-900">
+      <header className="border-b border-white/60 bg-white/90 backdrop-blur">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-4">
             <button
               onClick={() => navigate("/admin/dashboard")}
-              className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm font-semibold hover:bg-white/15 transition"
+              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
             >
               ← Back
             </button>
             <div>
-              <h1 className="text-2xl font-bold">Events</h1>
-              <p className="text-sm text-white/60">
+              <h1 className="text-2xl font-bold text-slate-900">Events</h1>
+              <p className="text-sm text-slate-500">
                 Schedule and manage events
               </p>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <p className="text-sm font-semibold">{user?.name}</p>
-            <div className="h-8 w-8 rounded-full border border-white/20 bg-white/10 flex items-center justify-center text-xs font-bold">
+            <p className="text-sm font-semibold text-slate-800">{user?.name}</p>
+            <div className="h-8 w-8 rounded-full border border-slate-200 bg-white flex items-center justify-center text-xs font-bold text-slate-700">
               {user?.name?.charAt(0)}
             </div>
           </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-4 py-8 space-y-6 text-white">
+      <main className="mx-auto max-w-7xl px-4 py-8 space-y-6">
         {loading && (
-          <div className="text-center text-white/60 py-12">
-            Loading events...
+          <div className="space-y-4">
+            <CardSkeleton />
+            <CardSkeleton />
+            <CardSkeleton />
           </div>
         )}
         {error && (
-          <div className="rounded-2xl border border-yellow-500/30 bg-yellow-500/10 p-4 text-yellow-300 mb-6">
+          <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-800">
             {error}
           </div>
         )}
@@ -201,21 +207,20 @@ export default function AdminEvents() {
           actions={
             <button
               onClick={addEvent}
-              className="rounded-full px-4 py-2 text-sm font-semibold"
-              style={{ backgroundColor: "#6b21a8" }}
+              className="rounded-full bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-2 text-sm font-semibold text-white shadow hover:from-blue-500 hover:to-blue-600"
             >
               Save event
             </button>
           }
         >
-          <div className="grid gap-3 text-sm text-white/80 lg:grid-cols-3">
+          <div className="grid gap-3 text-sm text-slate-800 lg:grid-cols-3">
             <input
               value={form.title}
               onChange={(e) =>
                 setForm((prev) => ({ ...prev, title: e.target.value }))
               }
               placeholder="Event title"
-              className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2 text-white"
+              className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-slate-900"
             />
             <input
               type="date"
@@ -223,7 +228,7 @@ export default function AdminEvents() {
               onChange={(e) =>
                 setForm((prev) => ({ ...prev, date: e.target.value }))
               }
-              className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2 text-white"
+              className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-slate-900"
             />
             <input
               type="time"
@@ -231,7 +236,7 @@ export default function AdminEvents() {
               onChange={(e) =>
                 setForm((prev) => ({ ...prev, time: e.target.value }))
               }
-              className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2 text-white"
+              className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-slate-900"
             />
             <input
               value={form.venue}
@@ -239,7 +244,7 @@ export default function AdminEvents() {
                 setForm((prev) => ({ ...prev, venue: e.target.value }))
               }
               placeholder="Venue"
-              className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2 text-white"
+              className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-slate-900"
             />
             <input
               type="number"
@@ -252,14 +257,14 @@ export default function AdminEvents() {
                 }))
               }
               placeholder="Capacity"
-              className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2 text-white"
+              className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-slate-900"
             />
             <select
               value={form.eventType}
               onChange={(e) =>
                 setForm((prev) => ({ ...prev, eventType: e.target.value }))
               }
-              className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2 text-white"
+              className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-slate-900"
             >
               <option value="general">General</option>
               <option value="academic">Academic</option>
@@ -275,17 +280,20 @@ export default function AdminEvents() {
             }
             placeholder="Event description (optional)"
             rows={3}
-            className="mt-3 w-full rounded-2xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white"
+            className="mt-3 w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
           />
           <div className="mt-3 flex items-center gap-4">
-            <label className="flex items-center gap-2 text-sm text-white/80">
+            <label className="flex items-center gap-2 text-sm text-slate-700">
               <input
                 type="checkbox"
                 checked={form.requiresRSVP}
                 onChange={(e) =>
-                  setForm((prev) => ({ ...prev, requiresRSVP: e.target.checked }))
+                  setForm((prev) => ({
+                    ...prev,
+                    requiresRSVP: e.target.checked,
+                  }))
                 }
-                className="rounded"
+                className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
               />
               <span>Requires RSVP</span>
             </label>
@@ -299,16 +307,16 @@ export default function AdminEvents() {
               onClick={() => setFilterType(type)}
               className={`rounded-xl px-4 py-2 text-sm font-semibold capitalize transition ${
                 filterType === type
-                  ? "text-white shadow-md"
-                  : "text-white/60 hover:text-white"
+                  ? "text-white shadow"
+                  : "text-slate-600 hover:text-slate-800"
               }`}
               style={
                 filterType === type
                   ? {
                       background:
-                        "linear-gradient(135deg, #6b21a8 0%, #581c87 100%)",
+                        "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)",
                     }
-                  : { backgroundColor: "rgba(255,255,255,0.05)" }
+                  : { backgroundColor: "rgba(148, 163, 184, 0.2)" }
               }
             >
               {type}
@@ -316,8 +324,25 @@ export default function AdminEvents() {
           ))}
         </div>
 
-        <SectionCard title="Event Management">
-          <div className="space-y-3 text-sm text-white/80">
+        <SectionCard
+          title="Event Management"
+          actions={
+            <button
+              onClick={() => {
+                try {
+                  exportEvents(events);
+                  success("Events exported successfully");
+                } catch (err) {
+                  showError("Failed to export: " + err.message);
+                }
+              }}
+              className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50 transition"
+            >
+              Export CSV
+            </button>
+          }
+        >
+          <div className="space-y-3 text-sm text-slate-700">
             {events
               .filter((event) => {
                 if (filterType === "all") return true;
@@ -328,65 +353,73 @@ export default function AdminEvents() {
                 return true;
               })
               .map((event) => (
-              <div
-                key={event.id}
-                className="rounded-2xl border border-white/10 bg-black/30 p-4 flex flex-wrap gap-3"
-              >
-                <div className="flex-1">
-                  <p className="text-white font-semibold">{event.title}</p>
-                  <p className="text-xs text-white/60">
-                    {event.date} {event.time ? `• ${event.time}` : ""} • {event.venue}
-                  </p>
-                  {event.description && (
-                    <p className="text-xs text-white/50 mt-1">
-                      {event.description.slice(0, 100)}...
+                <div
+                  key={event.id}
+                  className="flex flex-wrap gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+                >
+                  <div className="flex-1">
+                    <p className="font-semibold text-slate-900">{event.title}</p>
+                    <p className="text-xs text-slate-500">
+                      {event.date} {event.time ? `• ${event.time}` : ""} •{" "}
+                      {event.venue}
                     </p>
-                  )}
-                </div>
-                <div className="ml-auto flex items-center gap-3 text-xs flex-wrap">
-                  <div className="flex flex-col items-end gap-1">
-                    <span className="text-white/60">
-                      RSVP {event.rsvp}/{event.capacity}
-                    </span>
-                    <div className="w-24 h-1.5 bg-black/30 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-emerald-400"
-                        style={{
-                          width: `${Math.min((event.rsvp / event.capacity) * 100, 100)}%`,
-                        }}
-                      ></div>
-                    </div>
+                    {event.description && (
+                      <p className="mt-1 text-xs text-slate-500">
+                        {event.description.slice(0, 100)}...
+                      </p>
+                    )}
                   </div>
-                  <label className="inline-flex items-center gap-1">
-                    <input
-                      type="checkbox"
-                      checked={event.moderated}
-                      onChange={() => toggleModeration(event.id)}
-                    />
-                    <span>Moderation</span>
-                  </label>
-                  <button
-                    onClick={() => {
-                      // View attendees - would open a modal
-                      alert(`Viewing ${event.rsvp} attendees for ${event.title}`);
-                    }}
-                    className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-xs font-semibold text-blue-300 hover:bg-blue-500/20 transition"
-                  >
-                    View RSVPs
-                  </button>
-                  <button
-                    onClick={() => deleteEvent(event.id)}
-                    className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-1 text-xs font-semibold text-red-300 hover:bg-red-500/20 transition"
-                  >
-                    Delete
-                  </button>
+                  <div className="ml-auto flex flex-wrap items-center gap-3 text-xs">
+                    <div className="flex flex-col items-end gap-1">
+                      <span className="text-slate-600">
+                        RSVP {event.rsvp}/{event.capacity}
+                      </span>
+                      <div className="h-1.5 w-24 overflow-hidden rounded-full bg-slate-100">
+                        <div
+                          className="h-full bg-emerald-500"
+                          style={{
+                            width: `${Math.min(
+                              (event.rsvp / event.capacity) * 100,
+                              100
+                            )}%`,
+                          }}
+                        ></div>
+                      </div>
+                    </div>
+                    <label className="inline-flex items-center gap-1">
+                      <input
+                        type="checkbox"
+                        checked={event.moderated}
+                        onChange={() => toggleModeration(event.id)}
+                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-slate-700">Moderation</span>
+                    </label>
+                    <button
+                      onClick={() => {
+                        // View attendees - would open a modal
+                        success(
+                          `Viewing ${event.rsvp} attendee${
+                            event.rsvp !== 1 ? "s" : ""
+                          } for ${event.title}`
+                        );
+                      }}
+                      className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-100 transition"
+                    >
+                      View RSVPs
+                    </button>
+                    <button
+                      onClick={() => deleteEvent(event.id)}
+                      className="rounded-lg border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-700 hover:bg-red-100 transition"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
           </div>
         </SectionCard>
       </main>
     </div>
   );
 }
-

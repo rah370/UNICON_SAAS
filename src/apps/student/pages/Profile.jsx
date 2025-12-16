@@ -6,6 +6,7 @@ import { uploadFile, validateFile } from "../../shared/utils/fileUpload";
 import { useToast } from "../../shared/components/Toast";
 import { apiRequest } from "../../shared/utils/api";
 import { studentApi } from "../../shared/utils/api";
+import { PostSkeleton } from "../../shared/components/SkeletonLoader";
 
 const quickStats = [
   { label: "Engagement score", value: "92", meta: "+8 vs last week" },
@@ -796,7 +797,9 @@ function Profile() {
                 <h3 className="text-base font-semibold text-slate-900">
                   Contact
                 </h3>
-                <p className="mt-2 text-sm text-slate-600">{currentUser?.email}</p>
+                <p className="mt-2 text-sm text-slate-600">
+                  {currentUser?.email}
+                </p>
                 <p className="text-xs text-slate-500">
                   Usually replies within a day.
                 </p>

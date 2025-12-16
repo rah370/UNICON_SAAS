@@ -171,6 +171,46 @@ class EnhancedEndpoints {
         
         return ['success' => true];
     }
+
+    // ========== USERS ==========
+
+    public function createUser($schoolId, $data) {
+        $email = trim($data['email'] ?? '');
+        $first = trim($data['first_name'] ?? '');
+        $last = trim($data['last_name'] ?? '');
+        $role = $data['role'] ?? 'student';
+        $status = isset($data['status']) ? (int)$data['status'] : 1;
+
+        if (!$email) {
+            return ['success' => false, 'error' => 'Email is required'];
+        }
+
+        $existing = $this->db->fetch("SELECT id FROM users WHERE email = ?", [$email]);
+        if ($existing) {
+            return ['success' => false, 'error' => 'Email already exists'];
+        }
+
+        $passwordHash = password_hash('changeme123', PASSWORD_BCRYPT);
+
+        $this->db->query(
+            "INSERT INTO users (school_id, first_name, last_name, email, role, is_active, password_hash, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())",
+            [$schoolId, $first, $last, $email, $role, $status, $passwordHash]
+        );
+
+        $id = $this->db->lastInsertId();
+        return [
+          'success' => true,
+          'user' => [
+            'id' => $id,
+            'first_name' => $first,
+            'last_name' => $last,
+            'email' => $email,
+            'role' => $role,
+            'is_active' => (bool)$status,
+            'last_login_at' => null,
+          ],
+        ];
+    }
     
     // ========== REACTIONS ==========
     
@@ -546,6 +586,164 @@ class EnhancedEndpoints {
         return ['success' => true];
     }
     
+    // Get school settings
+    public function getSchoolSettings($schoolId) {
+        $school = $this->db->fetch(
+            "SELECT id, name, domain, primary_color, logo_url, 
+                    settings_json, timezone, language, maintenance_mode,
+                    allow_student_posts, require_email_verification, 
+                    auto_moderation, max_file_size_mb, allowed_file_types,
+                    notifications_enabled, email_alerts_enabled
+             FROM schools WHERE id = ?",
+            [$schoolId]
+        );
+        
+        if (!$school) {
+            return ['error' => 'School not found'];
+        }
+        
+        // Parse JSON settings if exists, otherwise use defaults
+        $settings = [];
+        if (!empty($school['settings_json'])) {
+            $settings = json_decode($school['settings_json'], true);
+        }
+        
+        return [
+            'settings' => [
+                'name' => $school['name'],
+                'domain' => $school['domain'] ?? '',
+                'color' => $school['primary_color'] ?? '#6b21a8',
+                'timezone' => $school['timezone'] ?? 'UTC',
+                'language' => $school['language'] ?? 'English',
+                'notifications' => $school['notifications_enabled'] ?? true,
+                'emailAlerts' => $school['email_alerts_enabled'] ?? true,
+                'moderationAuto' => $school['auto_moderation'] ?? false,
+                'allowStudentPosts' => $school['allow_student_posts'] ?? true,
+                'requireEmailVerification' => $school['require_email_verification'] ?? true,
+                'maxFileSize' => $school['max_file_size_mb'] ?? 10,
+                'allowedFileTypes' => $school['allowed_file_types'] ?? 'jpg,png,pdf,doc',
+                'maintenanceMode' => $school['maintenance_mode'] ?? false,
+                ...$settings
+            ]
+        ];
+    }
+    
+    // Update school settings
+    public function updateSchoolSettings($schoolId, $settings) {
+        // Update basic fields
+        $updates = [];
+        $params = [];
+        
+        if (isset($settings['name'])) {
+            $updates[] = "name = ?";
+            $params[] = $settings['name'];
+        }
+        if (isset($settings['domain'])) {
+            $updates[] = "domain = ?";
+            $params[] = $settings['domain'];
+        }
+        if (isset($settings['color'])) {
+            $updates[] = "primary_color = ?";
+            $params[] = $settings['color'];
+        }
+        if (isset($settings['timezone'])) {
+            $updates[] = "timezone = ?";
+            $params[] = $settings['timezone'];
+        }
+        if (isset($settings['language'])) {
+            $updates[] = "language = ?";
+            $params[] = $settings['language'];
+        }
+        if (isset($settings['notifications'])) {
+            $updates[] = "notifications_enabled = ?";
+            $params[] = $settings['notifications'] ? 1 : 0;
+        }
+        if (isset($settings['emailAlerts'])) {
+            $updates[] = "email_alerts_enabled = ?";
+            $params[] = $settings['emailAlerts'] ? 1 : 0;
+        }
+        if (isset($settings['moderationAuto'])) {
+            $updates[] = "auto_moderation = ?";
+            $params[] = $settings['moderationAuto'] ? 1 : 0;
+        }
+        if (isset($settings['allowStudentPosts'])) {
+            $updates[] = "allow_student_posts = ?";
+            $params[] = $settings['allowStudentPosts'] ? 1 : 0;
+        }
+        if (isset($settings['requireEmailVerification'])) {
+            $updates[] = "require_email_verification = ?";
+            $params[] = $settings['requireEmailVerification'] ? 1 : 0;
+        }
+        if (isset($settings['maxFileSize'])) {
+            $updates[] = "max_file_size_mb = ?";
+            $params[] = $settings['maxFileSize'];
+        }
+        if (isset($settings['allowedFileTypes'])) {
+            $updates[] = "allowed_file_types = ?";
+            $params[] = $settings['allowedFileTypes'];
+        }
+        if (isset($settings['maintenanceMode'])) {
+            $updates[] = "maintenance_mode = ?";
+            $params[] = $settings['maintenanceMode'] ? 1 : 0;
+        }
+        
+        // Store additional settings in JSON
+        $jsonSettings = [];
+        foreach ($settings as $key => $value) {
+            if (!in_array($key, ['name', 'domain', 'color', 'timezone', 'language', 
+                                  'notifications', 'emailAlerts', 'moderationAuto', 
+                                  'allowStudentPosts', 'requireEmailVerification', 
+                                  'maxFileSize', 'allowedFileTypes', 'maintenanceMode'])) {
+                $jsonSettings[$key] = $value;
+            }
+        }
+        
+        if (!empty($jsonSettings)) {
+            $updates[] = "settings_json = ?";
+            $params[] = json_encode($jsonSettings);
+        }
+        
+        if (!empty($updates)) {
+            $updates[] = "updated_at = NOW()";
+            $params[] = $schoolId;
+            
+            $sql = "UPDATE schools SET " . implode(", ", $updates) . " WHERE id = ?";
+            $this->db->query($sql, $params);
+        }
+        
+        return ['success' => true];
+    }
+    
+    // Get activity logs
+    public function getActivityLogs($schoolId, $limit = 50, $offset = 0) {
+        $logs = $this->db->fetchAll(
+            "SELECT al.*, u.first_name, u.last_name, u.email, u.role
+             FROM activity_logs al
+             LEFT JOIN users u ON al.user_id = u.id
+             WHERE al.school_id = ?
+             ORDER BY al.created_at DESC
+             LIMIT ? OFFSET ?",
+            [$schoolId, $limit, $offset]
+        );
+        
+        $total = $this->db->fetchOne(
+            "SELECT COUNT(*) FROM activity_logs WHERE school_id = ?",
+            [$schoolId]
+        );
+        
+        return ['logs' => $logs, 'total' => $total];
+    }
+    
+    // Log activity
+    public function logActivity($schoolId, $userId, $action, $details = null) {
+        $this->db->query(
+            "INSERT INTO activity_logs (school_id, user_id, action, details, created_at) 
+             VALUES (?, ?, ?, ?, NOW())",
+            [$schoolId, $userId, $action, $details ? json_encode($details) : null]
+        );
+        return ['success' => true];
+    }
+    
     // ========== CHANNELS/CLUBS ==========
     
     public function getChannels($schoolId) {
@@ -677,4 +875,3 @@ class EnhancedEndpoints {
 }
 
 ?>
-

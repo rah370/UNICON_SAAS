@@ -20,22 +20,87 @@ export async function apiRequest(endpoint, options = {}) {
 
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
-    const data = await response.json();
 
+    // Check if response is ok before trying to parse JSON
     if (!response.ok) {
-      throw new Error(data.error || `HTTP error! status: ${response.status}`);
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorMessage;
+      } catch (e) {
+        // If response is not JSON, use status text
+        errorMessage = response.statusText || errorMessage;
+      }
+      throw new Error(errorMessage);
     }
 
+    const data = await response.json();
     return data;
   } catch (error) {
     console.error("API request failed:", error);
+    // Re-throw with more context if it's a network error
+    if (error.name === "TypeError" && error.message.includes("fetch")) {
+      throw new Error(
+        "Network error: Unable to connect to the server. Please check your connection."
+      );
+    }
     throw error;
   }
 }
 
+export const brandingApi = {
+  // Get branding for current user's school
+  getBranding: () => apiRequest("/branding"),
+
+  // Get branding for specific school (admin only)
+  getSchoolBranding: (schoolId) => apiRequest(`/schools/${schoolId}/branding`),
+
+  // Update branding (admin only)
+  updateBranding: (brandingData) =>
+    apiRequest("/branding", {
+      method: "PUT",
+      body: brandingData,
+    }),
+
+  // Update specific school branding (admin only)
+  updateSchoolBranding: (schoolId, brandingData) =>
+    apiRequest(`/schools/${schoolId}/branding`, {
+      method: "PUT",
+      body: brandingData,
+    }),
+
+  // Upload logo (admin only)
+  uploadLogo: (schoolId, file) => {
+    const formData = new FormData();
+    formData.append("logo", file);
+
+    const token = localStorage.getItem("uniconToken");
+    return fetch(`${API_BASE_URL}/schools/${schoolId}/branding/logo`, {
+      method: "POST",
+      headers: {
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+      body: formData,
+    })
+      .then((res) => res.json())
+      .catch((err) => {
+        console.error("Logo upload failed:", err);
+        throw err;
+      });
+  },
+
+  // Get approved fonts list
+  getApprovedFonts: () => apiRequest("/branding/fonts"),
+};
+
 export const adminApi = {
   // Users
   getUsers: () => apiRequest("/admin/users"),
+  createUser: (payload) =>
+    apiRequest("/admin/users", {
+      method: "POST",
+      body: payload,
+    }),
   updateUserStatus: (userId, status) =>
     apiRequest("/admin/users", {
       method: "PUT",
@@ -50,6 +115,11 @@ export const adminApi = {
     apiRequest("/admin/users", {
       method: "DELETE",
       body: { user_id: userId },
+    }),
+  bulkImportUsers: (users) =>
+    apiRequest("/admin/users", {
+      method: "POST",
+      body: { bulk_import: true, users },
     }),
 
   // Analytics
@@ -96,9 +166,33 @@ export const adminApi = {
       method: "PUT",
       body: { item_id: itemId, ...data },
     }),
+
+  // Settings
+  getSettings: () => apiRequest("/admin/settings"),
+  updateSettings: (settings) =>
+    apiRequest("/admin/settings", {
+      method: "PUT",
+      body: settings,
+    }),
+
+  // Activity Logs
+  getActivityLogs: (limit = 50, offset = 0) =>
+    apiRequest(`/admin/activity-logs?limit=${limit}&offset=${offset}`),
+
+  // Ops snapshot and approvals
+  getOpsSnapshot: () => apiRequest("/admin/ops-snapshot"),
+  getApprovals: () => apiRequest("/admin/approvals"),
+  getAlerts: () => apiRequest("/admin/alerts"),
 };
 
 export const studentApi = {
+  // Search
+  search: (query, type = null) => {
+    const params = new URLSearchParams({ q: query });
+    if (type) params.append("type", type);
+    return apiRequest(`/search?${params.toString()}`);
+  },
+
   // Tasks
   getTasks: () => apiRequest("/tasks"),
   createTask: (data) =>
@@ -139,4 +233,64 @@ export const studentApi = {
     }),
   getEventAttendees: (eventId) => apiRequest(`/events/${eventId}/attendees`),
   getUserEventStatus: (eventId) => apiRequest(`/events/${eventId}/status`),
+
+  // Posts
+  getPosts: (params = {}) => {
+    const queryParams = new URLSearchParams();
+    if (params.channel) queryParams.append("channel", params.channel);
+    const queryString = queryParams.toString();
+    return apiRequest(`/posts${queryString ? `?${queryString}` : ""}`);
+  },
+  createPost: (data) =>
+    apiRequest("/posts", {
+      method: "POST",
+      body: data,
+    }),
+  reactToPost: (postId, reactionType = "like") =>
+    apiRequest("/reactions", {
+      method: "POST",
+      body: {
+        target_type: "post",
+        target_id: postId,
+        reaction_type: reactionType,
+      },
+    }),
+
+  // Channels/Clubs
+  getClubs: () => apiRequest("/channels"),
+
+  // Profile
+  getProfile: (userId = null) => {
+    if (userId) {
+      return apiRequest(`/profile?user_id=${userId}`);
+    }
+    return apiRequest("/profile");
+  },
+  updateProfile: (data) =>
+    apiRequest("/profile", {
+      method: "PUT",
+      body: data,
+    }),
+
+  // Settings
+  getSettings: () => apiRequest("/admin/settings"),
+  updateSettings: (settings) =>
+    apiRequest("/admin/settings", {
+      method: "PUT",
+      body: settings,
+    }),
+
+  // Marketplace
+  getMarketplace: (params = {}) => {
+    const queryParams = new URLSearchParams();
+    if (params.category) queryParams.append("category", params.category);
+    if (params.search) queryParams.append("search", params.search);
+    const queryString = queryParams.toString();
+    return apiRequest(`/marketplace${queryString ? `?${queryString}` : ""}`);
+  },
+  createListing: (data) =>
+    apiRequest("/marketplace", {
+      method: "POST",
+      body: data,
+    }),
 };

@@ -8,6 +8,8 @@ export function AdminLayout({ children, title, subtitle, actions }) {
   const location = useLocation();
   const { user, logout } = useAuth();
   const { schoolBranding } = useBranding();
+  const brandLogo = schoolBranding.logoData || "/UNICON.png";
+  const brandName = schoolBranding.name || "UNICON";
 
   return (
     <div
@@ -41,6 +43,15 @@ export function AdminLayout({ children, title, subtitle, actions }) {
               "color-mix(in srgb, var(--brand-color, #365b6d) 12%, transparent)",
           }}
         ></div>
+        <div
+          className="absolute inset-0 opacity-[0.04] bg-center bg-no-repeat bg-contain"
+          style={{
+            backgroundImage: `url(${brandLogo})`,
+            backgroundPosition: "center",
+            backgroundSize: "60%",
+            filter: "grayscale(1)",
+          }}
+        ></div>
       </div>
 
       {/* Header */}
@@ -55,27 +66,38 @@ export function AdminLayout({ children, title, subtitle, actions }) {
                 >
                   ← Back
                 </button>
-                <div>
-                  <h1 className="text-2xl font-bold text-slate-900">{title}</h1>
-                  {subtitle && (
-                    <p className="text-sm text-slate-600">{subtitle}</p>
-                  )}
+                <div className="flex items-center gap-3">
+                  <div className="h-12 w-12 rounded-2xl border border-slate-200 bg-white/80 p-2 shadow-sm flex items-center justify-center">
+                    <img
+                      src={brandLogo}
+                      alt={brandName}
+                      className="h-8 w-8 object-contain"
+                    />
+                  </div>
+                  <div>
+                    <h1 className="text-2xl font-bold text-slate-900">{title}</h1>
+                    {subtitle && (
+                      <p className="text-sm text-slate-600">{subtitle}</p>
+                    )}
+                  </div>
                 </div>
               </>
             )}
             {!title && (
               <div className="flex items-center gap-3">
-                <div className="rounded-2xl border border-slate-200 bg-white/80 p-2">
-                  <span className="text-sm font-semibold text-slate-700">
-                    {schoolBranding.name?.[0] || "A"}
-                  </span>
+                <div className="h-12 w-12 rounded-2xl border border-slate-200 bg-white/80 p-2 shadow-sm flex items-center justify-center">
+                  <img
+                    src={brandLogo}
+                    alt={brandName}
+                    className="h-8 w-8 object-contain"
+                  />
                 </div>
                 <div>
                   <p className="text-sm uppercase tracking-[0.35em] text-slate-500">
                     Admin Dashboard
                   </p>
                   <h1 className="text-xl font-bold text-slate-900">
-                    {schoolBranding.name || "UNICON"}
+                    {brandName}
                   </h1>
                 </div>
               </div>
@@ -83,7 +105,9 @@ export function AdminLayout({ children, title, subtitle, actions }) {
           </div>
           <div className="flex items-center gap-3">
             <div className="text-right">
-              <p className="text-sm font-semibold text-slate-900">{user?.name}</p>
+              <p className="text-sm font-semibold text-slate-900">
+                {user?.name}
+              </p>
               <p className="text-xs text-slate-500">{user?.role}</p>
             </div>
             <div className="flex items-center gap-2">
@@ -92,10 +116,10 @@ export function AdminLayout({ children, title, subtitle, actions }) {
                   // Navigate to student app - if authenticated, go to for-you, otherwise landing
                   if (user && user.role) {
                     // User is authenticated, go to student dashboard
-                    window.location.href = "/for-you";
+                    navigate("/for-you");
                   } else {
                     // Not authenticated, go to landing page
-                    window.location.href = "/";
+                    navigate("/");
                   }
                 }}
                 className="rounded-full border border-slate-200 bg-white px-4 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"

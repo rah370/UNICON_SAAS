@@ -3,6 +3,7 @@ import { useAuth } from "../../shared/contexts/AuthContext";
 import { useBranding } from "../../shared/contexts/BrandingContext";
 import { useToast } from "../../shared/components/Toast";
 import { studentApi } from "../../shared/utils/api";
+import { CardSkeleton } from "../../shared/components/SkeletonLoader";
 
 function Settings() {
   const { user, logout } = useAuth();

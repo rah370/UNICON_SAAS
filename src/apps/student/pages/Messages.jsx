@@ -591,8 +591,13 @@ function ChatWindow({
   // auto-scroll
   useEffect(() => {
     const el = viewportRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
-  }, [messages.length, typing]);
+    if (el) {
+      // Use setTimeout to ensure DOM is updated
+      setTimeout(() => {
+        el.scrollTop = el.scrollHeight;
+      }, 100);
+    }
+  }, [messages, typing]);
 
   // Cleanup typing timeout
   useEffect(() => {
@@ -886,43 +891,54 @@ export default function Messages() {
 
   // Fetch conversations on mount and set up polling
   useEffect(() => {
+    let isMounted = true;
+
     const fetchConversations = async () => {
       try {
         const result = await messagesApi.getConversations();
+        if (!isMounted) return;
+
         const formatted = formatConversations(result.conversations);
         setConversations(formatted);
       } catch (err) {
         console.error("Failed to fetch conversations:", err);
-        if (conversations.length === 0) {
-          showError("Failed to load conversations. Using demo data.");
-          try {
-            setConversations(fakeConversations);
-          } catch (demoErr) {
-            console.error("Error setting demo data:", demoErr);
-            setConversations([]);
+        if (!isMounted) return;
+
+        // Only show error and use demo data on initial load
+        setConversations((prev) => {
+          if (prev.length === 0) {
+            showError("Failed to load conversations. Using demo data.");
+            return fakeConversations;
           }
-        }
+          return prev; // Keep existing conversations on subsequent failures
+        });
       }
     };
 
     if (user) {
       setLoading(true);
-      fetchConversations().finally(() => setLoading(false));
+      fetchConversations().finally(() => {
+        if (isMounted) setLoading(false);
+      });
 
       // Poll for new conversations every 5 seconds
       const pollInterval = setInterval(() => {
         fetchConversations();
       }, 5000);
 
-      return () => clearInterval(pollInterval);
+      return () => {
+        isMounted = false;
+        clearInterval(pollInterval);
+      };
     }
-  }, [user, showError, formatConversations, conversations]);
+  }, [user, showError, formatConversations]);
 
   // Fetch messages for a conversation
   const fetchMessages = useCallback(
     async (otherUserId) => {
       if (!otherUserId) {
         console.warn("No otherUserId provided to fetchMessages");
+        setMessages([]);
         return;
       }
 
@@ -930,6 +946,7 @@ export default function Messages() {
         const result = await messagesApi.getMessages(otherUserId);
         if (!result || !result.messages) {
           console.warn("No messages in API response");
+          setMessages([]);
           return;
         }
 
@@ -961,40 +978,62 @@ export default function Messages() {
         setMessages(formatted);
       } catch (err) {
         console.error("Failed to fetch messages:", err);
-        if (messages.length === 0) {
-          showError("Failed to load messages.");
-          setMessages([]); // Set empty array instead of crashing
-        }
+        showError("Failed to load messages. Please try again.");
+        setMessages([]); // Set empty array on error
       }
     },
-    [user, showError, messages.length]
+    [user, showError]
   );
 
   // when selecting a conversation
   const openConversation = useCallback(
     async (c) => {
+      if (!c) return;
+
       setSelected(c);
+      // Clear messages first to show loading state
+      setMessages([]);
+
       // mark read locally
       setConversations((prev) =>
         prev.map((x) => (x.id === c.id ? { ...x, unread: 0 } : x))
       );
 
-      const otherUserId = c.otherUserId || c.id.replace("conv-", "");
-      await fetchMessages(otherUserId);
+      // Extract otherUserId - handle both numeric IDs and formatted IDs
+      let otherUserId = c.otherUserId;
+      if (!otherUserId && c.id) {
+        // Try to extract from ID format like "conv-123" or just "123"
+        const match = c.id.match(/(?:conv-|group-)?(\d+)/);
+        otherUserId = match ? match[1] : c.id;
+      }
+
+      if (otherUserId) {
+        await fetchMessages(otherUserId.toString());
+      } else {
+        console.error("Could not determine otherUserId for conversation:", c);
+        showError("Could not load conversation. Please try again.");
+        setMessages([]);
+      }
     },
-    [fetchMessages, setConversations]
+    [fetchMessages, showError]
   );
 
   // Poll for new messages in the current conversation
   useEffect(() => {
-    if (!selected || !selected.otherUserId) return;
+    if (!selected) return;
 
-    const otherUserId =
-      selected.otherUserId || selected.id.replace("conv-", "");
+    // Extract otherUserId
+    let otherUserId = selected.otherUserId;
+    if (!otherUserId && selected.id) {
+      const match = selected.id.match(/(?:conv-|group-)?(\d+)/);
+      otherUserId = match ? match[1] : selected.id;
+    }
+
+    if (!otherUserId) return;
 
     // Poll for new messages every 3 seconds
     const pollInterval = setInterval(() => {
-      fetchMessages(otherUserId);
+      fetchMessages(otherUserId.toString());
     }, 3000);
 
     return () => clearInterval(pollInterval);
@@ -1003,8 +1042,20 @@ export default function Messages() {
   // optimistic send with safety checks
   const send = useCallback(
     async (text) => {
-      if (!selected || !selected.otherUserId) {
+      if (!selected) {
         showError("Please select a conversation first.");
+        return;
+      }
+
+      // Extract otherUserId
+      let otherUserId = selected.otherUserId;
+      if (!otherUserId && selected.id) {
+        const match = selected.id.match(/(?:conv-|group-)?(\d+)/);
+        otherUserId = match ? match[1] : selected.id;
+      }
+
+      if (!otherUserId) {
+        showError("Could not determine recipient. Please try again.");
         return;
       }
 
@@ -1022,9 +1073,10 @@ export default function Messages() {
       setMessages((prev) => [...prev, optimistic]);
 
       try {
-        const otherUserId =
-          selected.otherUserId || selected.id.replace("conv-", "");
-        const result = await messagesApi.sendMessage(otherUserId, text);
+        const result = await messagesApi.sendMessage(
+          otherUserId.toString(),
+          text
+        );
 
         // Replace optimistic message with real one
         if (result.message) {

@@ -5,8 +5,8 @@ import { adminApi } from "../../shared/utils/api";
 
 function StatCard({ label, value, trend, suffix }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-white shadow-lg shadow-black/30">
-      <p className="text-xs uppercase tracking-[0.35em] text-white/50">
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 text-slate-900 shadow-sm">
+      <p className="text-xs uppercase tracking-[0.35em] text-slate-500">
         {label}
       </p>
       <p className="mt-2 text-3xl font-bold">
@@ -14,7 +14,7 @@ function StatCard({ label, value, trend, suffix }) {
         {suffix}
       </p>
       {trend && (
-        <p className="text-xs text-emerald-300 mt-1">
+        <p className="mt-1 text-xs text-emerald-600">
           ▲ {trend} vs last period
         </p>
       )}
@@ -24,8 +24,8 @@ function StatCard({ label, value, trend, suffix }) {
 
 function SectionCard({ title, children }) {
   return (
-    <div className="rounded-3xl border border-white/[0.08] bg-white/[0.06] p-6 shadow-[0_25px_60px_rgba(0,0,0,0.45)] backdrop-blur-lg">
-      <h3 className="mb-5 text-lg font-semibold text-white">{title}</h3>
+    <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+      <h3 className="mb-5 text-lg font-semibold text-slate-900">{title}</h3>
       {children}
     </div>
   );
@@ -41,7 +41,7 @@ export default function AdminAnalytics() {
 
   useEffect(() => {
     if (!isAuthenticated || user?.role !== "admin") {
-      navigate("/admin-login");
+      navigate("/admin/login");
       return;
     }
 
@@ -63,10 +63,22 @@ export default function AdminAnalytics() {
 
   const overviewStats = analytics
     ? [
-        { label: "Total users", value: analytics.total_users || 0, trend: "4.2%" },
+        {
+          label: "Total users",
+          value: analytics.total_users || 0,
+          trend: "4.2%",
+        },
         { label: "Daily active", value: "68%", trend: "2.1%" },
-        { label: "Total posts", value: analytics.total_posts || 0, trend: "18 this week" },
-        { label: "Upcoming events", value: analytics.upcoming_events?.[0]?.count || 0, trend: "+5.3%" },
+        {
+          label: "Total posts",
+          value: analytics.total_posts || 0,
+          trend: "18 this week",
+        },
+        {
+          label: "Upcoming events",
+          value: analytics.upcoming_events?.[0]?.count || 0,
+          trend: "+5.3%",
+        },
       ]
     : [
         { label: "Total users", value: 0, trend: "4.2%" },
@@ -86,7 +98,10 @@ export default function AdminAnalytics() {
     ? [
         { label: "Total posts", value: analytics.total_posts || 0 },
         { label: "Messages today", value: analytics.messages_today || 0 },
-        { label: "Upcoming events", value: analytics.upcoming_events?.[0]?.count || 0 },
+        {
+          label: "Upcoming events",
+          value: analytics.upcoming_events?.[0]?.count || 0,
+        },
         { label: "Total users", value: analytics.total_users || 0 },
       ]
     : [
@@ -97,54 +112,51 @@ export default function AdminAnalytics() {
       ];
 
   return (
-    <div
-      className="min-h-screen"
-      style={{ background: "linear-gradient(135deg,#05070e,#1e1140)" }}
-    >
-      <header className="border-b border-white/10 bg-black/30 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 text-white">
+    <div className="min-h-screen bg-gradient-to-br from-white via-[#eef3f7] to-[#dce7ef] text-slate-900">
+      <header className="border-b border-white/60 bg-white/90 backdrop-blur">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-4">
             <button
               onClick={() => navigate("/admin/dashboard")}
-              className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm font-semibold hover:bg-white/15 transition"
+              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
             >
               ← Back
             </button>
             <div>
-              <h1 className="text-2xl font-bold">Analytics</h1>
-              <p className="text-sm text-white/60">
+              <h1 className="text-2xl font-bold text-slate-900">Analytics</h1>
+              <p className="text-sm text-slate-500">
                 Platform insights and metrics
               </p>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <p className="text-sm font-semibold">{user?.name}</p>
-            <div className="h-8 w-8 rounded-full border border-white/20 bg-white/10 flex items-center justify-center text-xs font-bold">
+            <p className="text-sm font-semibold text-slate-800">{user?.name}</p>
+            <div className="h-8 w-8 rounded-full border border-slate-200 bg-white flex items-center justify-center text-xs font-bold text-slate-700">
               {user?.name?.charAt(0)}
             </div>
           </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-4 py-8 space-y-6 text-white">
+      <main className="mx-auto max-w-7xl px-4 py-8 space-y-6">
         {loading && (
-          <div className="text-center text-white/60 py-12">
+          <div className="py-12 text-center text-slate-500">
             Loading analytics...
           </div>
         )}
         {error && (
-          <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-red-300 mb-6">
+          <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-red-700">
             {error}
           </div>
         )}
         {!loading && (
           <>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold">Analytics Overview</h2>
+              <h2 className="text-xl font-bold text-slate-900">Analytics Overview</h2>
               <select
                 value={dateRange}
                 onChange={(e) => setDateRange(e.target.value)}
-                className="rounded-xl border border-white/10 bg-black/20 px-4 py-2 text-sm text-white"
+                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-800"
               >
                 <option value="7d">Last 7 days</option>
                 <option value="30d">Last 30 days</option>
@@ -154,113 +166,122 @@ export default function AdminAnalytics() {
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {overviewStats.map((stat) => (
-            <StatCard key={stat.label} {...stat} />
-          ))}
-        </div>
-
-        <SectionCard title="Engagement metrics">
-          <div className="grid gap-4 text-sm text-white/80 sm:grid-cols-2 lg:grid-cols-4">
-            {engagementData.map((row) => (
-              <div
-                key={row.label}
-                className="rounded-2xl border border-white/10 bg-black/30 p-4"
-              >
-                <p className="text-xs uppercase tracking-[0.35em] text-white/50">
-                  {row.label}
-                </p>
-                <p className="mt-2 text-2xl font-semibold text-white">
-                  {row.value}
-                </p>
-              </div>
-            ))}
-          </div>
-        </SectionCard>
-
-        <SectionCard title="Activity Overview">
-          <div className="grid gap-4 text-sm text-white/80 sm:grid-cols-2 lg:grid-cols-4">
-            {activityData.map((row) => (
-              <div
-                key={row.label}
-                className="rounded-2xl border border-white/10 bg-black/30 p-4"
-              >
-                <p className="text-xs uppercase tracking-[0.35em] text-white/50">
-                  {row.label}
-                </p>
-                <p className="mt-2 text-2xl font-semibold text-white">
-                  {row.value}
-                </p>
-              </div>
-            ))}
-          </div>
-        </SectionCard>
-
-        <SectionCard title="User Growth">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-white/60">New users this period</p>
-              <p className="text-2xl font-bold text-white">
-                {analytics?.new_users_this_period || 0}
-              </p>
-            </div>
-            <div className="h-32 rounded-xl border border-white/10 bg-black/20 flex items-end justify-around p-2">
-              {[65, 72, 68, 75, 80, 85, 90].map((height, index) => (
-                <div
-                  key={index}
-                  className="flex-1 mx-1 rounded-t-lg bg-gradient-to-t from-purple-500 to-purple-600"
-                  style={{ height: `${height}%` }}
-                  title={`Day ${index + 1}: ${height} users`}
-                ></div>
+              {overviewStats.map((stat) => (
+                <StatCard key={stat.label} {...stat} />
               ))}
             </div>
-          </div>
-        </SectionCard>
 
-        <SectionCard title="Content Performance">
-          <div className="grid gap-4 text-sm sm:grid-cols-3">
-            <div className="rounded-xl border border-white/10 bg-black/20 p-4">
-              <p className="text-xs text-white/50 mb-2">Most Active Category</p>
-              <p className="text-lg font-semibold text-white">Announcements</p>
-              <p className="text-xs text-emerald-300 mt-1">+12% this week</p>
-            </div>
-            <div className="rounded-xl border border-white/10 bg-black/20 p-4">
-              <p className="text-xs text-white/50 mb-2">Top Event Type</p>
-              <p className="text-lg font-semibold text-white">Academic</p>
-              <p className="text-xs text-blue-300 mt-1">45% of events</p>
-            </div>
-            <div className="rounded-xl border border-white/10 bg-black/20 p-4">
-              <p className="text-xs text-white/50 mb-2">Marketplace Activity</p>
-              <p className="text-lg font-semibold text-white">$12.4K</p>
-              <p className="text-xs text-yellow-300 mt-1">Total value</p>
-            </div>
-          </div>
-        </SectionCard>
-
-        <SectionCard title="Automation queue">
-          <div className="grid gap-3 text-sm text-white/80 lg:grid-cols-2">
-            {[
-              "Auto-approve verified student marketplace items",
-              "Escalate flagged messages to moderators",
-              "Sync Google Calendar schedule to campus feed",
-              "Trigger onboarding drip for new freshmen",
-            ].map((task, index) => (
-              <div
-                key={task}
-                className="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/20 p-3"
-              >
-                <span className="rounded-full bg-white/10 px-2 py-1 text-xs">
-                  #{index + 1}
-                </span>
-                <p>{task}</p>
-                <span className="ml-auto text-emerald-300 text-xs">Active</span>
+            <SectionCard title="Engagement metrics">
+              <div className="grid gap-4 text-sm text-slate-700 sm:grid-cols-2 lg:grid-cols-4">
+                {engagementData.map((row) => (
+                  <div
+                    key={row.label}
+                    className="rounded-2xl border border-slate-200 bg-white p-4"
+                  >
+                    <p className="text-xs uppercase tracking-[0.35em] text-slate-500">
+                      {row.label}
+                    </p>
+                    <p className="mt-2 text-2xl font-semibold text-slate-900">
+                      {row.value}
+                    </p>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </SectionCard>
+            </SectionCard>
+
+            <SectionCard title="Activity Overview">
+              <div className="grid gap-4 text-sm text-slate-700 sm:grid-cols-2 lg:grid-cols-4">
+                {activityData.map((row) => (
+                  <div
+                    key={row.label}
+                    className="rounded-2xl border border-slate-200 bg-white p-4"
+                  >
+                    <p className="text-xs uppercase tracking-[0.35em] text-slate-500">
+                      {row.label}
+                    </p>
+                    <p className="mt-2 text-2xl font-semibold text-slate-900">
+                      {row.value}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </SectionCard>
+
+            <SectionCard title="User Growth">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-slate-600">New users this period</p>
+                  <p className="text-2xl font-bold text-slate-900">
+                    {analytics?.new_users_this_period || 0}
+                  </p>
+                </div>
+                <div className="flex h-32 items-end justify-around rounded-xl border border-slate-200 bg-slate-50 p-2">
+                  {[65, 72, 68, 75, 80, 85, 90].map((height, index) => (
+                    <div
+                      key={index}
+                      className="mx-1 flex-1 rounded-t-lg bg-gradient-to-t from-blue-200 to-blue-500"
+                      style={{ height: `${height}%` }}
+                      title={`Day ${index + 1}: ${height} users`}
+                    ></div>
+                  ))}
+                </div>
+              </div>
+            </SectionCard>
+
+            <SectionCard title="Content Performance">
+              <div className="grid gap-4 text-sm sm:grid-cols-3">
+                <div className="rounded-xl border border-slate-200 bg-white p-4">
+                  <p className="mb-2 text-xs text-slate-500">
+                    Most Active Category
+                  </p>
+                  <p className="text-lg font-semibold text-slate-900">
+                    Announcements
+                  </p>
+                  <p className="mt-1 text-xs text-emerald-600">
+                    +12% this week
+                  </p>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-white p-4">
+                  <p className="mb-2 text-xs text-slate-500">Top Event Type</p>
+                  <p className="text-lg font-semibold text-slate-900">Academic</p>
+                  <p className="mt-1 text-xs text-blue-600">45% of events</p>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-white p-4">
+                  <p className="mb-2 text-xs text-slate-500">
+                    Marketplace Activity
+                  </p>
+                  <p className="text-lg font-semibold text-slate-900">$12.4K</p>
+                  <p className="mt-1 text-xs text-amber-600">Total value</p>
+                </div>
+              </div>
+            </SectionCard>
+
+            <SectionCard title="Automation queue">
+              <div className="grid gap-3 text-sm text-slate-700 lg:grid-cols-2">
+                {[
+                  "Auto-approve verified student marketplace items",
+                  "Escalate flagged messages to moderators",
+                  "Sync Google Calendar schedule to campus feed",
+                  "Trigger onboarding drip for new freshmen",
+                ].map((task, index) => (
+                  <div
+                    key={task}
+                    className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3"
+                  >
+                    <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-700">
+                      #{index + 1}
+                    </span>
+                    <p>{task}</p>
+                    <span className="ml-auto text-xs font-semibold text-emerald-600">
+                      Active
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </SectionCard>
           </>
         )}
       </main>
     </div>
   );
 }
-

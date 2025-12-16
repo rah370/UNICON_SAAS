@@ -2,12 +2,14 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../shared/contexts/AuthContext";
 import { adminApi } from "../../shared/utils/api";
-import { AdminLayout, AdminCard } from "../components/AdminLayout";
+import { AdminCard } from "../components/AdminLayout";
 import GoogleCalendar from "../../shared/components/GoogleCalendar";
+import { useToast } from "../../shared/components/Toast";
 
 export default function AdminCalendar() {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
+  const { success, showError } = useToast();
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -24,7 +26,7 @@ export default function AdminCalendar() {
 
   useEffect(() => {
     if (!isAuthenticated || user?.role !== "admin") {
-      navigate("/admin-login");
+      navigate("/admin/login");
       return;
     }
 
@@ -40,8 +42,8 @@ export default function AdminCalendar() {
         id: event.id,
         title: event.title,
         date: event.event_date?.split("T")[0] || event.event_date,
-        time: event.event_date?.includes("T") 
-          ? event.event_date.split("T")[1]?.substring(0, 5) 
+        time: event.event_date?.includes("T")
+          ? event.event_date.split("T")[1]?.substring(0, 5)
           : "",
         type: event.event_type || "academic",
         description: event.description || "",
@@ -98,9 +100,9 @@ export default function AdminCalendar() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!form.title.trim() || !form.event_date) {
-      alert("Please fill in required fields (Title and Date)");
+      showError("Please fill in required fields (Title and Date)");
       return;
     }
 
@@ -124,21 +126,27 @@ export default function AdminCalendar() {
 
       await fetchEvents();
       handleCloseModal();
+      success("Event saved successfully");
     } catch (err) {
-      alert("Failed to save event: " + err.message);
+      showError("Failed to save event: " + err.message);
     }
   };
 
   const handleDelete = async (eventId) => {
-    if (!confirm("Are you sure you want to delete this event? This will remove it for all users.")) {
+    if (
+      !confirm(
+        "Are you sure you want to delete this event? This will remove it for all users."
+      )
+    ) {
       return;
     }
 
     try {
       await adminApi.deleteEvent(eventId);
       await fetchEvents();
+      success("Event deleted successfully");
     } catch (err) {
-      alert("Failed to delete event: " + err.message);
+      showError("Failed to delete event: " + err.message);
     }
   };
 
@@ -153,10 +161,23 @@ export default function AdminCalendar() {
   }));
 
   return (
-    <AdminLayout
-      title="Calendar Management"
-      subtitle="Manage campus-wide calendar events visible to all users"
-    >
+    <div className="space-y-6">
+      <header className="flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-white/70 bg-white/90 px-6 py-4 shadow-sm backdrop-blur">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate("/admin/dashboard")}
+            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
+          >
+            ← Back
+          </button>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">Calendar Management</h1>
+            <p className="text-sm text-slate-600">
+              Manage campus-wide calendar events visible to all users
+            </p>
+          </div>
+        </div>
+      </header>
       {loading && (
         <div className="text-center text-slate-600 py-12">
           Loading calendar events...
@@ -171,7 +192,8 @@ export default function AdminCalendar() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <p className="text-slate-600">
-            Events you create here will be visible to all students and users in the campus calendar.
+            Events you create here will be visible to all students and users in
+            the campus calendar.
           </p>
           <button
             onClick={() => handleOpenModal()}
@@ -184,15 +206,15 @@ export default function AdminCalendar() {
 
         {/* Calendar View */}
         <AdminCard title="Calendar View">
-          <GoogleCalendar 
-            events={calendarEvents} 
+          <GoogleCalendar
+            events={calendarEvents}
             googleCalSynced={true}
             adminEvents={calendarEvents}
           />
         </AdminCard>
 
         {/* Events List */}
-        <AdminCard 
+        <AdminCard
           title="All Events"
           actions={
             <button
@@ -249,7 +271,8 @@ export default function AdminCalendar() {
                           </p>
                           {event.location && (
                             <p>
-                              <span className="font-semibold">Location:</span> {event.location}
+                              <span className="font-semibold">Location:</span>{" "}
+                              {event.location}
                             </p>
                           )}
                           {event.description && (
@@ -257,7 +280,8 @@ export default function AdminCalendar() {
                           )}
                           {event.maxAttendees && (
                             <p>
-                              <span className="font-semibold">Capacity:</span> {event.maxAttendees} attendees
+                              <span className="font-semibold">Capacity:</span>{" "}
+                              {event.maxAttendees} attendees
                             </p>
                           )}
                         </div>
@@ -320,7 +344,9 @@ export default function AdminCalendar() {
                   <input
                     type="datetime-local"
                     value={form.event_date}
-                    onChange={(e) => setForm({ ...form, event_date: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, event_date: e.target.value })
+                    }
                     required
                     className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900"
                   />
@@ -331,7 +357,9 @@ export default function AdminCalendar() {
                   </label>
                   <select
                     value={form.event_type}
-                    onChange={(e) => setForm({ ...form, event_type: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, event_type: e.target.value })
+                    }
                     className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900"
                   >
                     <option value="academic">Academic</option>
@@ -351,7 +379,9 @@ export default function AdminCalendar() {
                 <input
                   type="text"
                   value={form.location}
-                  onChange={(e) => setForm({ ...form, location: e.target.value })}
+                  onChange={(e) =>
+                    setForm({ ...form, location: e.target.value })
+                  }
                   className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900"
                   placeholder="e.g., Main Auditorium, Campus Quad"
                 />
@@ -363,7 +393,9 @@ export default function AdminCalendar() {
                 </label>
                 <textarea
                   value={form.description}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
+                  onChange={(e) =>
+                    setForm({ ...form, description: e.target.value })
+                  }
                   rows={4}
                   className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900"
                   placeholder="Add event details, requirements, or additional information..."
@@ -377,7 +409,9 @@ export default function AdminCalendar() {
                 <input
                   type="number"
                   value={form.max_attendees}
-                  onChange={(e) => setForm({ ...form, max_attendees: e.target.value })}
+                  onChange={(e) =>
+                    setForm({ ...form, max_attendees: e.target.value })
+                  }
                   min="1"
                   className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900"
                   placeholder="Leave empty for unlimited"
@@ -395,7 +429,9 @@ export default function AdminCalendar() {
                 <button
                   type="submit"
                   className="rounded-xl px-6 py-2.5 text-sm font-semibold text-white shadow-lg transition hover:-translate-y-0.5"
-                  style={{ background: "linear-gradient(135deg, #2563eb, #1d4ed8)" }}
+                  style={{
+                    background: "linear-gradient(135deg, #2563eb, #1d4ed8)",
+                  }}
                 >
                   {selectedEvent ? "Update Event" : "Create Event"}
                 </button>
@@ -404,7 +440,6 @@ export default function AdminCalendar() {
           </div>
         </div>
       )}
-    </AdminLayout>
+    </div>
   );
 }
-

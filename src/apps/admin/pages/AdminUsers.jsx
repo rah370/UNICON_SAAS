@@ -2,7 +2,9 @@ import React, { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../shared/contexts/AuthContext";
 import { adminApi } from "../../shared/utils/api";
-import { AdminLayout, AdminCard } from "../components/AdminLayout";
+import { AdminCard } from "../components/AdminLayout";
+import { useToast } from "../../shared/components/Toast";
+import { ListSkeleton } from "../../shared/components/SkeletonLoader";
 
 const defaultUsers = [
   {
@@ -44,6 +46,7 @@ const defaultUsers = [
 export default function AdminUsers() {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
+  const { success, showError } = useToast();
   const [users, setUsers] = useState([]);
   const [userSearch, setUserSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("All Roles");
@@ -53,10 +56,18 @@ export default function AdminUsers() {
   const [selectedUsers, setSelectedUsers] = useState([]);
   const [showBulkActions, setShowBulkActions] = useState(false);
   const [viewMode, setViewMode] = useState("table"); // table or grid
+  const [creatingUser, setCreatingUser] = useState(false);
+  const [newUser, setNewUser] = useState({
+    first_name: "",
+    last_name: "",
+    email: "",
+    role: "student",
+    status: 1,
+  });
 
   useEffect(() => {
     if (!isAuthenticated || user?.role !== "admin") {
-      navigate("/admin-login");
+      navigate("/admin/login");
       return;
     }
 
@@ -65,18 +76,16 @@ export default function AdminUsers() {
         setLoading(true);
         setError(null);
         const result = await adminApi.getUsers();
-        const usersData = (result.users || []).map((u) => ({
-          id: u.id,
-          name: `${u.first_name || ""} ${u.last_name || ""}`.trim() || u.email,
-          email: u.email,
-          role: u.role || "student",
-          status: u.is_active ? "active" : "suspended",
-          lastLogin: u.last_login_at || "Never",
-        }));
+        console.log("Users API response:", result); // Debug log
+        const usersData = (result.users || []).map(mapApiUser);
         setUsers(usersData);
+        if (usersData.length === 0) {
+          setError("No users found. Please add users to the system.");
+        }
       } catch (err) {
         console.error("Failed to fetch users:", err);
-        setError("Failed to load users. Using demo data.");
+        const errorMessage = err.message || "Unknown error";
+        setError(`Failed to load users: ${errorMessage}. Using demo data.`);
         setUsers(defaultUsers);
       } finally {
         setLoading(false);
@@ -105,7 +114,9 @@ export default function AdminUsers() {
 
     // Status filter
     if (statusFilter !== "All Status") {
-      filtered = filtered.filter((u) => u.status === statusFilter.toLowerCase());
+      filtered = filtered.filter(
+        (u) => u.status === statusFilter.toLowerCase()
+      );
     }
 
     return filtered;
@@ -116,7 +127,7 @@ export default function AdminUsers() {
     if (!targetUser) return;
 
     const newStatus = targetUser.status === "active" ? 0 : 1;
-    
+
     try {
       await adminApi.updateUserStatus(id, newStatus);
       setUsers((prev) =>
@@ -129,8 +140,11 @@ export default function AdminUsers() {
             : u
         )
       );
+      success(
+        `User ${newStatus === 1 ? "activated" : "suspended"} successfully`
+      );
     } catch (err) {
-      alert("Failed to update user status: " + err.message);
+      showError("Failed to update user status: " + err.message);
     }
   };
 
@@ -138,15 +152,20 @@ export default function AdminUsers() {
     const targetUser = users.find((u) => u.id === id);
     if (!targetUser) return;
 
-    if (!confirm(`Are you sure you want to delete ${targetUser.name}? This action cannot be undone.`)) {
+    if (
+      !confirm(
+        `Are you sure you want to delete ${targetUser.name}? This action cannot be undone.`
+      )
+    ) {
       return;
     }
 
     try {
       await adminApi.deleteUser(id);
       setUsers((prev) => prev.filter((u) => u.id !== id));
+      success("User deleted successfully");
     } catch (err) {
-      alert("Failed to delete user: " + err.message);
+      showError("Failed to delete user: " + err.message);
     }
   };
 
@@ -156,8 +175,9 @@ export default function AdminUsers() {
       setUsers((prev) =>
         prev.map((u) => (u.id === id ? { ...u, role: newRole } : u))
       );
+      success("User role updated successfully");
     } catch (err) {
-      alert("Failed to update user role: " + err.message);
+      showError("Failed to update user role: " + err.message);
     }
   };
 
@@ -179,7 +199,7 @@ export default function AdminUsers() {
 
   const bulkUpdateStatus = async (status) => {
     if (selectedUsers.length === 0) return;
-    
+
     const newStatus = status === "active" ? 1 : 0;
     try {
       await Promise.all(
@@ -194,31 +214,78 @@ export default function AdminUsers() {
       );
       setSelectedUsers([]);
       setShowBulkActions(false);
-      alert(`Successfully updated ${selectedUsers.length} users`);
+      success(
+        `Successfully updated ${selectedUsers.length} user${
+          selectedUsers.length !== 1 ? "s" : ""
+        }`
+      );
     } catch (err) {
-      alert("Failed to update users: " + err.message);
+      showError("Failed to update users: " + err.message);
     }
   };
 
   const bulkDeleteUsers = async () => {
     if (selectedUsers.length === 0) return;
-    
-    if (!confirm(`Are you sure you want to delete ${selectedUsers.length} users? This action cannot be undone.`)) {
+
+    if (
+      !confirm(
+        `Are you sure you want to delete ${selectedUsers.length} users? This action cannot be undone.`
+      )
+    ) {
       return;
     }
 
     try {
-      await Promise.all(
-        selectedUsers.map((id) => adminApi.deleteUser(id))
-      );
+      await Promise.all(selectedUsers.map((id) => adminApi.deleteUser(id)));
       setUsers((prev) => prev.filter((u) => !selectedUsers.includes(u.id)));
       setSelectedUsers([]);
       setShowBulkActions(false);
-      alert(`Successfully deleted ${selectedUsers.length} users`);
+      success(
+        `Successfully deleted ${selectedUsers.length} user${
+          selectedUsers.length !== 1 ? "s" : ""
+        }`
+      );
     } catch (err) {
-      alert("Failed to delete users: " + err.message);
+      showError("Failed to delete users: " + err.message);
     }
   };
+
+  const handleCreateUser = async () => {
+    if (!newUser.email || !newUser.email.includes("@")) {
+      showError("Valid email is required");
+      return;
+    }
+    try {
+      setCreatingUser(true);
+      const result = await adminApi.createUser(newUser);
+      if (result.success && result.user) {
+        setUsers((prev) => [mapApiUser(result.user), ...prev]);
+        setNewUser({
+          first_name: "",
+          last_name: "",
+          email: "",
+          role: "student",
+          status: 1,
+        });
+        success("User added successfully");
+      } else {
+        showError(result.error || "Could not create user");
+      }
+    } catch (err) {
+      showError(err.message || "Failed to create user");
+    } finally {
+      setCreatingUser(false);
+    }
+  };
+
+  const mapApiUser = (u) => ({
+    id: u.id,
+    name: `${u.first_name || ""} ${u.last_name || ""}`.trim() || u.email,
+    email: u.email,
+    role: u.role || "student",
+    status: u.is_active ? "active" : "suspended",
+    lastLogin: u.last_login_at || "Never",
+  });
 
   const exportUsers = () => {
     const csv = [
@@ -238,143 +305,203 @@ export default function AdminUsers() {
   };
 
   return (
-    <AdminLayout
-      title="User Management"
-      subtitle="Manage users and permissions"
-    >
-        {loading && (
-          <div className="text-center text-slate-600 py-12">
-            Loading users...
+    <div className="space-y-6">
+      <header className="flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-white/70 bg-white/90 px-6 py-4 shadow-sm backdrop-blur">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate("/admin/dashboard")}
+            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
+          >
+            ← Back
+          </button>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">User Management</h1>
+            <p className="text-sm text-slate-600">Manage users and permissions</p>
           </div>
-        )}
-        {error && (
-          <div className="rounded-2xl border border-yellow-200 bg-yellow-50 p-4 text-yellow-700 mb-6">
-            {error}
-          </div>
-        )}
-        <AdminCard
-          title="User Management"
-          actions={
-            <div className="flex gap-2">
-              <button
-                onClick={exportUsers}
-                className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
-              >
-                Export CSV
-              </button>
+        </div>
+      </header>
+      {loading && (
+        <div className="space-y-4">
+          <ListSkeleton count={5} />
+        </div>
+      )}
+      {error && (
+        <div className="rounded-2xl border border-yellow-200 bg-yellow-50 p-4 text-yellow-700 mb-6">
+          {error}
+        </div>
+      )}
+      <AdminCard
+        title="User Management"
+        actions={
+          <div className="flex gap-2">
             <button
-              onClick={() => alert("Bulk import feature coming soon")}
+              onClick={exportUsers}
+              className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
+            >
+              Export CSV
+            </button>
+            <button
+              onClick={() => showError("Bulk import feature coming soon")}
               className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
             >
               + Import Users
             </button>
-            </div>
-          }
-        >
-          <div className="space-y-4">
-            <div className="flex gap-3 flex-wrap">
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <div className="flex flex-wrap items-center gap-3">
               <input
-                placeholder="Search by name or email…"
-                value={userSearch}
-                onChange={(e) => setUserSearch(e.target.value)}
-                className="flex-1 min-w-[200px] rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder-slate-400"
+                placeholder="First name"
+                value={newUser.first_name}
+                onChange={(e) => setNewUser((p) => ({ ...p, first_name: e.target.value }))}
+                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900"
+              />
+              <input
+                placeholder="Last name"
+                value={newUser.last_name}
+                onChange={(e) => setNewUser((p) => ({ ...p, last_name: e.target.value }))}
+                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900"
+              />
+              <input
+                placeholder="Email"
+                type="email"
+                value={newUser.email}
+                onChange={(e) => setNewUser((p) => ({ ...p, email: e.target.value }))}
+                className="min-w-[220px] flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900"
               />
               <select
-                value={roleFilter}
-                onChange={(e) => setRoleFilter(e.target.value)}
-                className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900"
+                value={newUser.role}
+                onChange={(e) => setNewUser((p) => ({ ...p, role: e.target.value }))}
+                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900"
               >
-                <option>All Roles</option>
-                <option>student</option>
-                <option>teacher</option>
-                <option>staff</option>
-                <option>admin</option>
-              </select>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900"
-              >
-                <option>All Status</option>
-                <option>active</option>
-                <option>suspended</option>
+                <option value="student">student</option>
+                <option value="teacher">teacher</option>
+                <option value="staff">staff</option>
+                <option value="admin">admin</option>
               </select>
               <button
-                onClick={() => setViewMode(viewMode === "table" ? "grid" : "table")}
-                className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 transition"
+                onClick={handleCreateUser}
+                disabled={creatingUser}
+                className="rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-2 text-sm font-semibold text-white shadow hover:from-blue-500 hover:to-blue-600 disabled:opacity-60"
               >
-                {viewMode === "table" ? "Grid" : "Table"}
+                {creatingUser ? "Adding..." : "Add user"}
               </button>
             </div>
+            <p className="mt-2 text-xs text-slate-500">
+              New users get a temporary password. Ask them to reset on first login.
+            </p>
+          </div>
+          <div className="flex gap-3 flex-wrap">
+            <input
+              placeholder="Search by name or email…"
+              value={userSearch}
+              onChange={(e) => setUserSearch(e.target.value)}
+              className="flex-1 min-w-[200px] rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder-slate-400"
+            />
+            <select
+              value={roleFilter}
+              onChange={(e) => setRoleFilter(e.target.value)}
+              className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900"
+            >
+              <option>All Roles</option>
+              <option>student</option>
+              <option>teacher</option>
+              <option>staff</option>
+              <option>admin</option>
+            </select>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900"
+            >
+              <option>All Status</option>
+              <option>active</option>
+              <option>suspended</option>
+            </select>
+            <button
+              onClick={() =>
+                setViewMode(viewMode === "table" ? "grid" : "table")
+              }
+              className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 transition"
+            >
+              {viewMode === "table" ? "Grid" : "Table"}
+            </button>
+          </div>
 
-            {selectedUsers.length > 0 && (
-              <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <input
-                    type="checkbox"
-                    checked={selectedUsers.length === filteredUsers.length}
-                    onChange={selectAllUsers}
-                    className="rounded"
-                  />
-                  <span className="text-sm text-slate-900">
-                    {selectedUsers.length} user{selectedUsers.length !== 1 ? "s" : ""} selected
-                  </span>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => bulkUpdateStatus("active")}
-                    className="rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-600 transition"
-                  >
-                    Activate All
-                  </button>
-                  <button
-                    onClick={() => bulkUpdateStatus("suspended")}
-                    className="rounded-lg bg-yellow-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-yellow-600 transition"
-                  >
-                    Suspend All
-                  </button>
-                  <button
-                    onClick={bulkDeleteUsers}
-                    className="rounded-lg bg-red-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-600 transition"
-                  >
-                    Delete All
-                  </button>
-                  <button
-                    onClick={() => {
-                      setSelectedUsers([]);
-                      setShowBulkActions(false);
-                    }}
-                    className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
-                  >
-                    Clear
-                  </button>
-                </div>
-              </div>
-            )}
-
-            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-              <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50 px-4 py-3 text-xs font-semibold text-slate-600">
-                <span className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={selectedUsers.length === filteredUsers.length && filteredUsers.length > 0}
-                    onChange={selectAllUsers}
-                    className="rounded"
-                  />
+          {selectedUsers.length > 0 && (
+            <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  checked={selectedUsers.length === filteredUsers.length}
+                  onChange={selectAllUsers}
+                  className="rounded"
+                />
+                <span className="text-sm text-slate-900">
+                  {selectedUsers.length} user
+                  {selectedUsers.length !== 1 ? "s" : ""} selected
                 </span>
-                <span className="col-span-2">User</span>
-                <span>Role</span>
-                <span>Status</span>
-                <span>Last Login</span>
-                <span className="text-center">Actions</span>
               </div>
-              <div className="max-h-[500px] overflow-y-auto">
-                {filteredUsers.length === 0 ? (
-                  <div className="text-center py-12 text-slate-600">
-                    No users found matching your filters
-                  </div>
-                ) : (
-                  filteredUsers.map((u) => (
+              <div className="flex gap-2">
+                <button
+                  onClick={() => bulkUpdateStatus("active")}
+                  className="rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-600 transition"
+                >
+                  Activate All
+                </button>
+                <button
+                  onClick={() => bulkUpdateStatus("suspended")}
+                  className="rounded-lg bg-yellow-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-yellow-600 transition"
+                >
+                  Suspend All
+                </button>
+                <button
+                  onClick={bulkDeleteUsers}
+                  className="rounded-lg bg-red-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-600 transition"
+                >
+                  Delete All
+                </button>
+                <button
+                  onClick={() => {
+                    setSelectedUsers([]);
+                    setShowBulkActions(false);
+                  }}
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+            <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50 px-4 py-3 text-xs font-semibold text-slate-600">
+              <span className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={
+                    selectedUsers.length === filteredUsers.length &&
+                    filteredUsers.length > 0
+                  }
+                  onChange={selectAllUsers}
+                  className="rounded"
+                />
+              </span>
+              <span className="col-span-2">User</span>
+              <span>Role</span>
+              <span>Status</span>
+              <span>Last Login</span>
+              <span className="text-center">Actions</span>
+            </div>
+            <div className="max-h-[500px] overflow-y-auto">
+              {filteredUsers.length === 0 ? (
+                <div className="text-center py-12 text-slate-600">
+                  No users found matching your filters
+                </div>
+              ) : (
+                filteredUsers.map((u) => (
                   <div
                     key={u.id}
                     className="grid grid-cols-7 items-center border-b border-slate-100 bg-white px-4 py-4 text-sm last:border-b-0 hover:bg-slate-50 transition-colors"
@@ -418,7 +545,9 @@ export default function AdminUsers() {
                     >
                       {u.status}
                     </span>
-                    <span className="text-xs text-slate-600">{u.lastLogin}</span>
+                    <span className="text-xs text-slate-600">
+                      {u.lastLogin}
+                    </span>
                     <div className="flex items-center justify-center gap-2">
                       <button
                         onClick={() => toggleUserStatus(u.id)}
@@ -438,50 +567,49 @@ export default function AdminUsers() {
                       </button>
                     </div>
                   </div>
-                  ))
-                )}
-              </div>
+                ))
+              )}
             </div>
           </div>
-        </AdminCard>
+        </div>
+      </AdminCard>
 
-        <AdminCard title="User Statistics">
-          <div className="grid gap-4 text-sm sm:grid-cols-4">
-            <div className="rounded-2xl border border-slate-200 bg-white p-4">
-              <p className="text-xs uppercase tracking-[0.35em] text-slate-500">
-                Total Users
-              </p>
-              <p className="mt-2 text-2xl font-bold text-slate-900">
-                {users.length}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-4">
-              <p className="text-xs uppercase tracking-[0.35em] text-slate-500">
-                Active
-              </p>
-              <p className="mt-2 text-2xl font-bold text-emerald-600">
-                {users.filter((u) => u.status === "active").length}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-4">
-              <p className="text-xs uppercase tracking-[0.35em] text-slate-500">
-                Suspended
-              </p>
-              <p className="mt-2 text-2xl font-bold text-red-600">
-                {users.filter((u) => u.status === "suspended").length}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-4">
-              <p className="text-xs uppercase tracking-[0.35em] text-slate-500">
-                Students
-              </p>
-              <p className="mt-2 text-2xl font-bold text-blue-600">
-                {users.filter((u) => u.role === "student").length}
-              </p>
-            </div>
+      <AdminCard title="User Statistics">
+        <div className="grid gap-4 text-sm sm:grid-cols-4">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4">
+            <p className="text-xs uppercase tracking-[0.35em] text-slate-500">
+              Total Users
+            </p>
+            <p className="mt-2 text-2xl font-bold text-slate-900">
+              {users.length}
+            </p>
           </div>
-        </AdminCard>
-    </AdminLayout>
+          <div className="rounded-2xl border border-slate-200 bg-white p-4">
+            <p className="text-xs uppercase tracking-[0.35em] text-slate-500">
+              Active
+            </p>
+            <p className="mt-2 text-2xl font-bold text-emerald-600">
+              {users.filter((u) => u.status === "active").length}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-4">
+            <p className="text-xs uppercase tracking-[0.35em] text-slate-500">
+              Suspended
+            </p>
+            <p className="mt-2 text-2xl font-bold text-red-600">
+              {users.filter((u) => u.status === "suspended").length}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-4">
+            <p className="text-xs uppercase tracking-[0.35em] text-slate-500">
+              Students
+            </p>
+            <p className="mt-2 text-2xl font-bold text-blue-600">
+              {users.filter((u) => u.role === "student").length}
+            </p>
+          </div>
+        </div>
+      </AdminCard>
+    </div>
   );
 }
-

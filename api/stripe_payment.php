@@ -4,6 +4,11 @@ require_once 'database.php';
 require_once 'auth.php';
 require_once 'env_loader.php';
 
+// Load Stripe PHP SDK if available
+if (file_exists(__DIR__ . '/../vendor/autoload.php')) {
+    require_once __DIR__ . '/../vendor/autoload.php';
+}
+
 class StripePayment {
     private $db;
     private $stripeSecretKey;
@@ -20,6 +25,9 @@ class StripePayment {
     
     // Create Stripe customer
     public function createCustomer($email, $name, $schoolId) {
+        if (!class_exists('\Stripe\StripeClient')) {
+            return ['success' => false, 'error' => 'Stripe PHP SDK not installed. Run: composer require stripe/stripe-php'];
+        }
         try {
             $stripe = new \Stripe\StripeClient($this->stripeSecretKey);
             
@@ -72,6 +80,45 @@ class StripePayment {
             return ['success' => false, 'error' => $e->getMessage()];
         }
     }
+
+    // Create a one-time payment intent for school registration
+    public function createRegistrationPaymentIntent($email, $plan) {
+        if (!class_exists('\Stripe\StripeClient')) {
+            return ['success' => false, 'error' => 'Stripe PHP SDK not installed. Run: composer require stripe/stripe-php'];
+        }
+        
+        $planKey = strtolower($plan);
+        $amount = $this->getPlanAmountCents($planKey);
+
+        if ($amount <= 0) {
+            return ['success' => false, 'error' => 'Invalid or unpaid plan selected.'];
+        }
+
+        if (!$this->stripeSecretKey || str_contains($this->stripeSecretKey, 'your_stripe_secret_key')) {
+            return ['success' => false, 'error' => 'Stripe secret key not configured. Please set STRIPE_SECRET_KEY in .env file.'];
+        }
+
+        try {
+            $stripe = new \Stripe\StripeClient($this->stripeSecretKey);
+            
+            $paymentIntent = $stripe->paymentIntents->create([
+                'amount' => $amount,
+                'currency' => 'usd',
+                'description' => 'UNICON school registration - ' . ucfirst($planKey),
+                'receipt_email' => $email,
+                'metadata' => [
+                    'plan' => $planKey,
+                    'email' => $email,
+                ],
+            ]);
+            
+            return ['success' => true, 'client_secret' => $paymentIntent->client_secret];
+        } catch (\Stripe\Exception\ApiErrorException $e) {
+            return ['success' => false, 'error' => $e->getMessage()];
+        } catch (Exception $e) {
+            return ['success' => false, 'error' => 'Failed to create payment intent: ' . $e->getMessage()];
+        }
+    }
     
     // Get subscription status
     public function getSubscriptionStatus($schoolId) {
@@ -92,6 +139,9 @@ class StripePayment {
     
     // Cancel subscription
     public function cancelSubscription($schoolId) {
+        if (!class_exists('\Stripe\StripeClient')) {
+            return ['success' => false, 'error' => 'Stripe PHP SDK not installed. Run: composer require stripe/stripe-php'];
+        }
         try {
             $subscription = $this->db->fetch(
                 "SELECT stripe_subscription_id FROM subscriptions WHERE school_id = ?",
@@ -121,6 +171,9 @@ class StripePayment {
     
     // Handle webhook events
     public function handleWebhook($payload, $signature) {
+        if (!class_exists('\Stripe\Webhook')) {
+            return ['success' => false, 'error' => 'Stripe PHP SDK not installed. Run: composer require stripe/stripe-php'];
+        }
         try {
             $event = \Stripe\Webhook::constructEvent(
                 $payload,
@@ -192,6 +245,16 @@ class StripePayment {
                 $subscription->id
             ]
         );
+    }
+
+    private function getPlanAmountCents($planKey) {
+        $map = [
+            'basic' => 2900, // $29.00
+            'pro' => 7900,   // $79.00
+            'premium' => 0,
+            'enterprise' => 0,
+        ];
+        return $map[$planKey] ?? 0;
     }
     
     // Get pricing plans

@@ -9,6 +9,7 @@ import AdminCalendar from "./pages/AdminCalendar";
 import AdminAnalytics from "./pages/AdminAnalytics";
 import AdminMarketplace from "./pages/AdminMarketplace";
 import AdminSettings from "./pages/AdminSettings";
+import AdminProfile from "./pages/AdminProfile";
 import { AuthProvider, useAuth } from "../shared/contexts/AuthContext";
 import { BrandingProvider } from "../shared/contexts/BrandingContext";
 import { ToastProvider } from "../shared/components/Toast";
@@ -139,6 +140,16 @@ function AdminApp() {
                 <ProtectedAdminRoute>
                   <AdminLayout>
                     <AdminSettings />
+                  </AdminLayout>
+                </ProtectedAdminRoute>
+              }
+            />
+            <Route
+              path="profile"
+              element={
+                <ProtectedAdminRoute>
+                  <AdminLayout>
+                    <AdminProfile />
                   </AdminLayout>
                 </ProtectedAdminRoute>
               }
