@@ -2,6 +2,15 @@
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
+// Log API configuration in development
+if (import.meta.env.DEV) {
+  console.log("API Configuration:", {
+    VITE_API_BASE_URL: import.meta.env.VITE_API_BASE_URL,
+    API_BASE_URL: API_BASE_URL,
+    currentURL: window.location.origin,
+  });
+}
+
 export async function apiRequest(endpoint, options = {}) {
   const token = localStorage.getItem("uniconToken");
 
@@ -18,8 +27,10 @@ export async function apiRequest(endpoint, options = {}) {
     config.body = JSON.stringify(options.body);
   }
 
+  const fullUrl = `${API_BASE_URL}${endpoint}`;
+  
   try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+    const response = await fetch(fullUrl, config);
 
     // Check if response is ok before trying to parse JSON
     if (!response.ok) {
@@ -31,18 +42,37 @@ export async function apiRequest(endpoint, options = {}) {
         // If response is not JSON, use status text
         errorMessage = response.statusText || errorMessage;
       }
+      
+      // Provide helpful error for 404 on API routes (likely missing backend)
+      if (response.status === 404 && API_BASE_URL === "/api") {
+        console.error(
+          "⚠️ API endpoint not found. This usually means:\n" +
+          "1. Backend API is not deployed or accessible\n" +
+          "2. VITE_API_BASE_URL environment variable is not set in Vercel\n" +
+          "3. Set VITE_API_BASE_URL in Vercel Dashboard → Settings → Environment Variables\n" +
+          `   Current API URL: ${fullUrl}`
+        );
+      }
+      
       throw new Error(errorMessage);
     }
 
     const data = await response.json();
     return data;
   } catch (error) {
-    console.error("API request failed:", error);
+    console.error("API request failed:", {
+      url: fullUrl,
+      endpoint,
+      error: error.message,
+      API_BASE_URL,
+    });
+    
     // Re-throw with more context if it's a network error
     if (error.name === "TypeError" && error.message.includes("fetch")) {
-      throw new Error(
-        "Network error: Unable to connect to the server. Please check your connection."
-      );
+      const helpfulMessage = API_BASE_URL === "/api" 
+        ? "Network error: Backend API not accessible. Please ensure VITE_API_BASE_URL is set in Vercel environment variables."
+        : "Network error: Unable to connect to the server. Please check your connection.";
+      throw new Error(helpfulMessage);
     }
     throw error;
   }
